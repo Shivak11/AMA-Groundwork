@@ -11,7 +11,7 @@ const bundled = await build({
   loader:{'.css':'text','.ttf':'base64'},
   define: {'process.env.NODE_ENV':'"production"'},
 });
-const css = await readFile(path.join(root, 'src', 'inline-view.css'), 'utf8');
+const css = (await Promise.all(['inline-view.css','compact-visual.css'].map(name => readFile(path.join(root, 'src', name), 'utf8')))).join('\n');
 const font = await readFile(path.join(root, 'skills', 'ai-use-case-workshop', 'assets', 'fonts', 'DMSerifDisplay-Regular.ttf'));
 const fontCss = `@font-face{font-family:'DM Serif Display';font-style:normal;font-weight:400;font-display:swap;src:url(data:font/ttf;base64,${font.toString('base64')}) format('truetype')}`;
 const js = bundled.outputFiles[0].text.replace(/<\/script/gi, '<\\/script');

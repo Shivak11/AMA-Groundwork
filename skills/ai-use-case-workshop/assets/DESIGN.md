@@ -2,9 +2,17 @@
 
 The portfolio belongs to the group. Its visual hierarchy makes the group's problem, evidence, disagreements and proposed decisions easy to find. The inline activity and composed book use the same semantic record but different visual treatments.
 
-Inline workbook snapshots inherit host typography, light/dark colours and a transparent outer surface. The book preview and PDF retain the Terracotta design below. Show a diagram of saved work with a secondary book preview, opening the full book only on request. The host conversation owns questions and approval. Never imitate host attribution or permission controls.
+Inline workbook snapshots inherit host typography, light/dark colours and a transparent outer surface. The PDF retains the Terracotta design below. The closed card contains one compact, phase-specific visual and one View workbook action. Full wording, PDF/record downloads and private access details belong inside that expansion. The host conversation owns questions and approval. Never imitate host attribution or permission controls.
 
-Each snapshot leads with its step number and specific title. Keep the group name secondary and the full problem in the book and group details. Distinguish the viewed chapter from the current conversation step; an approved Step 1 view can correctly indicate that Step 2 is current. Progress uses written states, check marks and restrained theme-aware colours for approved, current, future and needs-review work. Explicit host theme and semantic tokens override OS preferences. Older cards remain labelled as snapshots.
+Each snapshot leads with its step number and specific title, followed by one concise state line. Keep group details inside the book. Distinguish the viewed chapter from the current conversation step; an approved Step 1 view can correctly indicate that Step 2 is current. Use a compact six-part track with short labels and accessible written states; do not repeat Not started, Shown below or Current step under every label. Explicit host theme and semantic tokens override OS preferences. Identify a known older view briefly; version details stay inside the book.
+
+## Inline reference and density
+
+Shiva rejected the text-heavy live card on 11 September 2026. StyleRef's [Swiss Grid Interface](https://styleref.io/share/m4oe3xex-9d9958eaf732) informs alignment, one type family and clear hierarchy. The host's colours override that reference's fixed palette, backgrounds and voice. Do not copy a red accent, decorative grid or a rigid twelve-column composition into a narrow chat card. Impeccable's distill guidance supplies progressive disclosure; the participant's actual saved decisions supply every visual.
+
+The closed card is a concise visual readback, not the complete approval summary. Use a relationship for the goal, holder/gap mapping for context, an ordered path for tasks, an AI/manual comparison for options and lanes for priorities. A number or quantitative chart must come from an unambiguous supplied value with its uncertainty intact. Short extracts show an ellipsis when abbreviated; all wording remains available in the expanded workbook and unchanged in storage and the PDF. Never shorten stored records to make a card smaller.
+
+No routine storage notice, file-request control, JSON backup, side book illustration, repeated status paragraph, full hypothesis block or extra navigation belongs in the closed card. Errors appear only when relevant. View workbook must remain useful even if host file delivery is unavailable; recovery and downloads have plain labels inside the expansion.
 
 ## Direction
 

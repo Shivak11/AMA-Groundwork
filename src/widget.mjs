@@ -8,7 +8,7 @@ import workbookCss from '../skills/ai-use-case-workshop/assets/workbook.css';
 import workbookFont from '../skills/ai-use-case-workshop/assets/fonts/DMSerifDisplay-Regular.ttf';
 import { decodePdfFile } from './pdf-file.mjs';
 
-const app = new App({name:'AI Use-Case Workshop',version:'0.6.0'}, {availableDisplayModes:['inline','fullscreen']}, {autoResize:true});
+const app = new App({name:'AI Use-Case Workshop',version:'0.6.1'}, {availableDisplayModes:['inline','fullscreen']}, {autoResize:true});
 const root = createRoot(document.getElementById('workshop-root'));
 let current=null, metadata={}, capabilities={}, host={}, bookHtml;
 let connected=false, pending=false, generation=0;
@@ -24,6 +24,7 @@ function receive(result) {
   if (!result || result.isError) throw new Error(errorText(result)||'This workbook could not be loaded. Continue in the conversation.');
   const persisted=result.structuredContent?.record?.key;
   const record=validateRecord(persisted?result._meta?.workbook:result.structuredContent?.record);
+  if(persisted && record.revision!==result.structuredContent.record.revision) throw new Error('This reply does not match the saved version. The existing view is retained.');
   if(current) {
     if(persisted ? persisted!==current.reference?.key : !sameGroup(record,current.record)) throw new Error('This reply belongs to a different workbook. The existing snapshot is retained.');
     if(record.revision<current.record.revision) return;
@@ -33,7 +34,7 @@ function receive(result) {
   try {bookHtml=renderWorkbookHtml(record,{css:workbookCss,font:workbookFont});}
   catch {bookHtml=undefined;}
   generation++;pending=false;
-  notice=current.export?.status==='failed'?'Your step is approved, but its PDF was not generated. Ask in the conversation to retry the PDF.':'';
+  notice=current.export?.status==='failed'?'Your answers are saved, but the PDF was not generated. Ask in the conversation to retry the PDF.':'';
   noticeError=current.export?.status==='failed';
 }
 async function requestFiles() {

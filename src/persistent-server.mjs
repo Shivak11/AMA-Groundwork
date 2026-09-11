@@ -61,7 +61,7 @@ export async function createPersistentWorkshopServer({sessionStore:store,pdfRend
   if(!store||typeof pdfRenderer!=='function'||typeof file!=='function')throw new Error('Persistent workshop adapters are required.');
   const origin=new URL(baseUrl);
   if(origin.protocol!=='https:'||origin.username||origin.password||origin.search||origin.hash||origin.pathname!=='/')throw new Error('A fixed HTTPS workshop origin is required.');
-  const server=new McpServer({name:'ai-use-case-workshop',version:'0.6.0'},{instructions:`${hostGuide} ${retention}`});
+  const server=new McpServer({name:'ai-use-case-workshop',version:'0.6.1'},{instructions:`${hostGuide} ${retention}`});
   const teaching=await file('skills/ai-use-case-workshop/references/phases.md');
   const capability=()=>getUiCapability(capabilitiesOverride??server.server.getClientCapabilities())?.mimeTypes?.includes(RESOURCE_MIME_TYPE);
   const ensureWrite=()=>{if(!writesEnabled)throw Object.assign(new Error('Saving is temporarily paused.'),{safeMessage:'Saving is temporarily paused. Your saved workbook, history and downloads remain available.'});};

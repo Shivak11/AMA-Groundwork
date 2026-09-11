@@ -1,5 +1,7 @@
 # AI Use-Case Workshop
 
+Version 0.6.1 simplifies the inline readback using StyleRef's Swiss Grid structure adapted to host colours. One View workbook action replaces the closed card's file/recovery controls. Complete saved wording and files remain in the expansion. Persistent storage and the PDF content are unchanged.
+
 Version 0.6.0 adds private persistent workbook storage on Cloudflare D1. Workbooks and revision history have no automatic expiry; explicit group deletion is required. A short private reference resumes editing in another chat, and a separate stable reading link supports later feedback and downloads. It retains conversational questions, read-only visual cards, step-first hierarchy and ordinary-chat fallback. See PERSISTENT-RECOVERY-PLAN.md for the current contract. Source, deployed runtime and actual-host evidence remain separate.
 
 ## Participant journey

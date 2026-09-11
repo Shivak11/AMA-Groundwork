@@ -1,5 +1,9 @@
 # Source ledger
 
+## Compact readback correction, 11 September 2026
+
+Shiva rejected the actual ChatGPT v0.6.0 card for long answer paragraphs, poor hierarchy and visible recovery/file controls, then explicitly requested StyleRef and Impeccable with native host colours. StyleRef's Swiss Grid Interface was fetched as a bounded alignment/type reference; its fixed palette and prescriptive voice were not adopted. The revised closed card has a compact phase-specific readback and one View workbook action. Complete wording, downloads and recovery remain inside the workbook. Persistent data, approval gates and the Terracotta PDF are unchanged. Previous actual-host tests stopped at the UI correction and do not establish end-to-end completion.
+
 ## Persistent recovery and retention, 11 September 2026
 
 Shiva explicitly approved private Cloudflare session recovery, then rejected seven-day workbook expiry because feedback and delivery could occur three months later. Version 0.6.0 implements no automatic expiry for active workbooks or immutable revision history; only temporary file tickets expire. The actual-host v0.5.2 failures remain recorded separately. Cloudflare's official [D1 limits](https://developers.cloudflare.com/d1/platform/limits/) distinguish active database storage from the plan-specific Time Travel backup window. The backup window does not expire application workbook rows. Logical admission limits preserve existing data rather than deleting it when capacity is reached. Local SQLite and protocol checks do not establish actual-host completion or successful participant downloads.

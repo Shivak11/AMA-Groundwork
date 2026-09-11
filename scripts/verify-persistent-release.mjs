@@ -3,7 +3,7 @@ import {mkdir,writeFile,readFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 
 const root=new URL('../',import.meta.url).pathname;
-const output=new URL('../output/persistent-release/',import.meta.url);
+const output=new URL('../output/persistent-release-v061/',import.meta.url);
 await mkdir(output,{recursive:true});
 const git=(...args)=>execFileSync('git',args,{cwd:root,encoding:'utf8'}).trim();
 const sourceHead=git('rev-parse','HEAD');
