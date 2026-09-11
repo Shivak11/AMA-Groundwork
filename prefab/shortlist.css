@@ -1,0 +1,47 @@
+:root {
+  --background: #f8f0e4; --foreground: #3a241c; --card: #ffffff;
+  --card-foreground: #3a241c; --popover: #ffffff; --popover-foreground: #3a241c;
+  --primary: #9b4625; --primary-foreground: #ffffff;
+  --secondary: #f3e9d8; --secondary-foreground: #3a241c;
+  --muted: #f3e9d8; --muted-foreground: #6f5a4e;
+  --accent: #ebd7c6; --accent-foreground: #3a241c;
+  --border: #cbbba8; --input: #947c67; --ring: #9b4625;
+  --destructive: #8b351d; --radius: 4px;
+  --font-sans: "Avenir Next", Avenir, "Segoe UI", Arial, sans-serif;
+}
+html, body { margin: 0; background: transparent; }
+.workshop-shortlist { max-width: 1040px; margin: 0 auto; padding: 24px; background: var(--background); color: var(--foreground); font: 16px/1.55 var(--font-sans); overflow-wrap: anywhere; }
+.workshop-shortlist *, .workshop-shortlist *::before, .workshop-shortlist *::after { box-sizing: border-box; min-width: 0; font-style: normal; }
+.workshop-shortlist h1, .workshop-shortlist h2, .workshop-shortlist h3 { color: var(--foreground); font-family: "DM Serif Display", Georgia, serif; font-weight: 400; line-height: 1.2; letter-spacing: 0; }
+.workshop-shortlist h1 { margin: 0; font-size: 36px; }
+.workshop-shortlist h2 { font-size: 25px; }
+.workshop-shortlist h3 { font-size: 21px; }
+.workshop-shortlist p { overflow-wrap: anywhere; white-space: pre-wrap; }
+.workshop-shortlist button { min-height: 44px; height: auto; padding: 10px 14px; white-space: normal; line-height: 1.5; }
+.workshop-shortlist textarea, .workshop-shortlist [role="combobox"] { width: 100%; min-height: 48px; border: 1px solid var(--input); background: white; color: var(--foreground); font: 16px/1.5 var(--font-sans); }
+.workshop-shortlist textarea { min-height: 100px; padding: 10px 12px; resize: vertical; }
+.workshop-shortlist :focus-visible { outline: 3px solid var(--ring); outline-offset: 3px; }
+.workshop-shortlist label { font-size: 14px; font-weight: 600; line-height: 1.5; }
+.workshop-context { padding: 16px 0; border-top: 2px solid #c56a3c; border-bottom: 1px solid var(--border); }
+.workshop-context > * { display: block; }
+.workshop-context > * + * { margin-top: 8px; }
+.workshop-meta, .workshop-hint { color: var(--muted-foreground); font-size: 14px; }
+.workshop-outcome { margin-top: 8px; font-weight: 600; }
+.workshop-label { font-size: 14px; font-weight: 600; margin-bottom: 0; }
+.workshop-notice { padding: 12px 14px; border-left: 3px solid var(--primary); background: #f3e9d8; font-size: 14px; }
+.shortlist-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; }
+.shortlist-card, .review-card { display: flex; flex-direction: column; gap: 16px; padding: 20px; border: 1px solid var(--border); border-radius: 4px; background: var(--card); box-shadow: none; }
+.shortlist-card h2 { padding-bottom: 12px; border-bottom: 2px solid #c56a3c; }
+.candidate-details { display: grid; gap: 16px; padding: 12px 0 4px; }
+.candidate-detail { display: grid; gap: 4px; }
+.group-questions { display: grid; gap: 20px; }
+.workshop-error { color: #8b351d; padding: 12px; border-left: 3px solid #8b351d; }
+.workshop-saved-chapter { font-family: var(--font-sans); font-size: 14px; }
+.workshop-credit { border-top: 1px solid var(--border); padding-top: 16px; color: var(--muted-foreground); font-size: 12px; }
+@media (max-width: 620px) {
+  .workshop-shortlist { padding: 20px 16px; }
+  .workshop-shortlist h1 { font-size: 30px; }
+  .shortlist-grid { grid-template-columns: minmax(0, 1fr); }
+  .shortlist-card, .review-card { padding: 16px; }
+}
+@media (prefers-reduced-motion: reduce) { .workshop-shortlist *, .workshop-shortlist *::before, .workshop-shortlist *::after { animation: none !important; transition: none !important; } }

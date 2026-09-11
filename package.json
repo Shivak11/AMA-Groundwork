@@ -1,0 +1,30 @@
+{
+  "name": "ai-use-case-workshop",
+  "version": "0.1.0",
+  "description": "A conversational group workshop with cumulative use-case PDFs and optional MCP Apps views.",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node src/stdio.mjs",
+    "build": "node scripts/build-widget.mjs",
+    "build:remote": "npm run build && node scripts/build-prefab-remote.mjs && wrangler deploy --dry-run --outdir dist/worker",
+    "verify:http": "node scripts/verify-http.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "examples": "node scripts/build-examples.mjs"
+  },
+  "dependencies": {
+    "@cloudflare/puppeteer": "1.4.0",
+    "@modelcontextprotocol/ext-apps": "1.7.5",
+    "@modelcontextprotocol/server": "2.0.0",
+    "playwright": "1.58.2",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "esbuild": "0.28.1",
+    "wrangler": "4.129.0"
+  }
+}

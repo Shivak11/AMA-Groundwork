@@ -1,0 +1,16 @@
+# Evaluated together on Python 3.12, 8 September 2026.
+annotated-types==0.8.0
+attrs==26.1.0
+cyclopts==4.25.0
+docstring_parser==0.18.0
+markdown-it-py==4.2.0
+mdurl==0.1.2
+prefab-ui==0.20.2
+pydantic==2.13.5
+pydantic_core==2.46.5
+Pygments==2.21.0
+PyYAML==6.0.2
+rich==15.0.0
+rich-rst==2.1.0
+typing-inspection==0.4.4
+typing_extensions==4.16.0

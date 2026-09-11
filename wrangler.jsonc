@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ai-use-case-workshop",
+  "account_id": "22744e58d83f933700484b130caec4fb",
+  "main": "remote/worker.mjs",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "browser": {"binding": "BROWSER"},
+  "vars": {"WORKSHOP_ENABLED": "false", "ACCESS_MODE": "unconfigured"},
+  "observability": {"enabled": false},
+  "limits": {"cpu_ms": 30000},
+  "rules": [
+    {"type": "Text", "globs": ["**/*.md", "**/*.css", "**/*.html"], "fallthrough": true},
+    {"type": "Data", "globs": ["**/*.ttf"], "fallthrough": true}
+  ],
+  "ratelimits": [
+    {"name": "REQUEST_LIMIT", "namespace_id": "6181001", "simple": {"limit": 240, "period": 60}},
+    {"name": "PDF_LIMIT", "namespace_id": "6181002", "simple": {"limit": 60, "period": 60}},
+    {"name": "PDF_REGIONAL_LIMIT", "namespace_id": "6181003", "simple": {"limit": 180, "period": 60}}
+  ]
+}

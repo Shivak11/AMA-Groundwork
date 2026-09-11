@@ -1,0 +1,13 @@
+node_modules/
+.venv/
+__pycache__/
+.DS_Store
+*.log
+output/
+previews/
+dist/
+.wrangler/
+.dev.vars
+.dev.vars.*
+.env
+.env.*
