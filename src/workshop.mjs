@@ -147,21 +147,62 @@ function reconcileInteraction(record, phaseId, patch, previousAnswers) {
 export function savePhase(input, phaseId, patch, groupPatch) {
   const record = validateRecord(input);
   assertEditable(record, phaseId);
+  if (!Object.keys(patch ?? {}).length && !Object.keys(groupPatch ?? {}).length) {
+    throw new Error('No answer field or group correction was supplied. Nothing was saved. Use the current phase answer fields and retry with the participant’s existing answer; do not ask them for JSON keys.');
+  }
   if (patch && Object.keys(patch).length) {
     const previousAnswers = record.phases[phaseId-1].answers;
     const next = answerSchemas[phaseId-1].partial().parse({...record.phases[phaseId-1].answers, ...patch});
-    record.phases[phaseId-1].answers = next;
-    markChanged(record, phaseId);
-    reconcileInteraction(record, phaseId, patch, previousAnswers);
+    if (!sameValue(previousAnswers, next)) {
+      record.phases[phaseId-1].answers = next;
+      markChanged(record, phaseId);
+      reconcileInteraction(record, phaseId, patch, previousAnswers);
+    } else if (phaseId === 5 && Object.hasOwn(patch,'choices') && Object.keys(record.interaction?.priorities ?? {}).length) {
+      const previousInteraction = structuredClone(record.interaction);
+      reconcileInteraction(record, phaseId, patch, previousAnswers);
+      if (!sameValue(previousInteraction, record.interaction)) {
+        record.revision += 1;
+        delete record.interaction.undo;
+      }
+    }
   }
   if (groupPatch && Object.keys(groupPatch).length) {
-    record.group = groupSchema.parse({...record.group,...groupPatch});
-    // A problem change affects the whole case, whereas spelling a member's name does not.
-    if ('problem' in groupPatch || 'context' in groupPatch) markChanged(record,1);
-    else record.revision += 1;
-    if (record.interaction) delete record.interaction.undo;
+    const nextGroup = groupSchema.parse({...record.group,...groupPatch});
+    if (!sameValue(record.group, nextGroup)) {
+      const changedProblem = record.group.problem !== nextGroup.problem || record.group.context !== nextGroup.context;
+      record.group = nextGroup;
+      // A problem change affects the whole case, whereas spelling a member's name does not.
+      if (changedProblem) markChanged(record,1);
+      else record.revision += 1;
+      if (record.interaction) delete record.interaction.undo;
+    }
   }
   return validateRecord(record);
+}
+
+export function sameValue(left, right) {
+  if (left === right) return true;
+  if (!left || !right || typeof left !== 'object' || typeof right !== 'object') return false;
+  if (Array.isArray(left) !== Array.isArray(right)) return false;
+  const keys = Object.keys(left);
+  return keys.length === Object.keys(right).length && keys.every(key => Object.hasOwn(right,key) && sameValue(left[key],right[key]));
+}
+
+export function phaseReadiness(record, phaseId = currentPhase(record) ?? 6) {
+  const answers = record.phases[phaseId-1].answers;
+  const schema = answerSchemas[phaseId-1];
+  const parsed = schema.safeParse(answers);
+  const missingFields = Object.keys(schema.shape).filter(key => answers[key] === undefined);
+  const issues = parsed.success ? [] : parsed.error.issues.map(issue => ({field:String(issue.path[0] ?? ''),message:issue.message}));
+  try { validateReferences(record, phaseId); }
+  catch (error) {
+    const field = phaseId === 3 ? (/chosen workflow/i.test(error.message) ? 'chosenWorkflow' : 'tasks')
+      : phaseId === 4 ? 'candidates' : phaseId === 5 ? 'choices' : 'candidateId';
+    issues.push({field,message:error.message});
+  }
+  if (phaseId === 4 && Object.values(record.interaction?.candidateDispositions ?? {}).includes('Reconsider')) issues.push({field:'candidates',message:'Resolve candidates marked Reconsider before approval.'});
+  if (phaseId === 5 && Object.keys(record.interaction?.priorities ?? {}).length) issues.push({field:'choices',message:'Save the pending priorities with their reasons before approval.'});
+  return {phaseId,complete:issues.length === 0,missingFields,issues};
 }
 export function reopenPhase(input, phaseId) {
   const record = validateRecord(input);

@@ -8,6 +8,7 @@ const bundled = await build({
   absWorkingDir: root, entryPoints: ['src/widget.mjs'], bundle: true,
   write: false, minify: true, format: 'iife', platform: 'browser', target: ['es2022'],
   legalComments: 'inline',
+  loader:{'.css':'text','.ttf':'base64'},
   define: {'process.env.NODE_ENV':'"production"'},
 });
 const css = await readFile(path.join(root, 'src', 'inline-view.css'), 'utf8');

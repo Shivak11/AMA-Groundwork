@@ -30,8 +30,8 @@ test('only the four snapshot and export tools register a UI resource',async()=>{
   try {
     const {tools}=await s.client.listTools();
     const visual=new Set(['show_workbook','show_shortlist','confirm_workshop_phase','export_workbook']);
-    const names=['start_workshop','workshop_next','present_workshop_question','save_workshop_phase','workshop_action','confirm_workshop_phase','export_workbook','resume_workshop','show_shortlist','show_workbook'];
-    assert.equal(tools.length,10);assert.deepEqual(tools.map(tool=>tool.name).sort(),names.sort());
+    const names=['start_workshop','workshop_next','present_workshop_question','save_workshop_phase','workshop_action','confirm_workshop_phase','export_workbook','resume_workshop','show_shortlist','show_workbook','download_workbook_file'];
+    assert.equal(tools.length,11);assert.deepEqual(tools.map(tool=>tool.name).sort(),names.sort());
     for(const tool of tools) {
       if(visual.has(tool.name)) {
         assert.equal(tool._meta?.ui?.resourceUri,'ui://workshop/checkpoint.html',tool.name);
@@ -42,6 +42,7 @@ test('only the four snapshot and export tools register a UI resource',async()=>{
       }
     }
     assert.equal(tools.find(tool=>tool.name==='show_workbook').annotations.readOnlyHint,true);
+    assert.equal(tools.find(tool=>tool.name==='download_workbook_file').annotations.readOnlyHint,true);
   } finally {await s.close();}
 });
 
@@ -53,7 +54,8 @@ test('show_workbook is a snapshot request rather than an answer save, approval o
     assert.deepEqual(data.record,before);assert.deepEqual(record,before);assert.deepEqual(jsonCheckpoint(result),before);
     assert.equal(data.questionTurn.owner,'chat');assert.equal(data.phase.questionField,'kpi');
     assert.equal(data.record.phases[0].status,'draft');assert.equal(renders,0);
-    assert(result._meta.bookHtml.includes(group.problem));assert.equal(result._meta.artifacts.pdf,undefined);
+    assert.equal(result._meta?.bookHtml,undefined);assert.equal(data.bookPreview.status,'client-rendered');
+    assert.equal(result._meta.artifacts.pdf,undefined);
     const next=await s.call('workshop_next',{record:data.record});
     assert.deepEqual(dataOf(next).record,before);assert.equal(next.structuredContent.phase.questionField,'kpi');
   } finally {await s.close();}
@@ -120,7 +122,9 @@ test('a host without native questions completes all six phases through text fall
       result=await s.call('confirm_workshop_phase',{record,phase,approved:true,confirmation:'Our group approves this exact saved summary.',mode:'text'});
       record=dataOf(result).record;assert.equal(record.phases[phase-1].status,'confirmed');assert.equal(renders,phase);
       assert.equal(result.structuredContent.export.status,'ready');
-      assert(result.content.some(item=>item.type==='resource'&&item.resource.mimeType==='application/pdf'));
+      assert.equal(result.structuredContent.export.downloadTool,'download_workbook_file');
+      assert.equal(result._meta?.artifacts?.pdf,undefined);assert.equal(result._meta?.bookHtml,undefined);
+      assert(!result.content.some(item=>item.type==='resource'&&['application/pdf','application/gzip'].includes(item.resource.mimeType)));
     }
     assert(record.phases.every(phase=>phase.status==='confirmed'));
     assert.equal(result.structuredContent.nextQuestion.kind,'complete');assert.equal(result.structuredContent.phase.question,null);
@@ -195,7 +199,7 @@ test('changing a complete no-pilot draft to a test asks for the missing candidat
   } finally {await s.close();}
 });
 
-test('group-only and empty saves preserve a completed no-pilot recommendation and its approval',async()=>{
+test('group-only saves preserve a completed no-pilot recommendation; rejected empty saves retain the same checkpoint',async()=>{
   let renders=0;const s=await session({pdfRenderer:async()=>{renders++;return pdfStub();}});
   try {
     const record=confirmPhase(savePhase(completed(5),6,{...answers[5],decision:'Do not pilot yet',candidateId:null}),6,'Our group approves the no-pilot recommendation.');
@@ -205,7 +209,9 @@ test('group-only and empty saves preserve a completed no-pilot recommendation an
     assert.deepEqual(data.record.group,{...before.group,members});assert.equal(data.record.revision,before.revision+1);
     assert.equal(data.nextQuestion.kind,'complete');assert.equal(data.phase.question,null);
     assert.deepEqual(jsonCheckpoint(renamed),data.record);assert.equal(renders,0);
-    const empty=await s.call('save_workshop_phase',{record:data.record,phase:6,answers:{}});const emptyData=dataOf(empty);
-    assert.deepEqual(emptyData.record,data.record);assert.equal(emptyData.nextQuestion.kind,'complete');assert.equal(renders,0);
+    const empty=await s.call('save_workshop_phase',{record:data.record,phase:6,answers:{}});
+    assert.equal(empty.isError,true);assert.deepEqual(empty.structuredContent.record,data.record);
+    assert.deepEqual(jsonCheckpoint(empty),data.record);assert.equal(renders,0);
+    assert.equal(empty.structuredContent.record.phases[5].status,'confirmed');
   } finally {await s.close();}
 });

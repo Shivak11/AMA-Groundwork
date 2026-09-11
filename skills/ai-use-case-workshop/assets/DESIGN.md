@@ -4,11 +4,13 @@ The portfolio belongs to the group. Its visual hierarchy makes the group's probl
 
 Inline workbook snapshots inherit host typography, light/dark colours and a transparent outer surface. The book preview and PDF retain the Terracotta design below. Show a diagram of saved work with a secondary book preview, opening the full book only on request. The host conversation owns questions and approval. Never imitate host attribution or permission controls.
 
+Each snapshot leads with its step number and specific title. Keep the group name secondary and the full problem in the book and group details. Distinguish the viewed chapter from the current conversation step; an approved Step 1 view can correctly indicate that Step 2 is current. Progress uses written states, check marks and restrained theme-aware colours for approved, current, future and needs-review work. Explicit host theme and semantic tokens override OS preferences. Older cards remain labelled as snapshots.
+
 ## Direction
 
 Keep the Terracotta direction selected by Shiva: warm paper, brown serif headings and a functional clay accent. Use the cover's title as the strongest visual element. Interior structure follows the work: a sequence for the difficult case, cards for distinct candidates and a table for their comparison. Do not turn every answer into the same card.
 
-The group's problem in its own words is the strongest cover text. `Our AI Use-Case Portfolio`, the group name and members identify the document. Context and date are secondary. Show the six steps and their actual approval state without scoring the group. A later revision must not appear to be an agreed final answer.
+`Our AI Use-Case Portfolio` is the strongest cover text. Preserve the group's full problem as readable body text underneath, with the group name and members identifying the document. Context and date are secondary. Show the six steps and their actual approval state without scoring the group. A later revision must not appear to be an agreed final answer.
 
 ## Tokens
 
@@ -42,6 +44,8 @@ Every page has `Prepared by Dr. Shiva Kakkar` and a working profile link with a 
 MCP Apps views are read-only snapshots of the same group record used for the PDF. They have no answer forms, approval controls, record-changing tool calls or model-context writes. Old cards cannot restore their record into the conversation. The host saves agreed answers and requests a fresh view after a meaningful decision. Progress shows actual confirmation state, not a score of the group. No charts imply a measured improvement without supplied evidence.
 
 Never gate a phase behind a widget. Use the host's native question tool when available and plain conversation otherwise. The entire exercise, corrections and approval remain available in text. A PDF is shown as generated only after the renderer returns its bytes. A PDF failure preserves the confirmed record. File controls may request delivery in chat without reopening a questionnaire or attaching an old record. Technical backups stay behind disclosure.
+
+Render the composed book locally from the canonical record and bundled assets. Keep font and HTML payloads out of routine tool results. The read-only file download may call download_workbook_file for this snapshot, unpack and integrity-check the gzip transport, and hand the PDF to the host download control. It must never write the snapshot back into model context. A rejected download retains the record and offers conversational recovery; do not claim disk receipt merely because the host accepted the request.
 
 Confirmed chapters are included. Chapters marked `needs_review` are included with the visible sentence `This phase needs your review because an earlier answer changed.` Draft chapters are omitted. The cover's progress makes this distinction explicit. A blank value is shown as `Not recorded`; an explicit `Unknown` stays as entered.
 

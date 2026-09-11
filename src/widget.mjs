@@ -3,10 +3,14 @@ import { createElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { validateRecord } from './workshop.mjs';
 import { InlineWorkshop } from './inline-view';
+import { renderWorkbookHtml } from './workbook-html.mjs';
+import workbookCss from '../skills/ai-use-case-workshop/assets/workbook.css';
+import workbookFont from '../skills/ai-use-case-workshop/assets/fonts/DMSerifDisplay-Regular.ttf';
+import { decodePdfFile } from './pdf-file.mjs';
 
-const app = new App({name:'AI Use-Case Workshop',version:'0.4.0'}, {availableDisplayModes:['inline','fullscreen']}, {autoResize:true});
+const app = new App({name:'AI Use-Case Workshop',version:'0.5.0'}, {availableDisplayModes:['inline','fullscreen']}, {autoResize:true});
 const root = createRoot(document.getElementById('workshop-root'));
-let current=null, metadata={}, capabilities={}, host={};
+let current=null, metadata={}, capabilities={}, host={}, bookHtml;
 let connected=false, pending=false, generation=0;
 let notice='Connecting to the workbook.', noticeError=false;
 const supports = key => Boolean(capabilities[key]);
@@ -25,6 +29,8 @@ function receive(result) {
     if(record.revision===current.record.revision && JSON.stringify(record)!==JSON.stringify(current.record)) throw new Error('A conflicting reply was ignored. Use the latest saved record in the conversation.');
   }
   current={...result.structuredContent,record}; metadata=result._meta??{};
+  try {bookHtml=renderWorkbookHtml(record,{css:workbookCss,font:workbookFont});}
+  catch {bookHtml=undefined;}
   generation++;pending=false;
   notice=current.export?.status==='failed'?'Your step is approved, but its PDF was not generated. Ask in the conversation to retry the PDF.':'';
   noticeError=current.export?.status==='failed';
@@ -44,22 +50,30 @@ async function download(kind) {
   if(!current||!connected||pending)return;
   if(!supports('downloadFile'))return requestFiles();
   const isPdf=kind==='pdf';
-  const file=metadata.artifacts?.[kind]??(!isPdf?{name:`workshop-revision-${current.record.revision}.json`,text:JSON.stringify(current.record,null,2)}:null);
-  if(!file||(isPdf?typeof file.blob!=='string':typeof file.text!=='string')) {showNotice('This snapshot has no PDF attached. Ask for the latest workbook files in the conversation.');return;}
-  const name=String(file.name||(isPdf?'our-ai-use-cases.pdf':'workshop-record.json')).replace(/[^A-Za-z0-9._-]/g,'-').slice(0,160);
-  const resource={uri:`file:///${encodeURIComponent(name)}`,mimeType:isPdf?'application/pdf':'application/json',...(isPdf?{blob:file.blob}:{text:file.text})};
+  if(isPdf && (!supports('serverTools') || typeof DecompressionStream==='undefined'))return requestFiles();
   const token=generation;pending=true;render();
   try {
+    let file={name:`workshop-revision-${current.record.revision}.json`,text:JSON.stringify(current.record,null,2)};
+    if(isPdf) {
+      showNotice('Preparing this snapshot’s PDF. Your answers are unchanged.');
+      const result=await app.callServerTool({name:'download_workbook_file',arguments:{record:current.record}},{timeout:60000});
+      if(token!==generation)return;
+      if(result.isError)throw new Error(errorText(result)||'The PDF could not be prepared.');
+      file=await decodePdfFile(result,current.record.revision);
+      if(token!==generation)return;
+    }
+    const name=String(file.name).replace(/[^A-Za-z0-9._-]/g,'-').slice(0,160);
+    const resource={uri:`file:///${encodeURIComponent(name)}`,mimeType:isPdf?'application/pdf':'application/json',...(isPdf?{blob:file.blob}:{text:file.text})};
     const response=await app.downloadFile({contents:[{type:'resource',resource}]},{timeout:30000});
     if(token===generation)showNotice(response?.isError?'The download was declined. Ask for normal file links in the conversation.':'Check the chat app’s download prompt or files area.',Boolean(response?.isError));
-  } catch {if(token===generation)showNotice('The download did not complete. Ask for normal file links in the conversation.',true);}
+  } catch(error) {if(token===generation)showNotice(`${error.message || 'The download did not complete.'} You can request the PDF in the conversation.`,true);}
   finally {if(token===generation){pending=false;render();}}
 }
 function render() {
   const record=current?.record??null;
   root.render(createElement(InlineWorkshop,{
     record,phaseId:current?.view?.phaseId??record?.phases.find(p=>p.status!=='confirmed')?.id??6,
-    bookHtml:metadata.bookHtml,hasPdf:Boolean(metadata.artifacts?.pdf),exportFailed:current?.export?.status==='failed',
+    bookHtml,hasPdf:Boolean(record?.phases.some(phase=>phase.status!=='draft')),exportFailed:current?.export?.status==='failed',
     notice,noticeError,busy:pending,connected,onDownload:download,onRequestFiles:requestFiles,
   }));
 }

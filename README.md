@@ -1,6 +1,6 @@
 # AI Use-Case Workshop
 
-Version 0.4.0 puts every question and approval in the conversation. The host uses native question cards when available and ordinary chat otherwise. MCP views show saved work as read-only diagrams and cumulative workbook snapshots. See CHAT-WORKBOOK-PLAN.md for the approved replacement. Deployment identity and actual host evidence are recorded separately in the programme release record.
+Version 0.5.0 retains conversational questions and read-only visual workbooks, with step-first hierarchy and explicit ordinary-chat preference. Each normal tool result includes its complete record and exact answer schema as ordinary JSON text as well as structured output. Save receipts identify actual changes and missing fields. PDF file delivery uses a separate bounded, compressed response so file bytes do not displace the current conversation step. See HOST-RELIABILITY-PLAN.md and CHAT-WORKBOOK-PLAN.md. Local, deployed and actual-host evidence remain separate.
 
 ## Participant journey
 

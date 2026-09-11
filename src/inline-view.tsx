@@ -4,6 +4,20 @@ import type { Answers, Candidate, InlineProps, Phase, PhaseId, WorkshopRecord } 
 const titles = ['Goal and success measure', 'Information and decisions', 'Workflow and remaining delays', 'AI and non-AI options', 'Priorities and reasons', 'Recommendation and next check'];
 const shortTitles = ['Goal', 'Context', 'Workflow', 'Options', 'Priorities', 'Next step'];
 const statusLabel = (status: Phase['status']) => status === 'confirmed' ? 'Approved' : status === 'needs_review' ? 'Needs review' : 'Draft';
+function progressState(phase: Phase, current: Phase | undefined) {
+  if (phase.status === 'confirmed') return { key: 'approved', label: 'Approved' };
+  if (phase.status === 'needs_review') return { key: 'review', label: 'Needs review' };
+  if (phase.id === current?.id || Object.keys(phase.answers).length) return { key: 'active', label: 'In progress' };
+  return { key: 'future', label: 'Not started' };
+}
+function snapshotState(phase: Phase, current: Phase | undefined) {
+  if (!current) return 'All six steps are approved. You can request the complete workbook below.';
+  const next = `Step ${current.id} is next${current.status === 'needs_review' ? ' for review' : ''} in this saved view.`;
+  if (phase.status === 'confirmed') return `Step ${phase.id} is approved; ${next}`;
+  if (phase.status === 'needs_review') return `Step ${phase.id} needs review because an earlier answer changed.${current.id === phase.id ? '' : ` ${next}`}`;
+  const state = Object.keys(phase.answers).length ? `Step ${phase.id} is in progress.` : `Step ${phase.id} has no saved answers yet.`;
+  return `${state} ${current.id === phase.id ? 'Continue in the conversation.' : `Continue with Step ${current.id} in the conversation.`}`;
+}
 const labels: Record<string, string> = {
   outcome: 'Outcome', kpi: 'Success measure', baseline: 'Baseline', guardrail: 'What must not get worse', hypothesis: 'Expected change',
   blockers: 'Information and decision gaps', information: 'Information or decision needed', holder: 'Who holds it', barrier: 'Barrier', unlock: 'Possible way forward', firstGap: 'First gap to resolve',
@@ -126,6 +140,7 @@ export function InlineWorkshop(props: InlineProps) {
   const approved = record?.phases.filter(phase => phase.status === 'confirmed').length ?? 0;
   const needsReview = record?.phases.filter(phase => phase.status === 'needs_review').length ?? 0;
   const phase = record?.phases[phaseId - 1];
+  const current = record?.phases.find(item => item.status !== 'confirmed');
 
   useEffect(() => {
     if (bookOpen && dialog.current && !dialog.current.open) {
@@ -155,10 +170,13 @@ export function InlineWorkshop(props: InlineProps) {
   return <div className="inline-workbook" data-phase={phaseId} aria-busy={waiting}>
     {(props.notice || error) && <p className={`cw-notice${props.noticeError || error ? ' cw-error' : ''}`} role={props.noticeError || error ? 'alert' : 'status'}>{error || props.notice}</p>}
     {!record || !phase ? <section className="cw-empty"><h1>AI use-case workbook</h1><p>{props.connected ? 'No saved workbook record is included in this card. Continue in the conversation.' : 'Waiting for the host to share this workbook snapshot.'}</p></section> : <>
-      <header className="cw-header"><h1>{record.group.name} workbook</h1><p>{record.group.problem}</p></header>
-      <div className="cw-progress"><p>{approved} of 6 steps approved in this snapshot{needsReview ? `; ${needsReview} ${needsReview === 1 ? 'needs' : 'need'} review` : ''}.</p><ol aria-label="Approval status by step">{record.phases.map(item => <li key={item.id} className={`cw-progress-${item.status}`} aria-current={item.id === phaseId ? 'step' : undefined}><span className="cw-progress-number" aria-hidden="true">{item.status === 'confirmed' ? '✓' : item.id}</span><span>{shortTitles[item.id - 1]}<small>{statusLabel(item.status)}</small></span></li>)}</ol></div>
+      <header className="cw-header"><h1 id="snapshot-phase-title">Step {phaseId}: {titles[phaseId - 1]}</h1><p className={`cw-step-state cw-state-${progressState(phase, current).key}`}>{snapshotState(phase, current)}</p><p className="cw-group-identity">{record.group.name}</p></header>
+      <div className="cw-progress"><p>{approved} of 6 steps approved in this snapshot{needsReview ? `; ${needsReview} ${needsReview === 1 ? 'needs' : 'need'} review` : ''}.</p><ol aria-label="Progress in this saved snapshot">{record.phases.map(item => {
+        const state = progressState(item, current);
+        return <li key={item.id} className={`cw-progress-${state.key}`} data-step={item.id} data-state={state.key} data-viewed={item.id === phaseId} aria-current={item.id === current?.id ? 'step' : undefined}><span className="cw-progress-number" aria-hidden="true">{item.status === 'confirmed' ? <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="m3 8 3 3 7-7" /></svg> : item.id}</span><span>{shortTitles[item.id - 1]}<small className="cw-progress-state">{state.label}{item.id === current?.id ? ' · Current step' : ''}</small>{item.id === phaseId && <small className="cw-viewed-step">Shown below</small>}</span></li>;
+      })}</ol></div>
       <div className={`cw-layout${props.bookHtml ? '' : ' cw-without-book'}`}>
-        <main className="cw-main"><section className="cw-phase" aria-labelledby="snapshot-phase-title"><h2 id="snapshot-phase-title">Step {phaseId}: {titles[phaseId - 1]}</h2><PhaseStatus phase={phase} /><PhaseVisual record={record} phaseId={phaseId} /></section>
+        <main className="cw-main"><section className="cw-phase" aria-labelledby="snapshot-phase-title"><h2 className="cw-sr-only">Saved work for this step</h2><PhaseVisual record={record} phaseId={phaseId} /></section>
           <details className="cw-full-wording"><summary>Read this step’s full wording</summary>{Object.keys(phase.answers).length ? <RecordValue value={phase.answers} record={record} /> : <p className="cw-unrecorded">No answers recorded.</p>}</details>
           {record.phases.some(item => item.id !== phaseId && Object.keys(item.answers).length > 0) && <details className="cw-other-steps"><summary>Read other saved steps in this snapshot</summary>{record.phases.filter(item => item.id !== phaseId && Object.keys(item.answers).length > 0).map(item => <details className="cw-saved-chapter" key={item.id}><summary>Step {item.id}: {titles[item.id - 1]} <span>{statusLabel(item.status)}</span></summary><PhaseStatus phase={item} /><PhaseVisual record={record} phaseId={item.id} /></details>)}</details>}
           <div className="cw-file-actions">{downloadButtons}<button type="button" className="cw-text-button" disabled={filesDisabled} onClick={() => void run(props.onRequestFiles)}>Request current file links</button></div>
@@ -169,7 +187,7 @@ export function InlineWorkshop(props: InlineProps) {
       </div>
       {props.bookHtml && <div className="cw-mobile-book"><button type="button" onClick={openBook}>Open workbook</button></div>}
       <footer className="cw-snapshot-note">Snapshot of revision {record.revision}. Later conversation changes may not appear in this card.</footer>
-      <details className="cw-backup"><summary>Group details and complete saved record</summary><dl className="cw-full-fields"><div><dt>Group members</dt><dd>{record.group.members.join(', ')}</dd></div><div><dt>Context</dt><dd>{record.group.context || 'Not recorded'}</dd></div><div><dt>Date</dt><dd>{record.group.date}</dd></div></dl><pre tabIndex={0} aria-label="Complete JSON record">{JSON.stringify(record, null, 2)}</pre></details>
+      <details className="cw-backup"><summary>Group details and complete saved record</summary><dl className="cw-full-fields"><div><dt>Problem</dt><dd>{record.group.problem}</dd></div><div><dt>Group members</dt><dd>{record.group.members.join(', ')}</dd></div><div><dt>Context</dt><dd>{record.group.context || 'Not recorded'}</dd></div><div><dt>Date</dt><dd>{record.group.date}</dd></div></dl><pre tabIndex={0} aria-label="Complete JSON record">{JSON.stringify(record, null, 2)}</pre></details>
     </>}
     <dialog id="workshop-book-dialog" className="cw-book-dialog" ref={dialog} onCancel={event => { event.preventDefault(); closeBook(); }} onClose={() => { if (bookOpen) closeBook(); }} aria-labelledby="book-dialog-title">
       <div className="cw-book-toolbar"><h2 id="book-dialog-title">Workbook from this snapshot</h2><div>{downloadButtons}<button type="button" autoFocus onClick={closeBook}>Close workbook</button></div></div>

@@ -1,4 +1,4 @@
-import { currentPhase } from './workshop.mjs';
+import { currentPhase, phaseReadiness } from './workshop.mjs';
 
 export const fieldQuestions = {
   outcome: ['What would your group like to improve?', 'Name the problem and who experiences it. Begin with the work, not an AI tool.'],
@@ -49,6 +49,8 @@ export function nextConversationQuestion(record) {
     }
     return !recorded(a[key]);
   });
+  const readiness = phaseReadiness(record,id);
+  if (!field && !readiness.complete) field=readiness.issues.find(issue => fieldQuestions[issue.field])?.field ?? readiness.missingFields[0];
   if (!field) return {kind:'approval',field:null,question:`Does your group approve the saved Step ${id} summary?`,hint:'Show the complete summary first. An answer or option selection is not approval.',choices:[{label:'Approve this step',value:'Approve'},{label:'We want to correct something',value:'Correct'}]};
   let [question,hint]=fieldQuestions[field];
   let choices=[];
@@ -64,5 +66,7 @@ export function nextConversationQuestion(record) {
   }
   if(pending) hint='Resolve the pending priorities with their reasons and missing evidence before approval. Do not keep contradictory old reasoning.';
   if(reconsidered) hint='Resolve each candidate marked Reconsider through an agreed correction, removal or explicit Keep action before approval.';
+  const issue = readiness.issues.find(issue => issue.field === field && !readiness.missingFields.includes(field));
+  if (issue) hint=`${hint} ${issue.message} Reuse the group's supplied answer when it already resolves this; do not ask them to repair tool arguments.`;
   return {kind:'answer',field,question,hint,choices};
 }

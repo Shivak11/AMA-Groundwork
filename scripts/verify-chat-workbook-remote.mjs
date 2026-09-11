@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import {mkdir,writeFile,readFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
+import {gunzipSync} from 'node:zlib';
+import {renderWorkbookHtml} from '../src/render-workbook.mjs';
 import {Client} from '@modelcontextprotocol/sdk/client/index.js';
 import {StreamableHTTPClientTransport} from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import {group,answers} from '../examples/hiring.mjs';
@@ -22,7 +24,7 @@ let failure,record;
 const textOf=result=>result.content.filter(item=>item.type==='text').map(item=>item.text).join('\n');
 function assertRouting(result,{field,kind,files=false}={}) {
   const data=result.structuredContent,turn=data.questionTurn;
-  assert.equal(turn.owner,'chat');assert.equal(turn.preferredInput,'native_question_tool');assert.equal(turn.fallbackInput,'plain_chat');
+  assert.equal(turn.owner,'chat');assert(['native_question_tool','plain_chat'].includes(turn.preferredInput));assert.equal(turn.fallbackInput,'plain_chat');
   assert.equal(turn.recordRevision,data.record.revision);assert.match(turn.turnId,/^[0-9a-f-]{36}$/);
   if(files) {
     assert.equal(turn.hostAction,'deliver_files');assert.equal(turn.question,null);assert.equal(data.phase.question,null);
@@ -66,7 +68,7 @@ function assertProtected(response) {
 
 try {
   await client.connect(new StreamableHTTPClientTransport(endpoint));
-  const serverVersion=client.getServerVersion();assert.equal(serverVersion.version,'0.4.0');evidence.serverVersion=serverVersion;
+  const serverVersion=client.getServerVersion();assert.equal(serverVersion.version,'0.5.0');evidence.serverVersion=serverVersion;
   const instructions=client.getInstructions();
   assert.match(instructions,/host conversation owns every workshop question/i);
   assert.match(instructions,/available native question tool/i);assert.match(instructions,/ordinary chat/i);
@@ -75,8 +77,8 @@ try {
 
   const {tools}=await client.listTools(),{resources}=await client.listResources();
   const visual=new Set(['show_workbook','show_shortlist','confirm_workshop_phase','export_workbook']);
-  const expectedTools=['start_workshop','workshop_next','present_workshop_question','save_workshop_phase','workshop_action','confirm_workshop_phase','export_workbook','resume_workshop','show_shortlist','show_workbook'];
-  assert.equal(tools.length,10);assert.deepEqual(tools.map(tool=>tool.name).sort(),expectedTools.sort());assert.equal(resources.length,6);
+  const expectedTools=['start_workshop','workshop_next','present_workshop_question','save_workshop_phase','workshop_action','confirm_workshop_phase','export_workbook','resume_workshop','show_shortlist','show_workbook','download_workbook_file'];
+  assert.equal(tools.length,11);assert.deepEqual(tools.map(tool=>tool.name).sort(),expectedTools.sort());assert.equal(resources.length,6);
   for(const tool of tools) {
     assert.equal(tool._meta?.ui?.resourceUri,visual.has(tool.name)?'ui://workshop/checkpoint.html':undefined,tool.name);
     assert.equal(tool._meta?.['ui/resourceUri'],visual.has(tool.name)?'ui://workshop/checkpoint.html':undefined,tool.name);
@@ -85,7 +87,7 @@ try {
   const widget=await readFile(new URL('../dist/widget.html',import.meta.url));
   assert.equal(hash(Buffer.from(view.text)),hash(widget));assert.equal(view._meta.ui.prefersBorder,false);
   assert.deepEqual(view._meta.ui.csp.connectDomains,[]);assert.deepEqual(view._meta.ui.csp.resourceDomains,[]);
-  evidence.checks.push({name:'Version 0.4.0, ten tools, exclusive visual metadata and exact built widget served live',pass:true,widgetBytes:widget.length,widgetSha256:hash(widget)});
+  evidence.checks.push({name:'Version 0.5.0, eleven tools, exclusive visual metadata and exact built widget served live',pass:true,widgetBytes:widget.length,widgetSha256:hash(widget)});
 
   let result=await call('start_workshop',{group});assertRouting(result,{field:'outcome',kind:'answer'});
   result=await call('save_workshop_phase',{record,phase:1,answers:{outcome:answers[0].outcome,baseline:answers[0].baseline}});
@@ -138,13 +140,17 @@ try {
     result=await call('confirm_workshop_phase',{record,phase,approved:true,confirmation:`The fictional live test group approves its saved Step ${phase} summary.`});
     assert.equal(record.phases[phase-1].status,'confirmed');
     assert.equal(result.structuredContent.export.status,'ready',JSON.stringify(result.structuredContent.export));
-    const bytes=Buffer.from(result._meta.artifacts.pdf.blob,'base64');assert.equal(bytes.subarray(0,5).toString(),'%PDF-');assert(bytes.length>10000);
-    const pdfResource=result.content.find(item=>item.type==='resource'&&item.resource.mimeType==='application/pdf');
-    assert(pdfResource);assert.equal(pdfResource.resource.blob,result._meta.artifacts.pdf.blob);
-    assert.equal(typeof result._meta.bookHtml,'string');assert(result._meta.bookHtml.includes('Prepared by Dr. Shiva Kakkar'));
+    assert.equal(result._meta.bookHtml,undefined);assert.equal(result._meta.artifacts.pdf,undefined);
+    assert(JSON.stringify(result).length<140000,'Conversational response exceeds safe host result size.');
+    const delivered=await client.callTool({name:'download_workbook_file',arguments:{record}},undefined,{timeout:90000});
+    assert(!delivered.isError,delivered.content?.[0]?.text);assert(JSON.stringify(delivered).length<140000);
+    const pdfResource=delivered.content.find(item=>item.type==='resource'&&item.resource.mimeType==='application/gzip');
+    assert(pdfResource);const bytes=gunzipSync(Buffer.from(pdfResource.resource.blob,'base64'));
+    assert.equal(bytes.subarray(0,5).toString(),'%PDF-');assert(bytes.length>10000);
+    assert.equal(hash(bytes),delivered.structuredContent.export.sha256);assert.equal(record.revision,delivered.structuredContent.export.revision);
     await writeFile(new URL(`phase-${phase}.pdf`,output),bytes);
     await writeFile(new URL(`phase-${phase}.json`,output),JSON.stringify(record,null,2));
-    await writeFile(new URL(`phase-${phase}.html`,output),result._meta.bookHtml);
+    await writeFile(new URL(`phase-${phase}.html`,output),renderWorkbookHtml(record));
     evidence.pdfs.push({phase,bytes:bytes.length,sha256:hash(bytes),revision:record.revision});
     console.log(`Live Step ${phase}: confirmed; Cloudflare PDF returned (${bytes.length} bytes).`);
     if(phase===2) {

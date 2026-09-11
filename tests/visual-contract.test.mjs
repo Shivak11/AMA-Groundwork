@@ -5,6 +5,7 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { createWorkshopServer } from '../src/server.mjs';
 import { group,answers } from '../examples/shared-services.mjs';
 import { createRecord, savePhase, confirmPhase } from '../src/workshop.mjs';
+import { renderWorkbookHtml } from '../src/render-workbook.mjs';
 
 async function session() {
   const server=await createWorkshopServer({pdfRenderer:async()=>Buffer.from('%PDF-protocol-test-stub')});
@@ -17,7 +18,8 @@ test('conversational actions and corrections use one record, with the same book 
   const c=await session();
   try {
     let result=await c.call('start_workshop',{group});
-    assert(result._meta.bookHtml.includes(group.problem));
+    assert.equal(result._meta.bookHtml,undefined);
+    assert(renderWorkbookHtml(result.structuredContent.record).includes(group.problem));
     let record=result.structuredContent.record;
     result=await c.call('workshop_action',{record,action:{kind:'set_answer',expectedRevision:record.revision,phaseId:1,field:'baseline',value:'Unknown'}});
     assert(!result.isError,JSON.stringify(result));record=result.structuredContent.record;
@@ -27,11 +29,11 @@ test('conversational actions and corrections use one record, with the same book 
     result=await c.call('confirm_workshop_phase',{record,phase:1,approved:true,confirmation:'We approve the displayed summary.'});
     assert(!result.isError);record=result.structuredContent.record;
     assert.equal(record.phases[0].status,'confirmed');
-    assert(result._meta.bookHtml.includes(answers[0].outcome));
+    assert(renderWorkbookHtml(result.structuredContent.record).includes(answers[0].outcome));
     assert.equal(result.structuredContent.export.status,'ready');
     const changed=await c.call('workshop_action',{record,action:{kind:'set_answer',expectedRevision:record.revision,phaseId:1,field:'outcome',value:'A corrected group outcome'}});
     assert.equal(changed.structuredContent.record.phases[0].status,'draft');
-    assert(!changed._meta.bookHtml.includes('A corrected group outcome'),'An unconfirmed correction must not enter the approved book.');
+    assert(!renderWorkbookHtml(changed.structuredContent.record).includes('A corrected group outcome'),'An unconfirmed correction must not enter the approved book.');
   } finally {await c.close();}
 });
 test('the read-only workbook resource does not require Prefab or another connector',async()=>{

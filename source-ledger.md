@@ -1,5 +1,11 @@
 # Source ledger
 
+## Host reliability and progress hierarchy, 11 September 2026
+
+The actual Group 1A remote-team Claude test lost required Step 3 fields and exposed technical repair work to the participant. The repair exposes the exact schema and canonical record as ordinary JSON text, validates readiness, and preserves unknowns and corrections. Shiva additionally requested clearer progression and host-compatible light/dark colour. Design of Everyday Things and Impeccable informed the step-first hierarchy; this is design guidance, not measured classroom effectiveness.
+
+The [MCP tools specification](https://modelcontextprotocol.io/specification/2025-11-25/server/tools) recommends serialised JSON TextContent alongside structured results for compatibility. [Claude MCP Apps troubleshooting](https://claude.com/docs/connectors/building/mcp-apps/troubleshooting) documents large tool-result offloading. Measured old final exports exceeded 600,000 characters including duplicate PDF and book assets. The repair bundles the book renderer in the view and returns PDF bytes once, compressed, through a separate read-only file tool with a whole-result limit. Local protocol, byte-integrity, visual, live runtime and actual host delivery proof remain distinct.
+
 ## Conversation-led workbook, 11 September 2026
 
 Shiva preferred host-native question cards to embedded answer fields and approved ordinary chat as the fallback. A real Claude test of v0.3.1 showed separate tool-result cards, a file/handoff message inserted into the composer rather than submitted, and a subsequent tool record missing a previously saved outcome. Version 0.4.0 removes all input and record writes from those visual cards, limits visual metadata to explicit views and file-producing checkpoints, and calculates the next missing question from the supplied record. It preserves the existing six-phase confirmation and PDF engine. This is a design and implementation response; real host behaviour and classroom usability require separate evidence.

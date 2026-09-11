@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
+import {gunzipSync} from 'node:zlib';
 import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import {chromium} from 'playwright';
 import {Client} from '@modelcontextprotocol/sdk/client/index.js';
@@ -14,7 +15,8 @@ const out = new URL('../output/chat-workbook/', import.meta.url);
 const screens = new URL('screens/', out);
 await mkdir(screens, {recursive:true});
 const pdfStub = Buffer.from('%PDF-explicit-protocol-stub-not-a-rendered-document');
-const server = await createWorkshopServer({pdfRenderer:async()=>pdfStub});
+const renderedRecords = [];
+const server = await createWorkshopServer({pdfRenderer:async record=>{renderedRecords.push(structuredClone(record));return pdfStub;}});
 const client = new Client({name:'read-only-workbook-browser-check', version:'1'}, {
   capabilities:{extensions:{'io.modelcontextprotocol/ui':{mimeTypes:['text/html;profile=mcp-app']}}},
 });
@@ -23,11 +25,23 @@ await Promise.all([server.connect(serverTransport), client.connect(clientTranspo
 const browser = await chromium.launch({headless:true, ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ? {executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH} : {})});
 const page = await browser.newPage({viewport:{width:1180,height:1000}, reducedMotion:'reduce'});
 page.setDefaultTimeout(10000);
-const checks = [], modelCalls = [], viewRequests = [], downloads = [], messages = [], errors = [], screenshots = [];
+const checks = [], modelCalls = [], viewRequests = [], fileCalls = [], downloads = [], messages = [], errors = [], screenshots = [], contextDiagnostics = [];
 const networkAttempts = [];
+const harnessUrl = 'https://workshop-harness.test/';
+let fulfilledHarnessDocuments = 0;
 page.on('pageerror', error=>errors.push(error.message));
-await page.route(/^(https?|wss?):/, route=>{networkAttempts.push(route.request().url()); return route.abort();});
-let frame, rejectDownload = false, rejectMessage = false, failure, failureLayout;
+await page.route(/^(https?|wss?):/, route=>{
+  if(route.request().url()===harnessUrl && route.request().isNavigationRequest() && route.request().frame()===page.mainFrame()) {
+    fulfilledHarnessDocuments++;
+    return route.fulfill({status:200,contentType:'text/html',body:'<!doctype html><html><body></body></html>'});
+  }
+  networkAttempts.push(route.request().url());return route.abort();
+});
+// This test-only document is fulfilled locally, without a socket or certificate
+// override. Its HTTPS origin supplies the same secure-context prerequisite as
+// supported chat hosts. The workbook remains in its original opaque sandbox.
+await page.goto(harnessUrl,{waitUntil:'domcontentloaded'});
+let frame, expectedDownloadRecord, rejectDownload = false, rejectMessage = false, failure, failureLayout;
 const visuals = ['goal','blockers','workflow','candidates','priorities','test'];
 const chapterMarkers = [answers[0].outcome,answers[1].firstGap,answers[2].chosenWorkflow,answers[3].candidates[0].title,answers[4].challenge,answers[5].recommendation];
 const body = () => frame.locator('body');
@@ -35,13 +49,35 @@ const flush = () => body().evaluate(()=>new Promise(resolve=>requestAnimationFra
 async function call(name, args) {
   const result = await client.callTool({name, arguments:args});
   assert(!result.isError, result.content?.[0]?.text);
+  assert.equal(result._meta?.bookHtml,undefined);
+  assert.equal(result._meta?.artifacts?.pdf,undefined);
+  assert.equal(result.structuredContent.bookPreview.status,'client-rendered');
+  assert(!result.content.some(item=>item.type==='resource'&&['application/pdf','application/gzip'].includes(item.resource.mimeType)));
   modelCalls.push({name,revision:result.structuredContent?.record?.revision,phase:args.phase});
   return result;
 }
 await page.exposeFunction('workbookHostRequest', async request=>{
   viewRequests.push({method:request.method,params:request.params});
-  if(request.method==='tools/call' || request.method==='ui/update-model-context') {
+  if(request.method==='ui/update-model-context') {
     throw new Error(`Read-only workbook attempted ${request.method}`);
+  }
+  if(request.method==='tools/call') {
+    assert.equal(request.params.name,'download_workbook_file','The view may call only the read-only file tool.');
+    assert.deepEqual(request.params.arguments.record,expectedDownloadRecord,'A file request must use its displayed snapshot, not an invented or stale replacement.');
+    const before=structuredClone(request.params.arguments.record);
+    const result=await client.callTool({name:request.params.name,arguments:request.params.arguments});
+    assert(!result.isError,result.content?.[0]?.text);
+    assert.deepEqual(request.params.arguments.record,before);
+    assert.deepEqual(renderedRecords.at(-1),before);
+    const resources=result.content.filter(item=>item.type==='resource');
+    assert.equal(resources.length,1);assert.equal(resources[0].resource.mimeType,'application/gzip');
+    assert.deepEqual(gunzipSync(Buffer.from(resources[0].resource.blob,'base64')),pdfStub);
+    assert.equal(result.structuredContent.export.revision,before.revision);
+    assert.equal(result.structuredContent.export.sha256,createHash('sha256').update(pdfStub).digest('hex'));
+    assert.equal(result._meta?.artifacts?.pdf,undefined);assert.equal(result._meta?.bookHtml,undefined);
+    assert.equal(result.structuredContent.record,undefined);
+    fileCalls.push({name:request.params.name,revision:before.revision,bytes:pdfStub.length,sha256:result.structuredContent.export.sha256});
+    return result;
   }
   if(request.method==='ui/download-file') {
     downloads.push(request.params);
@@ -53,8 +89,9 @@ await page.exposeFunction('workbookHostRequest', async request=>{
   }
   throw new Error(`Unexpected workbook request: ${request.method}`);
 });
-async function mount(initial, {downloadFile=true,message=true,theme='light'}={}) {
+async function mount(initial, {downloadFile=true,message=true,theme='light',osColourScheme='light'}={}) {
   rejectDownload=false; rejectMessage=false;
+  await page.emulateMedia({colorScheme:osColourScheme});
   await page.setContent('<!doctype html><html><body style="margin:0"><iframe id="workbook-host-frame" title="Controlled MCP workbook host" sandbox="allow-scripts" style="display:block;border:0;width:100%;height:1000px"></iframe></body></html>');
   await page.evaluate(({html,initial,downloadFile,message,theme})=>{
     if(window.workbookListener)window.removeEventListener('message',window.workbookListener);
@@ -86,6 +123,10 @@ async function mount(initial, {downloadFile=true,message=true,theme='light'}={})
   await frame.locator('.inline-workbook').waitFor();
   await waitRecord(initial.structuredContent.record);
   await flush();
+  const actual=await body().evaluate(()=>({secureContext:isSecureContext,webCryptoAvailable:Boolean(globalThis.crypto?.subtle),gzipAvailable:typeof DecompressionStream==='function',hostDark:document.documentElement.classList.contains('dark'),osDark:matchMedia('(prefers-color-scheme: dark)').matches,background:getComputedStyle(document.body).backgroundColor,text:getComputedStyle(document.body).color}));
+  contextDiagnostics.push({origin:harnessUrl,requestedHostTheme:theme,requestedOsColourScheme:osColourScheme,...actual});
+  assert.equal(actual.secureContext,true);assert.equal(actual.webCryptoAvailable,true);assert.equal(actual.gzipAvailable,true);
+  assert.equal(actual.hostDark,theme==='dark');assert.equal(actual.osDark,osColourScheme==='dark');
 }
 async function emit(result) {
   await page.evaluate(params=>document.getElementById('workbook-host-frame').contentWindow.postMessage({jsonrpc:'2.0',method:'ui/notifications/tool-result',params},'*'),result);
@@ -102,13 +143,14 @@ async function waitRecord(record) {
       requestAnimationFrame(poll);
     };poll();
   }),JSON.stringify(record));
+  expectedDownloadRecord=structuredClone(record);
 }
 async function assertReadOnly() {
   assert.equal(await frame.locator('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="checkbox"], [role="radio"], [role="slider"]').count(),0);
   const allowed=new Set(['Open workbook','Close workbook','Download PDF','Download saved record','Request current file links']);
   const buttons=await frame.getByRole('button',{includeHidden:true}).allTextContents();
   for(const text of buttons)assert(allowed.has(text.trim()) || text.includes('Open workbook'),`Unexpected interactive control: ${text}`);
-  assert.equal(viewRequests.filter(r=>r.method==='tools/call').length,0);
+  assert(viewRequests.filter(r=>r.method==='tools/call').every(r=>r.params?.name==='download_workbook_file'));
   assert.equal(viewRequests.filter(r=>r.method==='ui/update-model-context').length,0);
 }
 async function assertNoOverflow() {
@@ -126,6 +168,7 @@ async function openBook() {
   await frame.locator('#workshop-book-dialog').waitFor({state:'visible'});
   const book=frame.frameLocator('iframe[title="Composed workshop workbook"]');
   await book.locator('body').waitFor();
+  await book.getByText('Prepared by Dr. Shiva Kakkar',{exact:false}).first().waitFor();
   assert((await book.locator('body').textContent()).includes('Prepared by Dr. Shiva Kakkar'));
   assert.equal(await book.locator('input, textarea, select, [contenteditable]').count(),0);
   return book;
@@ -162,20 +205,25 @@ try {
     await assertReadOnly();await assertNoOverflow();await screenshot(`step-${phase}-saved`);
     result=await call('confirm_workshop_phase',{record:draft.structuredContent.record,phase,approved:true,confirmation:`The fictional group approves its saved Step ${phase} summary.`});
     assert.equal(result.structuredContent.record.phases[phase-1].status,'confirmed');
-    assert.equal(result._meta.artifacts.pdf.blob,pdfStub.toString('base64'));
-    for(const marker of chapterMarkers.slice(0,phase))assert(result._meta.bookHtml.includes(marker),`Cumulative Step ${phase} book omitted saved wording: ${marker}`);
+    assert.equal(result.structuredContent.export.status,'ready');
+    assert.equal(result.structuredContent.export.downloadTool,'download_workbook_file');
+    assert.equal(renderedRecords.length,phase,'Each explicit confirmation invokes the PDF renderer.');
+    assert.deepEqual(renderedRecords.at(-1),result.structuredContent.record);
     await emit(result);await waitRecord(result.structuredContent.record);
     assert((await frame.locator('.cw-progress').innerText()).includes(`${phase} of 6 steps approved`));
+    const phaseBook=await openBook();const bookText=await phaseBook.locator('body').textContent();
+    for(const marker of chapterMarkers.slice(0,phase))assert(bookText.includes(marker),`Locally composed Step ${phase} book omitted saved wording: ${marker}`);
+    await closeBook();
     await screenshot(`step-${phase}-approved`);
     snapshots.push(result);
   }
-  checks.push('All six phase visuals use actual saved MCP records; six explicit conversational confirmations carry cumulative book HTML and labelled protocol-stub PDFs.');
+  checks.push('All six visuals use actual saved MCP records. Six explicit confirmations invoke the PDF renderer and return manifests without PDF bytes or book HTML. The widget composes each cumulative book from its snapshot and bundled assets; the opened book retains every approved chapter marker.');
   const completed=snapshots[5];
   const book=await openBook();
   assert((await book.locator('body').textContent()).includes(answers[5].recommendation));
   await screenshot('complete-book');await assertReadOnly();await closeBook();
   await openBook();await closeBook();await waitRecord(completed.structuredContent.record);
-  checks.push('Opening and reopening the composed book preserves every answer and emits no tool calls or context updates.');
+  checks.push('Opening and reopening the locally composed book preserves every answer and emits no tool calls or context updates.');
 
   await emit(snapshots[0]);await waitRecord(completed.structuredContent.record);
   const conflict=structuredClone(completed);
@@ -187,15 +235,28 @@ try {
   checks.push('Older results and same-revision conflicting records cannot replace the displayed snapshot or expose reconciliation/mutation controls.');
 
   await frame.getByRole('button',{name:'Download PDF',exact:true}).filter({visible:true}).first().click();await waitIdle();
+  assert.equal(fileCalls.length,1);assert.equal(fileCalls.at(-1).revision,completed.structuredContent.record.revision);
   assert.equal(downloads.at(-1).contents[0].resource.mimeType,'application/pdf');
   assert.equal(downloads.at(-1).contents[0].resource.blob,pdfStub.toString('base64'));
   await frame.getByRole('button',{name:'Download saved record',exact:true}).filter({visible:true}).first().click();await waitIdle();
   assert.deepEqual(JSON.parse(downloads.at(-1).contents[0].resource.text),completed.structuredContent.record);
   rejectDownload=true;
   await frame.getByRole('button',{name:'Download PDF',exact:true}).filter({visible:true}).first().click();await waitIdle();
+  assert.equal(fileCalls.length,2);
   await frame.getByText('The download was declined. Ask for normal file links in the conversation.',{exact:true}).waitFor();
   await waitRecord(completed.structuredContent.record);await assertReadOnly();
-  checks.push('Snapshot PDF and JSON use native download requests; a declined download retains the complete record. No real download or rendered PDF is claimed.');
+  checks.push('PDF download calls the actual read-only file tool, decompresses its single gzip resource and passes byte-identical PDF stub content to the native download request. JSON downloads retain the full snapshot. A declined download retains the complete record. No real host download or rendered PDF is claimed.');
+
+  const savedOnly=await call('show_workbook',{record:completed.structuredContent.record,phase:6});
+  assert.equal(savedOnly.structuredContent.export,undefined);
+  await mount(savedOnly);
+  assert.equal(await frame.getByRole('button',{name:'Download PDF',exact:true}).filter({visible:true}).first().isEnabled(),true);
+  rejectDownload=false;
+  await frame.getByRole('button',{name:'Download PDF',exact:true}).filter({visible:true}).first().click();await waitIdle();
+  assert.equal(fileCalls.length,3);assert.equal(fileCalls.at(-1).revision,completed.structuredContent.record.revision);
+  assert.equal(downloads.at(-1).contents[0].resource.blob,pdfStub.toString('base64'));
+  await waitRecord(completed.structuredContent.record);await assertReadOnly();
+  checks.push('A read-only workbook view with approved chapters can download its PDF even when no export manifest or attached file was supplied.');
 
   await mount(snapshots[0],{downloadFile:false});
   await frame.getByRole('button',{name:'Download PDF',exact:true}).filter({visible:true}).first().click();await waitIdle();
@@ -219,10 +280,14 @@ try {
 
   await page.setViewportSize({width:320,height:900});
   for(let phase=1;phase<=6;phase++) {
-    await mount(snapshots[phase-1],{theme:'dark'});
+    await mount(snapshots[phase-1],{theme:'dark',osColourScheme:'light'});
     assert.equal(await frame.locator('html').evaluate(node=>node.classList.contains('dark')),true);
     await assertNoOverflow();await assertReadOnly();await screenshot(`mobile-dark-step-${phase}`);
   }
+  await mount(snapshots[5],{theme:'light',osColourScheme:'dark'});
+  assert.equal(await frame.locator('html').evaluate(node=>node.classList.contains('dark')),false);
+  await assertNoOverflow();await assertReadOnly();await screenshot('mobile-light-os-dark');
+  checks.push('Explicit dark host theme is tested against a light OS preference for all six steps, and explicit light host theme against a dark OS preference. The opaque sandbox has real Web Crypto and gzip support under a locally fulfilled test-only HTTPS origin; external requests remain blocked.');
   const long='Unbroken'.repeat(140);
   const hostile='<img src="https://invalid.example/workbook-audit" onerror="window.workbookAuditInjected=true">';
   const longResult=await call('save_workshop_phase',{record:completed.structuredContent.record,phase:1,answers:{outcome:long,kpi:hostile}});
@@ -252,11 +317,12 @@ try {
   await writeFile(new URL('evidence.json',out),JSON.stringify({
     result:failure?'fail':'pass',createdAt:new Date().toISOString(),
     widget:{bytes:Buffer.byteLength(html),sha256:createHash('sha256').update(html).digest('hex')},
-    checks,modelCalls,viewRequests,downloads:downloads.length,fileMessages:messages,errors,networkAttempts,screenshots,
+    checks,modelCalls,viewRequests,fileCalls,rendererCalls:renderedRecords.length,downloads:downloads.length,fileMessages:messages,errors,networkAttempts,screenshots,contextDiagnostics,fulfilledHarnessDocuments,
     toolCallsFromView:viewRequests.filter(r=>r.method==='tools/call').length,
+    recordMutatingCallsFromView:viewRequests.filter(r=>r.method==='tools/call'&&r.params?.name!=='download_workbook_file').length,
     modelContextUpdatesFromView:viewRequests.filter(r=>r.method==='ui/update-model-context').length,
     failure:failure?.message,failureLayout,
-    boundary:'Actual bundled workbook in a controlled MCP Apps host, with real in-memory MCP state tools and composed book HTML. PDF bytes are an explicit stub. Native question cards, Claude/ChatGPT behaviour, real file delivery and live deployment are not proved by this harness.',
+    boundary:'Actual bundled workbook in a controlled MCP Apps host, with real in-memory MCP state and file tools. The widget composes the book locally and requests only read-only snapshot files. Compressed file content is checked against an explicit PDF stub. Native question cards, Claude/ChatGPT behaviour, real file delivery, real PDF rendering and live deployment are not proved by this harness.',
   },null,2));
   await browser.close();await client.close();await server.close();
 }

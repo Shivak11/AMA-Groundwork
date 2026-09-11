@@ -14,11 +14,11 @@ async function session(ui=true) {
   const [a,b]=InMemoryTransport.createLinkedPair();await Promise.all([server.connect(a),client.connect(b)]);
   return {client,call:(name,args)=>client.callTool({name,arguments:args}),close:async()=>{await client.close();await server.close();}};
 }
-function assertHostQuestion(result,field,kind='answer') {
+function assertHostQuestion(result,field,kind='answer',preferredInput='native_question_tool') {
   assert(!result.isError,result.content?.[0]?.text);
   const data=result.structuredContent,turn=data.questionTurn;
   assert.equal(turn.owner,'chat');assert.equal(turn.hostAction,'ask_one_in_host');
-  assert.equal(turn.preferredInput,'native_question_tool');assert.equal(turn.fallbackInput,'plain_chat');
+  assert.equal(turn.preferredInput,preferredInput);assert.equal(turn.fallbackInput,'plain_chat');
   assert.equal(turn.recordRevision,data.record.revision);assert.match(turn.turnId,/^[0-9a-f-]{36}$/);
   assert.equal(turn.field,field);assert.equal(data.nextQuestion.kind,kind);assert.equal(data.nextQuestion.field,field);
   assert.equal(turn.question,data.nextQuestion.question);assert.equal(typeof turn.question,'string');assert(turn.question.trim());
@@ -32,8 +32,9 @@ test('UI capability never takes ownership away from native-first chat and its pl
   for(const ui of [true,false]) for(const mode of ['auto','text']) {
     const s=await session(ui);
     try {
-      const first=await s.call('start_workshop',{group,mode});const data=assertHostQuestion(first,'outcome');
-      const next=await s.call('workshop_next',{record:data.record,mode});assertHostQuestion(next,'outcome');
+      const preference=mode==='text'?'plain_chat':'native_question_tool';
+      const first=await s.call('start_workshop',{group,mode});const data=assertHostQuestion(first,'outcome','answer',preference);
+      const next=await s.call('workshop_next',{record:data.record,mode});assertHostQuestion(next,'outcome','answer',preference);
       assert.notEqual(next.structuredContent.questionTurn.turnId,data.questionTurn.turnId);
       assert.deepEqual(next.structuredContent.record,data.record);
       const instructions=s.client.getInstructions();
