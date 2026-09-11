@@ -160,9 +160,9 @@ export function InlineWorkshop(props: InlineProps) {
   const phaseId = pinnedDraft?.phaseId ?? props.phaseId;
   const dirty = Boolean(unfinishedDraft);
   const waiting = busy || localPending;
-  const mutable = props.canMutate && phaseId <= props.activePhase && !waiting && !props.contextBlocked && !props.conflict;
+  const mutable = props.canMutate && !props.chatActive && phaseId <= props.activePhase && !waiting && !props.contextBlocked && !props.conflict;
   const canAct = mutable && !dirty;
-  const canAsk = props.canChat && !waiting && !props.contextBlocked && !props.conflict && !dirty;
+  const canAsk = props.canChat && !props.chatActive && !waiting && !props.contextBlocked && !props.conflict && !dirty;
   const a = record?.phases[phaseId - 1]?.answers ?? {};
   const phase = record?.phases[phaseId - 1];
   const interaction = record?.interaction;
@@ -191,7 +191,7 @@ export function InlineWorkshop(props: InlineProps) {
     setDrafts(previous => { const next = { ...previous }; accepted.forEach(key => { delete next[key]; }); return next; });
     setEditing(current => current && accepted.includes(`${current.phaseId}:${current.field}`) ? null : current);
   }, [record, drafts]);
-  useEffect(() => { heading.current?.focus({ preventScroll: true }); }, [activeKey]);
+  useEffect(() => { heading.current?.focus({ preventScroll: true }); }, [activeKey, props.chatActive]);
   useEffect(() => {
     const dialog = dialogRef.current;
     if (bookOpen && dialog && !dialog.open) dialog.showModal();
@@ -308,7 +308,8 @@ export function InlineWorkshop(props: InlineProps) {
   const canConfirm = canAct && requiredComplete && !unresolved && phase?.status !== 'confirmed' && record?.phases.slice(0, phaseId - 1).every(item => item.status === 'confirmed') && move.kind === 'review';
   const statusText = phase?.status === 'confirmed' ? 'Approved' : phase?.status === 'needs_review' ? 'Needs review after an earlier change' : 'Draft';
   const summaryOpen = reviewOpen[phaseId] ?? move.kind === 'review';
-  function phaseButton(target: PhaseId) { return <button key={target} type="button" disabled={waiting || dirty || target > props.activePhase} onClick={() => { props.onPhase(target); setCursor(null); setEditing(null); if (bookOpen) closeBook(); }}>Step {target}: {titles[target - 1]}<span>{record?.phases[target - 1]?.status.replace('_', ' ')}</span></button>; }
+  function phaseButton(target: PhaseId) { return <button key={target} type="button" disabled={props.chatActive || waiting || dirty || target > props.activePhase} onClick={() => { props.onPhase(target); setCursor(null); setEditing(null); if (bookOpen) closeBook(); }}>Step {target}: {titles[target - 1]}<span>{record?.phases[target - 1]?.status.replace('_', ' ')}</span></button>; }
+  const pausedActivity = <section className="iw-active-turn" aria-labelledby="chat-active-title"><h2 id="chat-active-title" ref={heading} tabIndex={-1}>Continue in the conversation</h2><p className="iw-turn-hint">Your saved work and any unsaved draft stay here. Return when you are ready to use the activity.</p><button type="button" className="iw-primary" disabled={waiting || !props.connected || props.contextBlocked || Boolean(props.conflict)} onClick={() => void run(props.onResumeUi)}>Return to activity</button></section>;
 
   return <div className="inline-workshop" data-step={phaseId} aria-busy={waiting}>
     {(props.notice || localError) && <div className={`iw-notice${props.noticeError || localError ? ' iw-error' : ''}`} role={props.noticeError || localError ? 'alert' : 'status'}>{localError || props.notice}</div>}
@@ -319,8 +320,9 @@ export function InlineWorkshop(props: InlineProps) {
         <section><h3>Incoming record, revision {props.conflict.incoming.revision}</h3><textarea aria-label="Incoming record for comparison" readOnly value={JSON.stringify(props.conflict.incoming, null, 2)} /></section>
       </div></details>
       <div className="iw-actions"><button type="button" disabled={waiting} onClick={() => void run(() => props.onResolve(false))}>Keep the current record</button><button type="button" disabled={waiting} onClick={() => void run(() => props.onResolve(true))}>Use the incoming record</button></div></div>}
-    {!record ? <section className="iw-empty"><h2>{props.connected ? 'Start with your group and a work problem.' : 'Connecting to the workshop…'}</h2><p>{props.connected ? 'Tell the conversation your group name, members and the problem you want to examine. Do not include confidential or personal records.' : 'The activity will appear when the conversation shares a workshop record.'}</p>{props.connected && <button type="button" className="iw-primary" disabled={!canAsk} onClick={() => request('Help us start a workshop. Ask for our group name, members and one work problem. Do not invent the group details or include confidential records.')}>Start in the conversation</button>}</section> : <div className="iw-layout">
+    {!record ? props.chatActive ? pausedActivity : <section className="iw-empty"><h2>{props.connected ? 'Start with your group and a work problem.' : 'Connecting to the workshop…'}</h2><p>{props.connected ? 'Tell the conversation your group name, members and the problem you want to examine. Do not include confidential or personal records.' : 'The activity will appear when the conversation shares a workshop record.'}</p>{props.connected && <button type="button" className="iw-primary" disabled={!canAsk} onClick={() => request('Help us start a workshop. Ask for our group name, members and one work problem. Do not invent the group details or include confidential records.')}>Start in the conversation</button>}</section> : <div className="iw-layout">
       <main className="iw-conversation">
+        {props.chatActive ? pausedActivity : <>
         {draftHeldOpen && <p className="iw-notice" role="status">Your unsaved Step {phaseId} answer is still open. Save or cancel it before moving on. The latest saved wording is preserved in the summary below.</p>}
         {(editing || phaseId < props.activePhase) && <div className="iw-editing-notice"><p>{editing ? 'Your edit is local until you save it.' : `Reviewing Step ${phaseId}. Saving a change will mark later steps for review.`}</p>{!editing && <button type="button" disabled={waiting || dirty} onClick={() => props.onPhase(props.activePhase)}>Return to the current step</button>}</div>}
         <section className="iw-active-turn" aria-labelledby="active-question"><h2 id="active-question" ref={heading} tabIndex={-1}>{question}</h2>{hint && <p className="iw-turn-hint">{hint}</p>}{body && <div className="iw-activity">{body}</div>}</section>
@@ -339,6 +341,7 @@ export function InlineWorkshop(props: InlineProps) {
         {props.allConfirmed && <button type="button" className="iw-primary" onClick={openBook} disabled={!props.bookHtml}>Read your workbook<span aria-hidden="true">↗</span></button>}
         {interaction?.undo && <button type="button" className="iw-text-button iw-undo" disabled={!canAct} onClick={() => action({ kind: 'undo' }, interaction.undo?.phaseId ?? phaseId)}>Undo: {interaction.undo.label}</button>}
         {props.activePhase > 1 && <details className="iw-earlier"><summary>Review an earlier step</summary><div className="iw-step-links">{ids.filter(id => id <= props.activePhase).map(phaseButton)}</div></details>}
+        </>}
         <div className="iw-mobile-book"><button type="button" aria-label="Open workbook" disabled={!props.bookHtml} onClick={openBook}>Open workbook <span>{approvedCount}/6 approved</span></button></div>
       </main>
       <aside className="iw-book-preview" aria-label="Your growing workbook"><button type="button" className="iw-book-open" aria-label="Open workbook" onClick={openBook} disabled={!props.bookHtml}><span className="iw-paper-stack" aria-hidden="true"><span className="iw-paper-under" /><span className="iw-paper-cover"><span className="iw-book-title">Our AI use-case workbook</span><span className="iw-book-group">{record.group.name}</span><span className="iw-book-author">Prepared by<br />Dr. Shiva Kakkar</span></span></span><span>Open workbook</span></button><p className="iw-book-count">{approvedCount} of 6 steps approved{reviewCount > 0 ? `; ${reviewCount} need review` : ''}</p><LatestChapter record={record} /></aside>
@@ -346,10 +349,10 @@ export function InlineWorkshop(props: InlineProps) {
     <details className="iw-backup"><summary>Connection and full text backup</summary><p>{props.connected ? 'Connected to the workshop.' : 'Waiting for a host connection.'} {record ? `Record revision ${record.revision}.` : 'No record has been received.'}</p>{record && <><button type="button" disabled={waiting} onClick={() => void run(() => props.onDownload('checkpoint'))}>Download the saved record</button><textarea aria-label="Complete JSON record" readOnly value={JSON.stringify(record, null, 2)} /></>}</details>
     <dialog id="workshop-book-dialog" className="iw-book-dialog" ref={dialogRef} onCancel={event => { event.preventDefault(); closeBook(); }} onClose={() => { if (bookOpen) closeBook(); }} aria-labelledby="book-dialog-title">
       <div className="iw-book-toolbar"><h2 id="book-dialog-title">Your workbook</h2><div><button type="button" disabled={waiting || !props.hasPdf} onClick={() => void run(() => props.onDownload('pdf'))}>Download PDF</button><button type="button" disabled={waiting || !record} onClick={() => void run(() => props.onDownload('checkpoint'))}>Save record</button><button type="button" autoFocus onClick={closeBook}>Close workbook</button></div></div>
-      {props.exportFailed && <div className="iw-export-notice"><p>Your decision was saved, but the PDF could not be created.</p><button type="button" disabled={!canAct} onClick={() => void run(props.onExport)}>Retry PDF export</button></div>}
-      {!props.hasPdf && !props.exportFailed && record && <div className="iw-export-notice"><p>The preview below is the current book. A PDF download is not available yet.</p><button type="button" disabled={!canAct} onClick={() => void run(props.onExport)}>Create PDF</button></div>}
+      {props.exportFailed && <div className="iw-export-notice"><p>Your decision was saved, but the PDF could not be created.</p>{!props.chatActive && <button type="button" disabled={!canAct} onClick={() => void run(props.onExport)}>Retry PDF export</button>}</div>}
+      {!props.hasPdf && !props.exportFailed && record && <div className="iw-export-notice"><p>The preview below is the current book. A PDF download is not available yet.</p>{!props.chatActive && <button type="button" disabled={!canAct} onClick={() => void run(props.onExport)}>Create PDF</button>}</div>}
       {props.bookHtml ? <iframe title="Full workshop workbook" sandbox="" srcDoc={props.bookHtml} /> : <p className="iw-turn-hint">The book preview will appear when it is returned by the workshop.</p>}
-      {record && <details className="iw-book-chapters"><summary>Review a step from the workbook</summary><div className="iw-step-links">{ids.filter(id => id <= props.activePhase).map(phaseButton)}</div></details>}
+      {record && !props.chatActive && <details className="iw-book-chapters"><summary>Review a step from the workbook</summary><div className="iw-step-links">{ids.filter(id => id <= props.activePhase).map(phaseButton)}</div></details>}
     </dialog>
   </div>;
 }

@@ -7,6 +7,12 @@ description: Guide a classroom group through conversation and varied visual deci
 
 Help a group create `Our AI Use-Case Portfolio` from its own work. The group should leave with a reasoned shortlist and a bounded next step. A decision not to pilot AI yet is valid.
 
+## One question owner
+
+Follow the latest `questionTurn` in tool results or app model context. If `owner` is `ui`, the activity owns questions, choices and approval. Wait for its answer; do not also ask in chat or invoke `ask_user_question`, `AskUserQuestion`, `request_user_input`, elicitation or a host-native questionnaire. Use `present_workshop_question` to put useful options inside that same activity, then stop. Saving an answer and receiving a context update do not authorise another question.
+
+The questioning instructions below apply only when chat owns the turn: before a group exists, during explicit “Discuss in chat” handoff, or for text participation. During handoff the view pauses. Ask one question, save agreed details using `mode="text"` while the discussion continues, and return to the activity with `workshop_next` or `present_workshop_question` in `mode="auto"`. Once returned, stop asking in chat. Never ask for a second approval when the activity already has its approval control. Honour an explicit request for text participation without opening another active view.
+
 ## Start and continue
 
 Read [host-contract.md](references/host-contract.md) before the first tool call. Read the current section of [phases.md](references/phases.md) when starting or resuming a phase. Use [foundations.md](references/foundations.md) when the group asks where the method comes from. Do not turn these references into an introductory lecture.
@@ -17,7 +23,7 @@ Keep the latest complete record returned by a tool. Use `workshop_next` for the 
 
 ## Conduct the conversation
 
-Ask one manageable question or activity at a time. Reuse what the group has already said. The six participation formats are:
+Only the owning surface asks one manageable question or activity at a time. Reuse what the group has already said. The six participation formats are:
 
 1. Choose and refine an outcome, then connect it to a success measure (KPI) and safeguard. An unknown baseline is acceptable.
 2. Sort the group's information and authority barriers on a map of who holds what.
@@ -34,7 +40,7 @@ Use plain language for novices. Explain a technical term only when it helps the 
 
 ## Save and confirm
 
-Use `save_workshop_phase` for the agreed draft. Then show a short, editable summary including uncertainty and any model suggestions the group has accepted. Ask whether the group approves this summary for its workbook or wants a correction.
+Use `save_workshop_phase` for the agreed draft. In UI ownership, the activity shows the editable summary and approval control; wait for the participant there. In chat ownership, show the summary including uncertainty and accepted proposals, and ask for approval or a correction in that one surface.
 
 Call `confirm_workshop_phase` only after the group explicitly approves the summary currently shown. It returns the accepted record and attempts the cumulative PDF. If `export.status` is `failed`, keep the confirmed record, explain that the PDF needs retrying, and use `export_workbook` when requested. Do not ask the group to approve the same summary again. If validation fails, the phase is not confirmed. PDF generation, successful download and a stored account record are separate outcomes. Groups continue themselves.
 
@@ -46,7 +52,7 @@ Where the client supports MCP Apps, use the returned activity as a working part 
 
 Use `present_workshop_question` when a small set of context-grounded suggested answers would reduce typing. Show one scalar question, not a form. Participants can pick a proposal, edit it or answer in their own words. Presenting options does not save an answer. Use the group's actual context; the fictional hiring concept is not a default answer key for other groups. Keep structured tasks and cases conversational until the group has supplied enough detail to save and visualise them.
 
-Inspect `record.interaction` as well as phase answers. A priority or candidate click may be an incomplete decision, awaiting a reason, evidence or an updated candidate set. Ask only the meaningful missing question, then reconcile it with `save_workshop_phase`. Never invent a reason or an Unknown that the group did not choose. Do not confuse a selected candidate with chapter approval. If the app reports failed context synchronisation, recover the latest record before proceeding.
+Inspect `record.interaction` as well as phase answers. A priority or candidate click may be incomplete, awaiting reasoning or an updated candidate set. In UI ownership, wait for the activity's explicit discussion handoff; do not open a competing question. In chat ownership, ask for the missing reasoning and reconcile it with `save_workshop_phase`. Never invent a reason or an Unknown that the group did not choose. Do not confuse a selected candidate with chapter approval. If context synchronisation fails, recover the latest record before proceeding.
 
 At confirmation, the book view gains a composed chapter. Keep the active interaction small and the book readable; avoid repeated summaries, technical counters or backup controls in the main conversation. The host owns whether the book can remain beside chat. Do not promise pinned live updates or independent cross-client storage.
 

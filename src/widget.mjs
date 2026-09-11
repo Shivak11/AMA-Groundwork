@@ -3,12 +3,15 @@ import { createElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { validateRecord } from './workshop.mjs';
 import { InlineWorkshop } from './inline-view';
+import { contextForQuestionOwner, CHAT_QUESTION_POLICY } from './question-routing.mjs';
 
-const app = new App({name:'AI Use-Case Workshop',version:'0.3.0'}, {availableDisplayModes:['inline','fullscreen']}, {autoResize:true});
+const app = new App({name:'AI Use-Case Workshop',version:'0.3.1'}, {availableDisplayModes:['inline','fullscreen']}, {autoResize:true});
 const root = createRoot(document.getElementById('workshop-root'));
 let current=null, metadata={}, capabilities={}, host={};
 let connected=false, pending=false, contextBlocked=false, dirty=false;
 let recordConflict=null, generation=0, displayedPhase=1;
+let questionOwner='ui';
+const seenResultTurns = new Set();
 let noticeText='Connecting to the conversation.', noticeError=false;
 const activePhase = record => record.phases.find(phase=>phase.status!=='confirmed')?.id ?? 6;
 const sameRecord = (a,b) => JSON.stringify(a)===JSON.stringify(b);
@@ -38,15 +41,17 @@ function setResult(result,{requestRecord,allowSame=false,fromHost=false}={}) {
   if(requestRecord && data.record.revision<requestRecord.revision+(allowSame?0:1)) throw new Error('The reply did not contain the expected updated record. Your previous record is retained.');
   const advanced=!current || activePhase(data.record)!==activePhase(current.record);
   current=data;metadata=result._meta??{};
+  if(data.questionTurn?.turnId)seenResultTurns.add(data.questionTurn.turnId);
+  questionOwner=data.questionTurn?.owner === 'chat' ? 'chat' : 'ui';
   if(advanced) displayedPhase=activePhase(data.record);
   if(fromHost) {generation++;pending=false;}
   return data;
 }
 async function syncContext(token=generation) {
-  const payload=current;contextBlocked=true;render();
+  const payload=contextForQuestionOwner(current,questionOwner);contextBlocked=true;render();
   if(!supports('updateModelContext')) return false;
   try {
-    const result=await app.updateModelContext({content:[{type:'text',text:`Use this latest complete workshop record, revision ${payload.record.revision}, for the next turn. A visual choice is saved but is not phase approval. Ask one missing question. Use present_workshop_question for helpful answer choices. Never replace recorded reasoning without the group.`}],structuredContent:payload},{timeout:15000});
+    const result=await app.updateModelContext({content:[{type:'text',text:`Use this latest complete workshop record, revision ${payload.record.revision}. A saved choice is not phase approval. ${payload.questionTurn.instruction} Never replace recorded reasoning without the group.`}],structuredContent:payload},{timeout:15000});
     if(token!==generation) return false;
     if(result?.isError) throw new Error('declined');
     contextBlocked=false;return true;
@@ -54,6 +59,7 @@ async function syncContext(token=generation) {
 }
 async function callTool(name,args,{allowSame=false,phaseId,success='Your answer is saved.'}={}) {
   if(!current || !connected || pending || contextBlocked || recordConflict) return;
+  if(questionOwner==='chat' && name!=='export_workbook')return;
   if(!supports('serverTools') || !supports('updateModelContext')) {showNotice('This host cannot save visual choices. Continue the exercise in the conversation.',true);return;}
   const requestRecord=current.record,token=++generation;
   pending=true;showNotice(name==='confirm_workshop_phase'?'Adding this step to your workbook…':'Saving your choice…');
@@ -76,29 +82,47 @@ async function retryContext() {
 }
 async function resolveRecordConflict(useIncoming) {
   if(!recordConflict || !connected || pending)return;
-  if(useIncoming){current=parsedResult(recordConflict.result);metadata=recordConflict.result._meta??{};displayedPhase=activePhase(current.record);}
+  if(useIncoming){current=parsedResult(recordConflict.result);metadata=recordConflict.result._meta??{};displayedPhase=activePhase(current.record);questionOwner=current.questionTurn?.owner==='chat'?'chat':'ui';if(current.questionTurn?.turnId)seenResultTurns.add(current.questionTurn.turnId);}
   recordConflict=null;contextBlocked=true;pending=true;const token=++generation;
   render();const synced=await syncContext(token);
   if(token!==generation)return;
   pending=false;showNotice(synced?'Your chosen record is shared. Unsaved wording remains a draft.':'Your chosen record is retained. Retry sharing before continuing.',!synced);
 }
-async function ask(prompt) {
+async function ask(prompt,{handoff=true}={}) {
   if(!current || !connected || pending || contextBlocked || recordConflict || !supports('message')) return;
   pending=true;render();const token=generation;
   try {
-    const result=await app.sendMessage({role:'user',content:[{type:'text',text:`Group ${JSON.stringify(current.record.group.name)}, record revision ${current.record.revision}. Use the latest complete record shared by this view; reconcile any newer record first. ${prompt}`}]},{timeout:15000});
+    if(handoff){
+      questionOwner='chat';render();
+      const shared=await syncContext(token);
+      if(token!==generation)return;
+      if(!shared)throw new Error('The handoff could not be shared.');
+    }
+    const result=await app.sendMessage({role:'user',content:[{type:'text',text:`Group ${JSON.stringify(current.record.group.name)}, record revision ${current.record.revision}. Use the latest complete record shared by this view; reconcile any newer record first. ${handoff?`The participant explicitly chose to continue in chat; the activity's question controls are paused. ${CHAT_QUESTION_POLICY}`:'This is a file-delivery request only. Do not ask any workshop question or change question ownership.'} ${prompt}`}]},{timeout:15000});
     if(token!==generation)return;
     if(result?.isError)throw new Error('declined');
     showNotice('Continue in the conversation. Your saved work stays here.');
-  }catch{if(token===generation)showNotice(`Ask in the conversation: ${prompt}`,true);}
+  }catch{
+    if(token===generation){
+      if(handoff){questionOwner='ui';await syncContext(token);}
+      if(token===generation)showNotice(contextBlocked?'The handoff did not complete. Retry sharing before continuing.':'The message could not be sent. Your activity is available again.',true);
+    }
+  }
   finally{if(token===generation){pending=false;render();}}
+}
+async function resumeUi() {
+  if(!current || !connected || pending || contextBlocked || recordConflict)return;
+  const token=++generation;pending=true;questionOwner='ui';render();
+  const shared=await syncContext(token);
+  if(token!==generation)return;
+  pending=false;showNotice(shared?'Continue with the activity.':'Retry sharing before continuing with the activity.',!shared);
 }
 const filePrompt='Show the existing workbook PDF and JSON backup using normal file links from the latest tool result. Do not regenerate existing files just to retrieve their links.';
 async function download(kind) {
   if(!current || !connected || pending)return;
   if(!supports('downloadFile')) {
     if(contextBlocked || recordConflict || !supports('message')) {showNotice('Use the JSON backup below, or request the existing PDF links in the conversation.',true);return;}
-    return ask(filePrompt);
+    return ask(filePrompt,{handoff:false});
   }
   const isPdf=kind==='pdf',file=metadata.artifacts?.[kind]??(!isPdf?{name:`workshop-revision-${current.record.revision}.json`,text:JSON.stringify(current.record,null,2)}:null);
   if(!file || (isPdf && typeof file.blob!=='string') || (!isPdf && typeof file.text!=='string')) {showNotice('This revision has no PDF yet. Create it from your workbook.',true);return;}
@@ -114,10 +138,10 @@ function render() {
   root.render(createElement(InlineWorkshop,{
     record,phaseId:displayedPhase,activePhase:record?activePhase(record):1,allConfirmed:Boolean(record?.phases.every(phase=>phase.status==='confirmed')),
     bookHtml:metadata.bookHtml,hasPdf:Boolean(metadata.artifacts?.pdf),exportFailed:current?.export?.status==='failed',presentation:current?.presentation,
-    notice:noticeText,noticeError,busy:pending,connected,contextBlocked,
+    notice:noticeText,noticeError,busy:pending,connected,contextBlocked,chatActive:questionOwner==='chat',onResumeUi:resumeUi,
     conflict:recordConflict?{kind:recordConflict.kind,incoming:parsedResult(recordConflict.result).record}:null,
-    canMutate:Boolean(record && connected && !pending && !contextBlocked && !recordConflict && supports('serverTools') && supports('updateModelContext') && displayedPhase<=activePhase(record)),
-    canChat:Boolean(record && connected && !pending && !contextBlocked && !recordConflict && supports('message')),
+    canMutate:Boolean(record && questionOwner==='ui' && connected && !pending && !contextBlocked && !recordConflict && supports('serverTools') && supports('updateModelContext') && displayedPhase<=activePhase(record)),
+    canChat:Boolean(record && questionOwner==='ui' && connected && !pending && !contextBlocked && !recordConflict && supports('message')),
     onAction:action=>callTool('workshop_action',{record:current.record,action},{allowSame:true,phaseId:action.phaseId}),
     onAsk:ask,onDownload:download,onRetrySync:retryContext,onResolve:resolveRecordConflict,
     onDirty:value=>{if(dirty!==value){dirty=value;render();}},
@@ -137,6 +161,10 @@ function hostContext(context={}) {
 app.ontoolresult=result=>{
   try {
     const incoming=parsedResult(result);
+    // Re-delivery of an already adopted result must not reverse a local
+    // ownership handoff. Fresh tool calls have distinct presentation turn IDs,
+    // even when the participant record and its revision are unchanged.
+    if(incoming.questionTurn?.turnId && seenResultTurns.has(incoming.questionTurn.turnId))return;
     if(current && sameRecord(incoming.record,current.record) && (pending || contextBlocked || recordConflict))return;
     if(recordConflict){showNotice('Choose between the displayed records before accepting another update.',true);return;}
     setResult(result,{fromHost:true,allowSame:true});

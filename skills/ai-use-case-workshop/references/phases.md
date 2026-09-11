@@ -1,5 +1,7 @@
 # Phase guidance
 
+All “ask”, “invite” and “show a summary” directions below are teaching guidance for the current question owner. If `questionTurn.owner` is `ui`, the activity already owns the question and approval controls: wait, or use `present_workshop_question` to enrich that same activity, then stop. Do not ask alongside it or invoke a host-native question tool. Use these conversational examples only during explicit chat handoff or text participation.
+
 Use only the current phase in conversation. The questions below are examples, not a script to recite. One conversational move may answer several fields. Reuse it rather than asking again. After a short exchange, offer an editable checkpoint. Record a group-approved unknown when evidence is unavailable.
 
 ## Phase 1: What should improve?

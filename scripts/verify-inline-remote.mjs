@@ -13,16 +13,22 @@ let failure,record;
 async function call(name,args){const result=await client.callTool({name,arguments:args},undefined,{timeout:90000});assert(!result.isError,result.content?.[0]?.text);if(result.structuredContent?.record)record=result.structuredContent.record;return result;}
 try{
   await client.connect(new StreamableHTTPClientTransport(endpoint));
-  assert.equal(client.getServerVersion().version,'0.3.0');
+  assert.equal(client.getServerVersion().version,'0.3.1');
+  assert.match(client.getInstructions(),/exactly one active question owner/);
   const tools=await client.listTools(),resources=await client.listResources();assert.equal(tools.tools.length,9);assert.equal(resources.resources.length,6);
   assert(tools.tools.some(tool=>tool.name==='present_workshop_question'));
   const view=(await client.readResource({uri:'ui://workshop/checkpoint.html'})).contents[0];
   const widget=await readFile(new URL('../dist/widget.html',import.meta.url));assert.equal(hash(Buffer.from(view.text)),hash(widget));assert.equal(view._meta.ui.prefersBorder,false);
   evidence.checks.push({name:'Exact built React widget and new question tool served live',pass:true,widgetBytes:widget.length,widgetSha256:hash(widget)});
-  await call('start_workshop',{group});
+  const started=await call('start_workshop',{group});
+  assert.equal(started.structuredContent.questionTurn.owner,'ui');
+  assert.equal(started.structuredContent.phase.question,null);
+  assert.match(started.structuredContent.next,/Do not ask another question/);
   const before=structuredClone(record);
   const proposed=await call('present_workshop_question',{record,presentation:{phaseId:1,field:'baseline',question:'Do we know the current waiting time?',choices:[{label:'We have not measured it',value:'Unknown. We need to measure the current waiting time.'}]}});
   assert.deepEqual(record,before);assert(proposed.structuredContent.presentation);
+  assert.equal(proposed.structuredContent.questionTurn.owner,'ui');
+  assert(!proposed.content[0].text.includes('Do we know the current waiting time?'));
   await call('workshop_action',{record,action:{kind:'set_answer',phaseId:1,expectedRevision:record.revision,field:'baseline',value:proposed.structuredContent.presentation.choices[0].value}});
   for(let phase=1;phase<=6;phase++){
     await call('save_workshop_phase',{record,phase,answers:answers[phase-1]});

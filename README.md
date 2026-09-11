@@ -1,6 +1,6 @@
 # AI Use-Case Workshop
 
-Version 0.3.0 implements the approved inline conversation interface using the real workshop record and tools. One question or visual decision is shown at a time, beside a growing workbook. See INLINE-LIVE-PLAN.md for scope. Deployment identity and actual remote evidence are recorded separately in the programme release record.
+Version 0.3.1 retains the approved inline interface and fixes competing question surfaces. The activity owns questions until the participant explicitly hands one to chat or chooses text participation. See SINGLE-QUESTION-PLAN.md for this correction and INLINE-LIVE-PLAN.md for the underlying interface. Deployment identity and actual host evidence are recorded separately in the programme release record.
 
 ## Participant journey
 
@@ -55,6 +55,8 @@ There is no participant database. Revision checks compare the action with its su
 A selected priority is separate from its previous reasoning. The group must reconcile it before confirmation. Reconsider also requires resolution. Earlier corrections retain downstream answers and mark dependent chapters for review. One eligible visual action can be undone; later saves or approvals invalidate that undo.
 
 present_workshop_question proposes up to four scalar answer choices without changing the record. A participant reviews and saves the wording through workshop_action. Structured cases, task lists and candidates are gathered in conversation. An unfinished local draft remains visible when a newer host answer arrives and can be cancelled without changing saved work.
+
+The questionTurn envelope assigns one owner outside the saved participant record. UI-owned results and context updates tell the host to wait and suppress competing question text. “Discuss in chat” shares chat ownership, pauses the activity and sends one message. “Return to activity” restores UI ownership. Text-mode results leave the view passive. Failed handoffs retain saved work and recover ownership before editing resumes. The connector cannot disable another host's question tool; those host instructions and real host compliance are separate evidence.
 
 Confirmation validates and retains group approval, then attempts its PDF. A renderer failure returns the confirmed record with export.status=failed and no PDF; retry export_workbook without asking for approval again. Generated files and successful downloads are different outcomes. Use normal host file controls if an embedded download is declined.
 

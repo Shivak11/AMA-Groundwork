@@ -1,5 +1,9 @@
 # Source ledger
 
+## Question ownership correction, 11 September 2026
+
+Shiva's screenshot shows the MCP view asking for a success measure while a host-native question card asks a separate question. The deployed source independently confirms conflicting instructions: UI-mode tool results and app context updates both told the model to ask again. Version 0.3.1 removes those duplicate commands, returns an explicit question owner, and pauses the view on chat handoff. The image and its private conversation were not copied into the public connector. Automated protocol/browser checks do not establish host-model compliance.
+
 ## Visual revision reviewed on 11 September 2026
 
 The current candidate implements Shiva's approved conversation/activity/book model. The fictional hiring example in examples/hiring.mjs carries the CV-to-approved-offer journey through all six steps; it contains no real applicant or client data. It retains human selection, compensation and release authority, an unknown baseline, a manual comparator and the limit of retrospective evidence.
