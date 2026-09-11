@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { actionSchema, applyWorkshopAction } from '../src/actions.mjs';
-import { createRecord, savePhase, confirmPhase, validateRecord, readableSummary } from '../src/workshop.mjs';
+import { createRecord, savePhase, confirmPhase, validateRecord, readableSummary, phaseGuide } from '../src/workshop.mjs';
 import { group, answers } from '../examples/shared-services.mjs';
 
 const act = (record,phaseId,kind,fields={}) => applyWorkshopAction(record,{expectedRevision:record.revision,phaseId,kind,...fields});
@@ -80,7 +80,10 @@ test('candidate Keep and Reconsider choices never delete a proposal or imply app
   assert.deepEqual(changed.phases[3].answers,original.phases[3].answers); assert.equal(changed.phases[3].status,'draft');
   assert.throws(()=>confirmPhase(changed,4,'Approved'),/Reconsider/);
   assert.equal(confirmPhase(kept,4,'Approved').phases[3].status,'confirmed');
-  const reconciled=savePhase(changed,4,{candidates:answers[3].candidates});
+  const unchanged=savePhase(changed,4,{candidates:answers[3].candidates});
+  assert.equal(unchanged.interaction.candidateDispositions[candidateId],'Reconsider');
+  assert.throws(()=>confirmPhase(unchanged,4,'Approved'),/Reconsider/);
+  const reconciled=savePhase(changed,4,{candidates:answers[3].candidates.map(candidate=>candidate.id===candidateId ? {...candidate,assumption:'The group revised this assumption after reconsideration.'} : candidate)});
   assert.equal(reconciled.interaction.candidateDispositions[candidateId],undefined);
   assert.equal(confirmPhase(reconciled,4,'Approved').phases[3].status,'confirmed');
   assert.equal(act(changed,4,'undo').interaction.candidateDispositions[candidateId],'Keep');
@@ -160,6 +163,10 @@ test('object-like candidate IDs cannot change prototypes or silently drop a sele
       assert.equal(Object.hasOwn(changed.interaction.priorities,candidateId),true);
       assert.equal(changed.interaction.priorities[candidateId],'First');
       assert.equal(Object.getPrototypeOf(changed.interaction.priorities),Object.prototype);
+      const choices=[{candidateId,decision:'First',reason:'The group selected this case.',evidenceGap:'Further evidence is needed.'}];
+      const reconciled=savePhase(changed,5,{choices});
+      assert.deepEqual(reconciled.interaction.priorities,{});
+      assert.doesNotThrow(()=>savePhase(reconciled,5,{choices}));
     }
   }
 });
@@ -177,4 +184,66 @@ test('text-only summaries distinguish pending choices from prior reasoning',()=>
   assert.match(summary,/Pending priority selections, not yet reconciled/);
   assert(summary.includes(first.reason)); assert(summary.includes('Later'));
   assert(!summary.includes('undo'));
+});
+test('a mismatched chat save cannot discard the latest priority selection',()=>{
+  const original=through(5); const first=answers[4].choices.find(choice=>choice.decision==='First');
+  const changed=act(original,5,'prioritise',{candidateId:first.candidateId,priority:'Later'});
+  const before=structuredClone(changed);
+  assert.throws(()=>savePhase(changed,5,{choices:answers[4].choices}),/does not match.*latest selection/);
+  assert.deepEqual(changed,before);
+  const reverted=act(changed,5,'prioritise',{candidateId:first.candidateId,priority:'First'});
+  const reconciled=savePhase(reverted,5,{choices:answers[4].choices});
+  assert.deepEqual(reconciled.interaction.priorities,{});
+  assert.equal(confirmPhase(reconciled,5,'Approved').phases[4].status,'confirmed');
+});
+test('editing another candidate or reordering keys cannot resolve an unchanged Reconsider selection',()=>{
+  const original=through(4); const [first,second]=answers[3].candidates;
+  const changed=act(original,4,'candidate_disposition',{candidateId:first.id,disposition:'Reconsider'});
+  const candidates=answers[3].candidates.map(candidate=>candidate.id===first.id ? Object.fromEntries(Object.entries(candidate).reverse()) : candidate.id===second.id ? {...candidate,assumption:'A different candidate was revised.'} : candidate);
+  const saved=savePhase(changed,4,{candidates});
+  assert.equal(saved.interaction.candidateDispositions[first.id],'Reconsider');
+  assert.throws(()=>confirmPhase(saved,4,'Approved'),/Reconsider/);
+  const kept=act(saved,4,'candidate_disposition',{candidateId:first.id,disposition:'Keep'});
+  assert.equal(confirmPhase(kept,4,'Approved').phases[3].status,'confirmed');
+});
+test('choosing a zero-second task invalidates the previous answer and undo restores it',()=>{
+  const original=through(3); const [first,second]=answers[2].tasks;
+  const selected=act(original,3,'choose_zero_task',{taskId:first.id});
+  assert.equal(selected.phases[2].answers.zeroSecond,undefined);
+  assert.throws(()=>confirmPhase(selected,3,'Approved'));
+  assert(phaseGuide(selected,3).question.includes(first.work));
+  assert.deepEqual(act(selected,3,'undo').phases,original.phases);
+  const answered=savePhase(selected,3,{zeroSecond:'The group checked the first selected task; approval would still wait.'});
+  assert.deepEqual(act(answered,3,'choose_zero_task',{taskId:first.id}),answered);
+  const different=act(answered,3,'choose_zero_task',{taskId:second.id});
+  assert.equal(different.phases[2].answers.zeroSecond,undefined);
+  assert(phaseGuide(different,3).question.includes(second.work));
+  assert.equal(act(different,3,'undo').phases[2].answers.zeroSecond,answered.phases[2].answers.zeroSecond);
+});
+test('clear refusal phrases and curly apostrophes cannot confirm a phase',()=>{
+  const record=savePhase(createRecord(group),1,answers[0]);
+  for (const refusal of ['No','No.','No, please revise it.','Not yet','Not yet; we need a correction.','I don’t approve this summary','We decline approval for this summary.','I refuse to approve.']) {
+    assert.throws(()=>confirmPhase(record,1,refusal),/does not approve/,refusal);
+  }
+  for (const approval of ['Our group agrees with this summary.','No objections; we approve the summary.','हाँ, हमारी सहमति है।']) {
+    assert.equal(confirmPhase(record,1,approval).phases[0].status,'confirmed');
+  }
+});
+test('unchanged barriers preserve classification and reordered exact entries keep their categories',()=>{
+  const original=savePhase(through(1),2,answers[1]);
+  const classified=act(original,2,'classify_barrier',{index:0,category:'Authority'});
+  const identical=savePhase(classified,2,{blockers:answers[1].blockers});
+  assert.deepEqual(identical.interaction.barrierCategories,{'0':'Authority'});
+  const reordered=savePhase(classified,2,{blockers:[...answers[1].blockers].reverse()});
+  assert.deepEqual(reordered.interaction.barrierCategories,{[answers[1].blockers.length-1]:'Authority'});
+  const updated=savePhase(classified,2,{blockers:answers[1].blockers.map((blocker,index)=>index===0 ? {...blocker,barrier:'The group changed this barrier.'} : blocker)});
+  assert.deepEqual(updated.interaction.barrierCategories,{});
+});
+test('ambiguous reordered barrier matches do not invent ownership of a classification',()=>{
+  const [first,second]=answers[1].blockers;
+  const original=savePhase(through(1),2,{...answers[1],blockers:[first,first,second]});
+  const classified=act(original,2,'classify_barrier',{index:0,category:'Authority'});
+  assert.deepEqual(savePhase(classified,2,{blockers:[first,first,second]}).interaction.barrierCategories,{'0':'Authority'});
+  const reordered=savePhase(classified,2,{blockers:[second,first,first]});
+  assert.deepEqual(reordered.interaction.barrierCategories,{});
 });

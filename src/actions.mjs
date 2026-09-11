@@ -100,6 +100,7 @@ export function applyWorkshopAction(input, inputAction) {
     if (!uniqueIds(record.phases[2].answers.tasks ?? [],'id','Tasks').has(request.taskId)) throw new Error('Choose a recorded task for the zero-second question.');
     if (selection.zeroTaskId === request.taskId) return record;
     selection.zeroTaskId=request.taskId;
+    delete changed.phases[2].answers.zeroSecond;
   } else if (request.kind === 'candidate_disposition') {
     requirePhase(request,4);
     if (!candidateIds(record).has(request.candidateId)) throw new Error('Choose a recorded candidate.');

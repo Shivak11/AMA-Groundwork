@@ -73,14 +73,21 @@ export const phases = [
 ].map((phase,i) => ({ ...phase, requiredFields:Object.keys(answerSchemas[i].shape) }));
 
 export function validateRecord(input) {
-  if (Buffer.byteLength(JSON.stringify(input)) > 150000) throw new Error('This record is too large. Keep the summaries concise and remove raw transcripts.');
+  if (new TextEncoder().encode(JSON.stringify(input)).byteLength > 150000) throw new Error('This record is too large. Keep the summaries concise and remove raw transcripts.');
   const record = recordSchema.parse(input);
   for (const phase of record.phases) if (phase.status === 'confirmed') validateReferences(record, phase.id);
   validateInteractionReferences(record);
   return record;
 }
 export function currentPhase(record) { return record.phases.find(p => p.status !== 'confirmed')?.id ?? null; }
-export function phaseGuide(record, requested) { return phases[(requested ?? currentPhase(record) ?? 6)-1]; }
+export function phaseGuide(record, requested) {
+  const phase = phases[(requested ?? currentPhase(record) ?? 6)-1];
+  if (phase?.id === 3 && record.interaction?.zeroTaskId && !record.phases[2].answers.zeroSecond) {
+    const task = record.phases[2].answers.tasks?.find(item=>item.id===record.interaction.zeroTaskId);
+    if (task) return {...phase,question:`If “${task.work}” took zero seconds, what would still prevent your outcome?`};
+  }
+  return phase;
+}
 export function createRecord(group) {
   return { schemaVersion:1, group:groupSchema.parse(group), revision:0,
     phases: phases.map(p => ({id:p.id, status:'draft', answers:{}})) };
@@ -97,10 +104,23 @@ function markChanged(record, phaseId) {
     else if (p.id > phaseId && p.status === 'confirmed') p.status = 'needs_review';
   });
 }
-function reconcileInteraction(record, phaseId, patch) {
+function reconcileInteraction(record, phaseId, patch, previousAnswers) {
   if (!record.interaction) return;
   delete record.interaction.undo;
-  if (phaseId === 2 && Object.hasOwn(patch ?? {}, 'blockers')) record.interaction.barrierCategories = {};
+  if (phaseId === 2 && Object.hasOwn(patch ?? {}, 'blockers')) {
+    const blockerSchema = answerSchemas[1].shape.blockers.element;
+    const before = (previousAnswers?.blockers ?? []).map(blocker=>JSON.stringify(blockerSchema.parse(blocker)));
+    const after = record.phases[1].answers.blockers.map(blocker=>JSON.stringify(blockerSchema.parse(blocker)));
+    if (JSON.stringify(before) !== JSON.stringify(after)) {
+      const remapped = {};
+      for (const [index,category] of Object.entries(record.interaction.barrierCategories)) {
+        const key = before[Number(index)];
+        const matches = after.map((value,i)=>value===key ? i : -1).filter(i=>i>=0);
+        if (before.filter(value=>value===key).length === 1 && matches.length === 1) remapped[matches[0]]=category;
+      }
+      record.interaction.barrierCategories = remapped;
+    }
+  }
   const tasks = new Set((record.phases[2].answers.tasks ?? []).map(task=>task.id));
   if (!tasks.has(record.interaction.zeroTaskId)) delete record.interaction.zeroTaskId;
   const candidates = new Set((record.phases[3].answers.candidates ?? []).map(candidate=>candidate.id));
@@ -108,22 +128,31 @@ function reconcileInteraction(record, phaseId, patch) {
     for (const candidateId of Object.keys(record.interaction[key])) if (!candidates.has(candidateId)) delete record.interaction[key][candidateId];
   }
   if (phaseId === 4 && Object.hasOwn(patch ?? {}, 'candidates')) {
+    const candidateSchema = answerSchemas[3].shape.candidates.element;
     for (const candidateId of Object.keys(record.interaction.candidateDispositions)) {
-      if (record.interaction.candidateDispositions[candidateId] === 'Reconsider') delete record.interaction.candidateDispositions[candidateId];
+      if (record.interaction.candidateDispositions[candidateId] !== 'Reconsider') continue;
+      const before = previousAnswers?.candidates?.find(candidate=>candidate.id===candidateId);
+      const after = record.phases[3].answers.candidates.find(candidate=>candidate.id===candidateId);
+      if (!before || !after || JSON.stringify(candidateSchema.parse(before)) !== JSON.stringify(candidateSchema.parse(after))) delete record.interaction.candidateDispositions[candidateId];
     }
   }
   if (phaseId === 5 && Object.hasOwn(patch ?? {}, 'choices')) {
-    for (const choice of record.phases[4].answers.choices) delete record.interaction.priorities[choice.candidateId];
+    for (const choice of record.phases[4].answers.choices) {
+      const pending = Object.hasOwn(record.interaction.priorities,choice.candidateId) ? record.interaction.priorities[choice.candidateId] : undefined;
+      if (pending && pending !== choice.decision) throw new Error(`The choice for ${choice.candidateId} does not match its pending ${pending} selection. Use the latest selection, or change it explicitly in the activity before saving.`);
+      if (pending === choice.decision) delete record.interaction.priorities[choice.candidateId];
+    }
   }
 }
 export function savePhase(input, phaseId, patch, groupPatch) {
   const record = validateRecord(input);
   assertEditable(record, phaseId);
   if (patch && Object.keys(patch).length) {
+    const previousAnswers = record.phases[phaseId-1].answers;
     const next = answerSchemas[phaseId-1].partial().parse({...record.phases[phaseId-1].answers, ...patch});
     record.phases[phaseId-1].answers = next;
     markChanged(record, phaseId);
-    reconcileInteraction(record, phaseId, patch);
+    reconcileInteraction(record, phaseId, patch, previousAnswers);
   }
   if (groupPatch && Object.keys(groupPatch).length) {
     record.group = groupSchema.parse({...record.group,...groupPatch});
@@ -185,7 +214,10 @@ export function confirmPhase(input, phaseId, confirmation, now = new Date().toIS
   assertEditable(record, phaseId);
   if (currentPhase(record) !== phaseId) throw new Error('This phase is already confirmed. Re-export it, or save the requested correction first.');
   const approval = text.parse(confirmation);
-  if (/\b(do not approve|don't approve|not approved|disapprove|reject this summary|not ready to approve)\b/i.test(approval)) throw new Error('This response does not approve the summary. Save the correction and ask the group again.');
+  const normalisedApproval = approval.normalize('NFKC').replace(/[\u2018\u2019\u02bc]/g,"'");
+  const refuses = /\b(do not approve|don't approve|not approved|disapprove|reject this summary|not ready to approve|no approval)\b/i.test(normalisedApproval)
+    || /^(?:no(?:[.!?,;:]|$)|no\s+thanks?\b|not\s+(?:yet|now)\b|(?:i|we)\s+(?:decline|refuse)\b|declined(?:[.!?,;:]|$))/i.test(normalisedApproval);
+  if (refuses) throw new Error('This response does not approve the summary. Save the correction and ask the group again.');
   if (phaseId === 4 && Object.values(record.interaction?.candidateDispositions ?? {}).includes('Reconsider')) throw new Error('Resolve the candidates marked Reconsider: revise the candidates in chat or explicitly choose Keep before approval.');
   if (phaseId === 5 && Object.keys(record.interaction?.priorities ?? {}).length) throw new Error('Save and review the pending visual priorities with their reasons and evidence gaps before approving the shortlist.');
   record.phases[phaseId-1].answers = answerSchemas[phaseId-1].parse(record.phases[phaseId-1].answers);
