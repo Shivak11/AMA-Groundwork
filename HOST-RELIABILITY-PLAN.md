@@ -25,7 +25,7 @@ All implementation uses the existing clean dedicated chat-workbook worktree, ini
 
 Orchestrator owns src/server-core.mjs, src/workshop.mjs, src/conversation.mjs, src/question-routing.mjs, src/widget.mjs, any new src/model-contract.mjs, package files, remote files, skill/host guidance, README/source ledger, runner changes, integration, commits and deployment. Shared contracts and existing tests are reserved unless ownership is amended explicitly.
 
-Book worker owns src/book.mjs, src/book.css, and new tests/book-cover-regression.test.mjs only, after confirming those files actually contain the render path. If another file is needed, report it before writing. No server/schema changes.
+Book worker owns src/workbook-html.mjs, skills/ai-use-case-workshop/assets/workbook.css, and new tests/book-cover-regression.test.mjs only. These are the existing render path. If another file is needed, report it before writing. No server/schema changes.
 
 Test worker owns new tests/host-reliability.test.mjs and new examples/remote-team.mjs only. They cover the real Group 1A failure class with fictional data and text-only tool-result consumption. No weakening existing tests or production edits.
 
