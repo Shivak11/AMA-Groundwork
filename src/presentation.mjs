@@ -12,7 +12,7 @@ export function validatePresentation(input, proposed) {
   const record=validateRecord(input), question=presentationSchema.parse(proposed);
   if(currentPhase(record)!==question.phaseId) throw new Error('Present one question for the current unconfirmed step.');
   const textFields=['outcome','kpi','baseline','guardrail','hypothesis','firstGap','chosenWorkflow','recentCase','zeroSecond','redesign','challenge','costs','owner','evidence','peopleChange','test','stopRule','recommendation'];
-  if(!textFields.includes(question.field)) throw new Error('Use a free-text answer field for suggested wording. Recorded decisions and candidates have their own visual controls.');
+  if(!textFields.includes(question.field)) throw new Error('Use a scalar wording field for these suggestions. For decisions use the returned nextQuestion choices; gather structured candidates in conversation.');
   const schema=answerSchemas[question.phaseId-1].shape[question.field];
   if(!schema || !Object.hasOwn(answerSchemas[question.phaseId-1].shape,question.field)) throw new Error('Choose an answer field from the current step.');
   if(new Set(question.choices.map(choice=>choice.label)).size!==question.choices.length) throw new Error('Give each proposed choice a distinct label.');

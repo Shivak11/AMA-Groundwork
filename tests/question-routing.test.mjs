@@ -3,71 +3,95 @@ import assert from 'node:assert/strict';
 import {Client} from '@modelcontextprotocol/sdk/client/index.js';
 import {InMemoryTransport} from '@modelcontextprotocol/sdk/inMemory.js';
 import {createWorkshopServer} from '../src/server.mjs';
-import {group, answers} from '../examples/hiring.mjs';
-import {contextForQuestionOwner} from '../src/question-routing.mjs';
+import {createRecord,savePhase,confirmPhase} from '../src/workshop.mjs';
+import {group,answers} from '../examples/hiring.mjs';
+import {nextConversationQuestion} from '../src/conversation.mjs';
 
+// Real MCP routing and state use a labelled PDF stub. This is not host UI proof.
 async function session(ui=true) {
-  const server=await createWorkshopServer({pdfRenderer:async()=>Buffer.from('%PDF-question-routing-test')});
-  const client=new Client({name:'question-owner-regression',version:'1'}, {capabilities:ui?{extensions:{'io.modelcontextprotocol/ui':{mimeTypes:['text/html;profile=mcp-app']}}}:{}});
+  const server=await createWorkshopServer({pdfRenderer:async()=>Buffer.from('%PDF-question-routing-test-stub')});
+  const client=new Client({name:'question-routing-regression',version:'1'}, {capabilities:ui?{extensions:{'io.modelcontextprotocol/ui':{mimeTypes:['text/html;profile=mcp-app']}}}:{}});
   const [a,b]=InMemoryTransport.createLinkedPair();await Promise.all([server.connect(a),client.connect(b)]);
   return {client,call:(name,args)=>client.callTool({name,arguments:args}),close:async()=>{await client.close();await server.close();}};
 }
-function assertUiOwns(result) {
+function assertHostQuestion(result,field,kind='answer') {
   assert(!result.isError,result.content?.[0]?.text);
-  const d=result.structuredContent;
-  assert.equal(d.questionTurn.owner,'ui');assert.equal(d.questionTurn.hostAction,'wait_for_activity');
-  assert.equal(d.questionTurn.recordRevision,d.record.revision);
-  assert.match(d.questionTurn.turnId,/^[0-9a-f-]{36}$/);
-  assert.equal(d.phase.question,null);
-  assert.match(d.next,/Do not ask another question/);
-  assert.match(d.phase.instructions,/ask_user_question/);
-  assert(!result.content[0].text.includes('Ask only for missing essentials'));
-  assert(!result.content[0].text.includes('Complete this together:'));
+  const data=result.structuredContent,turn=data.questionTurn;
+  assert.equal(turn.owner,'chat');assert.equal(turn.hostAction,'ask_one_in_host');
+  assert.equal(turn.preferredInput,'native_question_tool');assert.equal(turn.fallbackInput,'plain_chat');
+  assert.equal(turn.recordRevision,data.record.revision);assert.match(turn.turnId,/^[0-9a-f-]{36}$/);
+  assert.equal(turn.field,field);assert.equal(data.nextQuestion.kind,kind);assert.equal(data.nextQuestion.field,field);
+  assert.equal(turn.question,data.nextQuestion.question);assert.equal(typeof turn.question,'string');assert(turn.question.trim());
+  assert.equal(data.phase.questionField,field);assert.equal(data.phase.question,kind==='answer'?turn.question:null);
+  assert(result.content.some(block=>block.type==='text'&&block.text.includes(turn.question)), 'Ordinary chat receives the same complete question.');
+  assert(!/wait_for_activity|The embedded activity owns|Return ownership/.test(JSON.stringify(turn)));
+  return data;
 }
-test('UI results after start, save, correction and approval tell the host to wait rather than ask again',async()=>{
-  const s=await session();
-  try{
-    assert.match(s.client.getInstructions(),/exactly one active question owner/);
-    let result=await s.call('start_workshop',{group});assertUiOwns(result);
-    result=await s.call('workshop_action',{record:result.structuredContent.record,action:{kind:'set_answer',phaseId:1,expectedRevision:0,field:'outcome',value:answers[0].outcome}});assertUiOwns(result);
-    result=await s.call('save_workshop_phase',{record:result.structuredContent.record,phase:1,answers:answers[0]});assertUiOwns(result);
-    result=await s.call('confirm_workshop_phase',{record:result.structuredContent.record,phase:1,approved:true,confirmation:'Our group approves this summary.'});assertUiOwns(result);
-    assert.equal(result.structuredContent.questionTurn.phaseId,2);
-    const tools=await s.client.listTools();assert(tools.tools.every(tool=>tool.description.includes('Follow returned questionTurn')));
-  }finally{await s.close();}
-});
-test('suggested question is in the UI presentation only, not a second model-facing questionnaire',async()=>{
-  const s=await session();
-  try{
-    const start=await s.call('start_workshop',{group});
-    const presentation={phaseId:1,field:'kpi',question:'Which waiting time should we measure?',choices:[{label:'Error to owner assigned',value:'Elapsed time between an error and assigning its owner.'},{label:'Error to resolved',value:'Elapsed time between an error and resolution.'}]};
-    const result=await s.call('present_workshop_question',{record:start.structuredContent.record,presentation});assertUiOwns(result);
-    assert.deepEqual(result.structuredContent.presentation,presentation);
-    assert(!result.content[0].text.includes(presentation.question));
-    assert(!result.content[0].text.includes('Error to owner assigned'));
-    assert.deepEqual(result.structuredContent.record,start.structuredContent.record);
-    const context=contextForQuestionOwner(result.structuredContent,'ui');assert.equal(context.phase.question,null);assert.match(context.next,/visual save or context update is not a request/);
-    assert.equal(context.questionTurn.turnId,result.structuredContent.questionTurn.turnId);
-    const handoff=contextForQuestionOwner(context,'chat');
-    assert.equal(handoff.mode,'text');
-    assert(!handoff.next.includes('Wait for the participant to answer there'));
-    assert(!handoff.phase.instructions.includes('The embedded activity owns'));
-    assert.match(handoff.next,/Chat owns this turn/);
-  }finally{await s.close();}
-});
-test('explicit text mode and non-UI hosts retain one complete conversational path',async()=>{
-  for(const ui of [true,false]){
+
+test('UI capability never takes ownership away from native-first chat and its plain-chat fallback',async()=>{
+  for(const ui of [true,false]) for(const mode of ['auto','text']) {
     const s=await session(ui);
-    try{
-      const result=await s.call('start_workshop',{group,...(ui?{mode:'text'}:{})});
-      assert.equal(result.structuredContent.questionTurn.owner,'chat');
-      assert.equal(result.structuredContent.mode,'text');
-      assert.match(result.structuredContent.next,/Ask only for missing essentials/);
-      assert(result.structuredContent.phase.question);
-      assert(result.content[0].text.includes(result.structuredContent.phase.question));
-      const back=await s.call('workshop_next',{record:result.structuredContent.record,mode:'auto'});
-      assert.equal(back.structuredContent.questionTurn.owner,ui?'ui':'chat');
-      assert.notEqual(back.structuredContent.questionTurn.turnId,result.structuredContent.questionTurn.turnId);
-    }finally{await s.close();}
+    try {
+      const first=await s.call('start_workshop',{group,mode});const data=assertHostQuestion(first,'outcome');
+      const next=await s.call('workshop_next',{record:data.record,mode});assertHostQuestion(next,'outcome');
+      assert.notEqual(next.structuredContent.questionTurn.turnId,data.questionTurn.turnId);
+      assert.deepEqual(next.structuredContent.record,data.record);
+      const instructions=s.client.getInstructions();
+      assert.match(instructions,/native/i);assert.match(instructions,/available/i);assert.match(instructions,/ordinary chat|plain chat/i);
+      assert.doesNotMatch(instructions,/when owner is ui|the embedded activity owns/i);
+    } finally {await s.close();}
   }
+});
+
+test('next question skips saved fields and asks for approval only after the draft is complete',async()=>{
+  const s=await session();
+  try {
+    let result=await s.call('start_workshop',{group});
+    result=await s.call('save_workshop_phase',{record:result.structuredContent.record,phase:1,answers:{outcome:answers[0].outcome,baseline:'Unknown'}});
+    assertHostQuestion(result,'kpi');assert.match(result.structuredContent.phase.question,/know|measure|KPI/i);
+    result=await s.call('save_workshop_phase',{record:result.structuredContent.record,phase:1,answers:{kpi:answers[0].kpi}});
+    assertHostQuestion(result,'guardrail');assert.match(result.structuredContent.phase.question,/worse|protect|guardrail/i);
+    result=await s.call('save_workshop_phase',{record:result.structuredContent.record,phase:1,answers:{guardrail:answers[0].guardrail,hypothesis:answers[0].hypothesis}});
+    const complete=assertHostQuestion(result,null,'approval');assert.equal(complete.record.phases[0].status,'draft');
+    assert.match(complete.questionTurn.question,/approv|agree|correct/i);
+    result=await s.call('confirm_workshop_phase',{record:complete.record,phase:1,approved:true,confirmation:'Our group approves this saved summary.'});
+    const confirmed=assertHostQuestion(result,'blockers');assert.equal(confirmed.questionTurn.phaseId,2);
+    assert.equal(confirmed.record.phases[0].status,'confirmed');
+  } finally {await s.close();}
+});
+
+test('each phase asks its exact next missing field and a completed record asks nothing further',()=>{
+  const fieldOrder=[['outcome','kpi','baseline','guardrail','hypothesis'],['blockers','firstGap'],['workflows','chosenWorkflow','recentCase','tasks','zeroSecond','redesign'],['candidates'],['choices','challenge','costs'],['decision','candidateId','owner','evidence','test','stopRule','peopleChange','recommendation']];
+  let record=createRecord(group);
+  for(let phase=1;phase<=6;phase++) {
+    for(const field of fieldOrder[phase-1]) {
+      const question=nextConversationQuestion(record);
+      assert.equal(question.kind,'answer',`Phase ${phase}, before ${field}`);assert.equal(question.field,field,`Phase ${phase}`);
+      assert.equal(typeof question.question,'string');assert(question.question.trim());
+      record=savePhase(record,phase,{[field]:answers[phase-1][field]});
+    }
+    const approval=nextConversationQuestion(record);
+    assert.equal(approval.kind,'approval');assert.equal(approval.field,null);assert(approval.question);
+    record=confirmPhase(record,phase,'Our group approves this saved summary.');
+  }
+  const completed=nextConversationQuestion(record);
+  assert.equal(completed.kind,'complete');assert.equal(completed.field,null);assert.equal(completed.question,null);
+});
+
+test('proposed choices appear in the host question and full text fallback without saving an answer',async()=>{
+  const s=await session();
+  try {
+    let start=await s.call('start_workshop',{group});
+    start=await s.call('save_workshop_phase',{record:start.structuredContent.record,phase:1,answers:{outcome:answers[0].outcome}});
+    const presentation={phaseId:1,field:'kpi',question:'Which waiting time should we measure?',choices:[{label:'CV to approved offer',value:'Elapsed days from the first CV to the first approved offer.'},{label:'Approval to release',value:'Elapsed time from approved pay to offer release.'}]};
+    const result=await s.call('present_workshop_question',{record:start.structuredContent.record,presentation});const data=assertHostQuestion(result,'kpi');
+    assert.deepEqual(data.presentation,presentation);assert.equal(data.questionTurn.question,presentation.question);
+    assert.deepEqual(data.record,start.structuredContent.record);
+    for(const choice of presentation.choices) {
+      assert(data.nextQuestion.choices.some(item=>item.label===choice.label&&item.value===choice.value));
+      assert(result.content[0].text.includes(choice.label));assert(result.content[0].text.includes(choice.value));
+    }
+    assert.match(result.content[0].text,/own answer|another answer|different answer|uncertain|unknown/i);
+    assert.match(result.content[0].text,/No choice is saved yet/i);
+  } finally {await s.close();}
 });

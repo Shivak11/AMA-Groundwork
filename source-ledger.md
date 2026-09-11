@@ -1,5 +1,9 @@
 # Source ledger
 
+## Conversation-led workbook, 11 September 2026
+
+Shiva preferred host-native question cards to embedded answer fields and approved ordinary chat as the fallback. A real Claude test of v0.3.1 showed separate tool-result cards, a file/handoff message inserted into the composer rather than submitted, and a subsequent tool record missing a previously saved outcome. Version 0.4.0 removes all input and record writes from those visual cards, limits visual metadata to explicit views and file-producing checkpoints, and calculates the next missing question from the supplied record. It preserves the existing six-phase confirmation and PDF engine. This is a design and implementation response; real host behaviour and classroom usability require separate evidence.
+
 ## Question ownership correction, 11 September 2026
 
 Shiva's screenshot shows the MCP view asking for a success measure while a host-native question card asks a separate question. The deployed source independently confirms conflicting instructions: UI-mode tool results and app context updates both told the model to ask again. Version 0.3.1 removes those duplicate commands, returns an explicit question owner, and pauses the view on chat handoff. The image and its private conversation were not copied into the public connector. Automated protocol/browser checks do not establish host-model compliance.

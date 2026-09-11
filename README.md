@@ -1,6 +1,6 @@
 # AI Use-Case Workshop
 
-Version 0.3.1 retains the approved inline interface and fixes competing question surfaces. The activity owns questions until the participant explicitly hands one to chat or chooses text participation. See SINGLE-QUESTION-PLAN.md for this correction and INLINE-LIVE-PLAN.md for the underlying interface. Deployment identity and actual host evidence are recorded separately in the programme release record.
+Version 0.4.0 puts every question and approval in the conversation. The host uses native question cards when available and ordinary chat otherwise. MCP views show saved work as read-only diagrams and cumulative workbook snapshots. See CHAT-WORKBOOK-PLAN.md for the approved replacement. Deployment identity and actual host evidence are recorded separately in the programme release record.
 
 ## Participant journey
 
@@ -13,7 +13,7 @@ Version 0.3.1 retains the approved inline interface and fixes competing question
 | 5 | Move candidates between First, Later and Do not pursue. | Priorities, reasons, unknowns, challenge and recurring effort. |
 | 6 | Refine a bounded comparison or no-pilot recommendation. | Owner, evidence, test, human responsibility and stop rule. |
 
-Group details and answers can come from conversation. Empty views ask for one missing item, not a full form. Completed wording remains editable. Groups approve their own step summaries and continue without an instructor release. Proposed use cases, unknown baselines and unaccepted responsibilities remain explicit.
+Group details, answers and corrections come through conversation. The server returns the next missing question and skips saved fields. Groups approve their own step summaries without an instructor release. Views contain no answer forms or approval controls. Proposed use cases, unknown baselines and unaccepted responsibilities remain explicit.
 
 ## One connector
 
@@ -37,32 +37,32 @@ npm run build:remote
 The last command packages the Cloudflare Worker with a dry run; it does not deploy it. The default Worker remains disabled/unconfigured unless explicitly activated later.
 
 ```sh
-node scripts/verify-inline-live.mjs
-node scripts/verify-inline-remote.mjs
+node scripts/verify-chat-workbook.mjs
+node scripts/verify-chat-workbook-remote.mjs
 node scripts/connector-config.mjs
 ```
 
-The journey checks use fictional hiring data in examples/hiring.mjs. The local inline harness writes output/inline-live with screenshots and results. Its PDF payload is a deliberate protocol stub. The separate remote check writes output/inline-remote with six actual Cloudflare PDF checkpoints and evidence. PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH may point to an already installed compatible browser. Run the remote check only after deploying the exact built source to the authorised endpoint.
+The journey checks use fictional hiring data in examples/hiring.mjs. The local harness writes output/chat-workbook with screenshots and results. Its PDF payload is a deliberate protocol stub. The separate remote check writes output/chat-workbook-remote with six actual Cloudflare PDF checkpoints and evidence. PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH may point to an already installed compatible browser. Run the remote check only after deploying the exact built source to the authorised endpoint. Older verify-inline scripts document the retired form-based interface.
 
-The journey harness runs the actual in-memory MCP server and returned widget. It forwards real tools/call and model-context messages; the host and conversation answers are controlled test fixtures. It is not proof of Claude/ChatGPT installation, model behaviour, host download delivery or classroom usability.
+The journey harness runs the actual in-memory MCP server and returned widget. It checks that workbook controls never call record-changing tools or write model context. The host and conversation answers are controlled fixtures, not proof of Claude/ChatGPT model behaviour, host download delivery or classroom usability.
 
 ## State and recovery
 
-Every call carries and returns a complete validated record. workshop_action handles typed visual choices and equivalent chat choices. The app adopts the result, then shares the complete structured record with the host model before accepting further edits. A rejected context update blocks silent continuation and exposes retry/backup.
+Every call carries and returns a complete validated record. The conversation saves agreed answers using the latest full returned record. The app never saves answers, writes model context or restores an old record. workshop_action remains a compatibility route for specific conversational choices.
 
-There is no participant database. Revision checks compare the action with its supplied record, not an authoritative server-held latest version. Use one conversation and the latest view per group; competing old widgets are not automatically merged. JSON remains a manual recovery mechanism.
+There is no participant database. Revision checks compare the action with its supplied record, not a server-held latest version. Use one conversation and the latest tool-returned record per group; competing records are not automatically merged. Old widgets are read-only. JSON remains a manual recovery mechanism.
 
 A selected priority is separate from its previous reasoning. The group must reconcile it before confirmation. Reconsider also requires resolution. Earlier corrections retain downstream answers and mark dependent chapters for review. One eligible visual action can be undone; later saves or approvals invalidate that undo.
 
-present_workshop_question proposes up to four scalar answer choices without changing the record. A participant reviews and saves the wording through workshop_action. Structured cases, task lists and candidates are gathered in conversation. An unfinished local draft remains visible when a newer host answer arrives and can be cancelled without changing saved work.
+present_workshop_question prepares up to four grounded scalar choices for the host's native question tool or plain chat, without changing the record. Structured cases, task lists and candidates are gathered conversationally. Partial scalar saves preserve omitted fields; arrays replace their whole field, so the host must send complete updated arrays with stable IDs.
 
-The questionTurn envelope assigns one owner outside the saved participant record. UI-owned results and context updates tell the host to wait and suppress competing question text. “Discuss in chat” shares chat ownership, pauses the activity and sends one message. “Return to activity” restores UI ownership. Text-mode results leave the view passive. Failed handoffs retain saved work and recover ownership before editing resumes. The connector cannot disable another host's question tool; those host instructions and real host compliance are separate evidence.
+questionTurn always assigns ownership to chat and specifies native-first questions with a plain-chat fallback. nextQuestion identifies the next missing answer or the explicit approval step. Legacy mode arguments remain accepted but cannot restore UI ownership. The connector cannot guarantee a host-native question tool exists or force a model to call it; those instructions and actual host compliance are separate evidence.
 
 Confirmation validates and retains group approval, then attempts its PDF. A renderer failure returns the confirmed record with export.status=failed and no PDF; retry export_workbook without asking for approval again. Generated files and successful downloads are different outcomes. Use normal host file controls if an embedded download is declined.
 
 ## Presentation and delivery boundaries
 
-Inline activities inherit host colours and typography. The book preview and PDF use the shared Terracotta contract. Open workbook shows the cumulative document; there are no separate activity/book/layout navigation tabs. The host determines where the app appears and whether it receives later tool updates.
+Inline snapshots inherit host colours and typography. The book preview and PDF use the shared Terracotta contract. Open workbook shows the cumulative document. Only show_workbook, show_shortlist, confirm_workshop_phase and export_workbook advertise visual resources. Routine starts, questions and saves do not open more cards. The host determines where each snapshot appears and whether an existing card receives updates.
 
 All steps, corrections, approvals and PDF requests have text equivalents in the same conversation. A separate browser app is not required. No claim of pinned hot reload, automatic cross-client resumption or live replacement is made.
 

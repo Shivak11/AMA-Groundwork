@@ -18,13 +18,9 @@ export type WorkshopRecord = {
 export type Presentation = {phaseId: PhaseId; field: keyof Answers; question: string; hint?: string; choices: {label: string; value: string | null}[]};
 export type Action = {kind: string; phaseId: PhaseId; expectedRevision: number; field?: string; value?: unknown; index?: number; category?: string; taskIds?: string[]; taskId?: string; candidateId?: string; disposition?: 'Keep'|'Reconsider'; priority?: Priority};
 export type InlineProps = {
-  record: WorkshopRecord | null; phaseId: PhaseId; activePhase: PhaseId; allConfirmed: boolean;
-  bookHtml?: string; hasPdf: boolean; exportFailed: boolean; presentation?: Presentation;
-  notice: string; noticeError: boolean; busy: boolean; canMutate: boolean; canChat: boolean;
-  connected: boolean; contextBlocked: boolean; conflict: null | {kind: string; incoming: WorkshopRecord};
-  chatActive: boolean; onResumeUi: () => Promise<void>;
-  onAction: (action: Action) => Promise<void>; onAsk: (prompt: string) => Promise<void>;
-  onConfirm: (phase: PhaseId) => Promise<void>; onExport: () => Promise<void>; onDownload: (kind: 'pdf' | 'checkpoint') => Promise<void>;
-  onPhase: (phase: PhaseId) => void; onRetrySync: () => Promise<void>; onResolve: (incoming: boolean) => Promise<void>;
-  onDirty: (dirty: boolean) => void;
+  record: WorkshopRecord | null; phaseId: PhaseId;
+  bookHtml?: string; hasPdf: boolean; exportFailed: boolean;
+  notice: string; noticeError: boolean; busy: boolean; connected: boolean;
+  onDownload: (kind: 'pdf' | 'checkpoint') => Promise<void>;
+  onRequestFiles: () => Promise<void>;
 };

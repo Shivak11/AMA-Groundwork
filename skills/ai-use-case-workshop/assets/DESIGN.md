@@ -2,7 +2,7 @@
 
 The portfolio belongs to the group. Its visual hierarchy makes the group's problem, evidence, disagreements and proposed decisions easy to find. The inline activity and composed book use the same semantic record but different visual treatments.
 
-Inline activities inherit host typography, light/dark colours and a transparent outer surface. The book preview and PDF retain the Terracotta design below. Keep the action in focus, with the growing book beside it when space and host capabilities permit; otherwise use an accessible book tab. Never imitate host attribution or permission controls.
+Inline workbook snapshots inherit host typography, light/dark colours and a transparent outer surface. The book preview and PDF retain the Terracotta design below. Show a diagram of saved work with a secondary book preview, opening the full book only on request. The host conversation owns questions and approval. Never imitate host attribution or permission controls.
 
 ## Direction
 
@@ -39,9 +39,9 @@ Every page has `Prepared by Dr. Shiva Kakkar` and a working profile link with a 
 
 ## State and interaction
 
-MCP Apps views use the same group record as the conversation and PDF. They do not quietly save answers in browser storage. Controls name the action they cause; edits remain visibly pending until workshop_action returns the updated record. The app then updates model context. If that synchronisation fails, show the recovery action and do not silently continue with divergent records. Equivalent text actions remain available.
+MCP Apps views are read-only snapshots of the same group record used for the PDF. They have no answer forms, approval controls, record-changing tool calls or model-context writes. Old cards cannot restore their record into the conversation. The host saves agreed answers and requests a fresh view after a meaningful decision. Progress shows actual confirmation state, not a score of the group. No charts imply a measured improvement without supplied evidence.
 
-Never gate a phase behind a widget. The entire exercise, corrections, approval, progress and downloads work through plain-language questions, numbered choices and readable summaries. A PDF is shown as generated only after the renderer returns its bytes. A PDF failure preserves the newly confirmed record and exposes an export retry. Technical counters and backup controls stay behind disclosure.
+Never gate a phase behind a widget. Use the host's native question tool when available and plain conversation otherwise. The entire exercise, corrections and approval remain available in text. A PDF is shown as generated only after the renderer returns its bytes. A PDF failure preserves the confirmed record. File controls may request delivery in chat without reopening a questionnaire or attaching an old record. Technical backups stay behind disclosure.
 
 Confirmed chapters are included. Chapters marked `needs_review` are included with the visible sentence `This phase needs your review because an earlier answer changed.` Draft chapters are omitted. The cover's progress makes this distinction explicit. A blank value is shown as `Not recorded`; an explicit `Unknown` stays as entered.
 

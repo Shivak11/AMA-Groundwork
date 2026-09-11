@@ -83,7 +83,7 @@ test('UI advertisement is checked and explicit text mode overrides it',async()=>
     const b=await c.client.callTool({name:'workshop_next',arguments:{record:a.structuredContent.record,mode:'text'}});assert.equal(b.structuredContent.mode,'text');
   } finally {await c.close();}
 });
-test('the Prefab shortlist remains readable without UI support',async()=>{
+test('the read-only shortlist remains readable without UI support',async()=>{
   const c=await connected({pdfRenderer:stub});
   try {
     let r=(await c.client.callTool({name:'start_workshop',arguments:{group,mode:'text'}})).structuredContent.record;
@@ -94,6 +94,8 @@ test('the Prefab shortlist remains readable without UI support',async()=>{
     const result=await c.client.callTool({name:'show_shortlist',arguments:{record:r,mode:'text'}});
     assert(!result.isError);assert.equal(result.structuredContent.mode,'text');
     for(const candidate of answers[3].candidates) assert(result.content[0].text.includes(candidate.title));
-    assert.match(result.content[0].text,/strongest reason against/);
+    assert.match(result.content[0].text,/First, Later or Do not pursue/);
+    assert.equal(result.structuredContent.nextQuestion.field,'choices');
+    assert.equal(result.structuredContent.questionTurn.owner,'chat');
   } finally {await c.close();}
 });

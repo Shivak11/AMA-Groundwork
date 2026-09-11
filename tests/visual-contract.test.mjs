@@ -13,7 +13,7 @@ async function session() {
   await Promise.all([server.connect(a),client.connect(b)]);
   return {call:(name,args)=>client.callTool({name,arguments:args}),client,close:async()=>{await client.close();await server.close();}};
 }
-test('a click and a conversational correction use one record, with the same book projection',async()=>{
+test('conversational actions and corrections use one record, with the same book projection',async()=>{
   const c=await session();
   try {
     let result=await c.call('start_workshop',{group});
@@ -34,12 +34,15 @@ test('a click and a conversational correction use one record, with the same book
     assert(!changed._meta.bookHtml.includes('A corrected group outcome'),'An unconfirmed correction must not enter the approved book.');
   } finally {await c.close();}
 });
-test('the native visual resource and action tool do not require Prefab or another connector',async()=>{
+test('the read-only workbook resource does not require Prefab or another connector',async()=>{
   const c=await session();
   try {
     const tools=await c.client.listTools();
-    for(const name of ['workshop_action','show_shortlist','confirm_workshop_phase','present_workshop_question']) {
+    for(const name of ['show_workbook','show_shortlist','confirm_workshop_phase','export_workbook']) {
       const tool=tools.tools.find(t=>t.name===name);assert(tool);assert.equal(tool._meta.ui.resourceUri,'ui://workshop/checkpoint.html');
+    }
+    for(const name of ['workshop_action','present_workshop_question']) {
+      const tool=tools.tools.find(t=>t.name===name);assert(tool);assert.equal(tool._meta?.ui?.resourceUri,undefined);
     }
     const resources=await c.client.listResources();assert(!resources.resources.some(r=>r.uri.includes('prefab')));
     const view=await c.client.readResource({uri:'ui://workshop/checkpoint.html'});
@@ -69,11 +72,13 @@ test('unresolved visual choices prompt reconciliation instead of premature appro
     const candidateId=record.phases[3].answers.candidates[0].id;
     let result=await c.call('workshop_action',{record,action:{expectedRevision:record.revision,phaseId:4,kind:'candidate_disposition',candidateId,disposition:'Reconsider'}});
     assert(!result.isError);assert.match(result.structuredContent.next,/Resolve each candidate marked Reconsider/);
+    assert.equal(result.structuredContent.nextQuestion.kind,'answer');assert.equal(result.structuredContent.nextQuestion.field,'candidates');
     assert(!result.structuredContent.next.includes('Ask for approval or corrections'));
     record=confirmPhase(record,4,'Our group approves this saved summary.');
     record=savePhase(record,5,answers[4]);
     const priority=record.phases[4].answers.choices.find(choice=>choice.candidateId===candidateId).decision==='Later'?'Do not pursue':'Later';
     result=await c.call('workshop_action',{record,action:{expectedRevision:record.revision,phaseId:5,kind:'prioritise',candidateId,priority}});
-    assert(!result.isError);assert.match(result.structuredContent.next,/Resolve the pending priority choices/);
+    assert(!result.isError);assert.match(result.structuredContent.next,/Resolve the pending priorit/);
+    assert.equal(result.structuredContent.nextQuestion.kind,'answer');assert.equal(result.structuredContent.nextQuestion.field,'choices');
   } finally {await c.close();}
 });
