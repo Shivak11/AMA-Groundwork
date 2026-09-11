@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
+import {execFileSync} from 'node:child_process';
 import {Client} from '@modelcontextprotocol/sdk/client/index.js';
 import {StreamableHTTPClientTransport} from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import {group,answers,approval} from '../examples/persistent-remote-team.mjs';
@@ -10,6 +11,7 @@ const pdfRequired=!process.argv.includes('--skip-pdf');
 const out=new URL(`../output/persistent-${endpoint.hostname==='127.0.0.1'?'local-http':'remote'}/`,import.meta.url);
 await mkdir(out,{recursive:true});
 const results=[],refs=[];let client,transport;
+const sourceHead=execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
 const connect=async visual=>{
   client=new Client({name:'fictional-workbook-release-check',version:'0.6.0'},{capabilities:visual?{extensions:{'io.modelcontextprotocol/ui':{mimeTypes:['text/html;profile=mcp-app']}}}:{}});
   transport=new StreamableHTTPClientTransport(endpoint);
@@ -87,7 +89,7 @@ finally {
     results.push({fictionalSessionDeleted:true});
   }catch{results.push({fictionalSessionDeleted:false});failure??=new Error('The fictional session needs explicit cleanup.');}
   await client?.close();
-  await writeFile(new URL('evidence.json',out),JSON.stringify({endpoint:endpoint.origin,status:failure?'failed':'passed',pdfRequired,results,boundary:'SDK endpoint and downloaded-byte proof; not an actual Claude or ChatGPT journey.'},null,2));
+  await writeFile(new URL('evidence.json',out),JSON.stringify({sourceHead,checkedAt:new Date().toISOString(),endpoint:endpoint.origin,status:failure?'failed':'passed',pdfRequired,results,boundary:'SDK endpoint and downloaded-byte proof; not an actual Claude or ChatGPT journey.'},null,2));
 }
 if(failure)throw failure;
 console.log(JSON.stringify({status:'passed',pdfRequired,checks:results.length,evidence:new URL('evidence.json',out).pathname}));
