@@ -40,6 +40,10 @@ Implement `createD1SessionStore(db, {now, randomBytes} = {})` in `remote/d1-sess
 - `resolveFileTicket(ticket)` returns `{record, kind, revision}` only while authorised session, snapshot and ticket still exist and the ticket is valid. No write credential is returned.
 - `history(key)` returns bounded revision metadata for that group, not another group's records. Include revision and creation time, not whole snapshots by default.
 
+Adapter amendment, acknowledged by the storage builder: `history` and `createFileTicket` accept either write or read-only keys without promoting authority. `getPreference(key)` reads `auto` or `text`; `setPreference(reference, mode)` requires a write key and expected current revision, persists session metadata without changing the workbook revision, and returns the loaded result. A dedicated preference tool persists this choice; read-only tools may override presentation for one turn without writing. Confirmation replay returns current context but its PDF links identify the original `appliedRevision`; later corrections must not be described as already approved.
+
+Admission amendment: refuse new preparation beyond 500 pending/active sessions, effective revision beyond 1000, and more than 2000 operation receipts per session. Keep replays and reads available. A trigger-controlled conservative 200 MB logical budget counts UTF-8 heads/snapshots and row allowances. At most 256 unexpired tickets per group; only already-expired file tickets may be cleaned during new issuance. No active workbook, approval or history is purged for capacity. The private reader also offers authenticated direct downloads requiring no new database allocation, so months-later export does not depend on ticket admission.
+
 Export `referenceSchema`, `readKeyFor(writeKey)`, `hashValue(string)`, `canonicalJson(value)` and a privacy-safe `SessionError` from the shared helper. Deterministic operation IDs may be derived from operation type, expected revision and canonical argument digest; callers may also pass a bounded request ID, whose payload digest must be checked.
 
 ## Server, model and file contracts
@@ -69,6 +73,8 @@ The orchestrator owns this plan, `src/persistent-server.mjs`, shared server inte
 Storage builder owns only `src/session-store.mjs`, `remote/d1-session-store.mjs`, `migrations/0001_workshop_sessions.sql`, `tests/session-store.test.mjs` and `tests/support/d1-sqlite.mjs`. Use real SQLite in Node tests through a small D1-compatible wrapper. Do not modify remote routing, configuration or server contracts without a written ownership amendment.
 
 Test builder owns only `tests/persistent-host.test.mjs` and `examples/persistent-remote-team.mjs`. Test the persistent MCP contract, complete six-phase case, short reference recovery and corrections. Coordinate adapter availability; do not edit production files or old tests to manufacture a pass.
+
+Subsequent acknowledged assignments: after freezing storage files, the storage builder owns only `scripts/verify-persistent-browser.mjs` for controlled local-browser verification. After freezing its first tests, the test builder separately owns `tests/persistent-routes.test.mjs` and then `tests/persistent-review-regressions.test.mjs`. Neither may edit production files or use the actual user's browser. The orchestrator retains deployment and actual-host ownership.
 
 Reviewer is read-only and attempts to disprove access isolation, state integrity, retry handling, deletion, file access and rollback claims. A fresh exact-head independent review is required before production-proof claims.
 
