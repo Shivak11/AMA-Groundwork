@@ -4,7 +4,7 @@ import {z} from 'zod';
 import {Client} from '@modelcontextprotocol/sdk/client/index.js';
 import {InMemoryTransport} from '@modelcontextprotocol/sdk/inMemory.js';
 import {createWorkshopServer} from '../src/server.mjs';
-import {answerSchemas,createRecord,savePhase,confirmPhase} from '../src/workshop.mjs';
+import {answerSchemas,recordSchema,createRecord,savePhase,confirmPhase} from '../src/workshop.mjs';
 import {group,answers} from '../examples/remote-team.mjs';
 
 const approval='Our group explicitly approves this complete saved fictional summary.';
@@ -58,6 +58,26 @@ function visit(value,accept) {
   if(!value||typeof value!=='object')return;
   accept(value);for(const child of Object.values(value))visit(child,accept);
 }
+function assertRecordEnvelope(schema,label,{strict=true}={}) {
+  assert.equal(schema?.type,'object',label);
+  const assertAdditional=value=>strict
+    ? assert.equal(value,false,`${label} must retain a strict canonical schema.`)
+    : assert(value===true || (value && typeof value==='object' && !Array.isArray(value) && Object.keys(value).length===0),`${label} must pass unknown fields to the strict handler for repair guidance.`);
+  assertAdditional(schema.additionalProperties);
+  for(const field of ['schemaVersion','group','revision','phases'])assert(schema.required.includes(field),`${label}: ${field}`);
+  assert.equal(schema.properties.schemaVersion.const,1);
+  assert.equal(schema.properties.group.type,'object');
+  assert.equal(schema.properties.group.properties.members.type,'array');
+  const phases=schema.properties.phases;
+  assert.equal(phases.type,'array');assert.equal(phases.minItems,6);assert.equal(phases.maxItems,6);
+  assert.equal(phases.items.type,'object');assertAdditional(phases.items.additionalProperties);
+  for(const field of ['id','status','answers'])assert(phases.items.required.includes(field),`${label}: phase ${field}`);
+  assert.equal(phases.items.properties.id.minimum,1);assert.equal(phases.items.properties.id.maximum,6);
+  assert.deepEqual(phases.items.properties.status.enum,['draft','confirmed','needs_review']);
+  assert.equal(phases.items.properties.approvalNote.type,'string');
+  assert.equal(phases.items.properties.approvedAt.type,'string');assert.equal(phases.items.properties.approvedAt.format,'date-time');
+  assert.equal(phases.items.properties.confirmation,undefined,'confirmation is a tool argument, never a saved phase property.');
+}
 
 test('Group 1A fixture keeps supplied context and labels all additional case details as fictional',()=>{
   assert.equal(group.name,'1A');assert.deepEqual(group.members,['Shiva','Chirag']);
@@ -98,6 +118,51 @@ test('tools list publishes output contracts and typed save fields including the 
     assert.equal(properties.get('tasks').items.type,'object');
     assert(properties.get('tasks').items.required.includes('work'));
     assert(properties.get('candidates').items.required.includes('humanCheck'));
+  } finally {await s.close();}
+});
+
+test('every input publishes the six-phase approval envelope and every normal output retains the strict canonical shape',async()=>{
+  const s=await session();
+  try {
+    const {tools}=await s.client.listTools();let recordInputs=0,checkpointInputs=0;
+    for(const tool of tools) {
+      if(tool.inputSchema.properties.record) {assertRecordEnvelope(tool.inputSchema.properties.record,`${tool.name} record input`,{strict:false});recordInputs++;}
+      if(tool.inputSchema.properties.checkpoint) {assertRecordEnvelope(tool.inputSchema.properties.checkpoint,`${tool.name} checkpoint input`,{strict:false});checkpointInputs++;}
+      if(tool.name!=='download_workbook_file')assertRecordEnvelope(tool.outputSchema.properties.record,`${tool.name} output record`);
+      if(['save_workshop_phase','confirm_workshop_phase','resume_workshop'].includes(tool.name)) {
+        assert.match(tool.description,/approvalNote/);assert.match(tool.description,/approvedAt/);
+        assert.match(tool.description,/latest successful workshop result/);assert.match(tool.description,/browse for a timestamp/);
+      }
+    }
+    assert.equal(recordInputs,9);assert.equal(checkpointInputs,1);
+  } finally {await s.close();}
+});
+
+test('an invented phase confirmation is rejected and the canonical retry preserves the prior approval note and timestamp',async()=>{
+  let renders=0;const s=await session({pdfRenderer:async()=>{renders++;return pdfStub();}});
+  try {
+    let data=payload(await s.call('start_workshop',{group,mode:'text'}));
+    data=payload(await s.call('save_workshop_phase',{record:data.record,phase:1,answers:answers[0],mode:'text'}));
+    data=payload(await s.call('confirm_workshop_phase',{record:data.record,phase:1,approved:true,confirmation:approval,mode:'text'}));
+    data=payload(await s.call('save_workshop_phase',{record:data.record,phase:2,answers:answers[1],mode:'text'}));
+    const canonical=structuredClone(data.record),prior=structuredClone(canonical.phases[0]);
+    assert.equal(prior.approvalNote,approval);assert.equal(typeof prior.approvedAt,'string');
+    const malformed=structuredClone(canonical);malformed.phases[0].confirmation='A host-invented replacement for the saved approval note.';
+    const before=structuredClone(malformed);
+    const rejected=await s.client.callTool({name:'confirm_workshop_phase',arguments:{record:malformed,phase:2,approved:true,confirmation:approval,mode:'text'}});
+    assert.equal(rejected.isError,true);assert.match(rejected.content.filter(item=>item.type==='text').map(item=>item.text).join('\n'),/confirmation/);
+    assert(!rejected.content.some(item=>item.type==='resource'));assert.deepEqual(malformed,before);assert.deepEqual(canonical,data.record);assert.equal(renders,1);
+    const repairBlocks=rejected.content.filter(item=>item.type==='text'&&item.text.trim().startsWith('{')).map(item=>JSON.parse(item.text));
+    assert.equal(repairBlocks.length,1);assert.deepEqual(repairBlocks[0].repair.recordSchema,z.toJSONSchema(recordSchema));
+    assert.match(repairBlocks[0].repair.instruction,/approvalNote/);assert.match(repairBlocks[0].repair.instruction,/approvedAt/);
+    assert.match(repairBlocks[0].repair.instruction,/reuse the prior successful canonical record/i);
+    assert.match(repairBlocks[0].repair.instruction,/never.*reconstruct approval history/i);
+    assert.match(repairBlocks[0].repair.instruction,/browse for a timestamp/);
+    assert.equal(repairBlocks[0].record,undefined,'The server must not fabricate a repaired approval history.');
+    const retry=payload(await s.call('confirm_workshop_phase',{record:canonical,phase:2,approved:true,confirmation:approval,mode:'text'}));
+    assert.equal(retry.record.phases[1].status,'confirmed');assert.deepEqual(retry.record.phases[0],prior);
+    assert.equal(retry.record.phases[0].approvalNote,prior.approvalNote);assert.equal(retry.record.phases[0].approvedAt,prior.approvedAt);
+    assert.deepEqual(retry.record.phases[1].answers,answers[1]);assert.equal(retry.record.revision,canonical.revision+1);assert.equal(renders,2);
   } finally {await s.close();}
 });
 

@@ -8,10 +8,10 @@ import workbookCss from '../skills/ai-use-case-workshop/assets/workbook.css';
 import workbookFont from '../skills/ai-use-case-workshop/assets/fonts/DMSerifDisplay-Regular.ttf';
 import { decodePdfFile } from './pdf-file.mjs';
 
-const app = new App({name:'AI Use-Case Workshop',version:'0.5.1'}, {availableDisplayModes:['inline','fullscreen']}, {autoResize:true});
+const app = new App({name:'AI Use-Case Workshop',version:'0.5.2'}, {availableDisplayModes:['inline','fullscreen']}, {autoResize:true});
 const root = createRoot(document.getElementById('workshop-root'));
 let current=null, metadata={}, capabilities={}, host={}, bookHtml;
-let connected=false, pending=false, generation=0, suppressed=false;
+let connected=false, pending=false, generation=0;
 let notice='Connecting to the workbook.', noticeError=false;
 const supports = key => Boolean(capabilities[key]);
 const errorText = result => (result?.content??[]).filter(item=>item.type==='text').map(item=>item.text).join('\n').slice(0,1500);
@@ -70,7 +70,9 @@ async function download(kind) {
   finally {if(token===generation){pending=false;render();}}
 }
 function render() {
-  if(suppressed && !current) {root.render(null);return;}
+  // A host can mount an errored tool without ever sending its result. Render
+  // nothing until a valid visual snapshot arrives, including after connect.
+  if(!current) {root.render(null);return;}
   const record=current?.record??null;
   root.render(createElement(InlineWorkshop,{
     record,phaseId:current?.view?.phaseId??record?.phases.find(p=>p.status!=='confirmed')?.id??6,
@@ -89,8 +91,7 @@ function hostContext(context={}) {
 app.ontoolresult=result=>{
   // Some hosts mount the app even for tools with no UI metadata. Do not turn
   // their routine result into another workbook or replace a historical view.
-  if(result?.isError || result.structuredContent?.view?.display===false) {suppressed=true;render();return;}
-  suppressed=false;
+  if(result?.isError || result.structuredContent?.view?.display===false) {render();return;}
   try{receive(result);render();}catch(error){showNotice(error.message,true);}
 };
 app.onhostcontextchanged=hostContext;

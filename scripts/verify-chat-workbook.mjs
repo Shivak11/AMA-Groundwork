@@ -93,11 +93,11 @@ await page.exposeFunction('workbookHostRequest', async request=>{
   }
   throw new Error(`Unexpected workbook request: ${request.method}`);
 });
-async function mount(initial, {downloadFile=true,message=true,theme='light',osColourScheme='light',expectDisplay=true}={}) {
+async function mount(initial, {downloadFile=true,message=true,theme='light',osColourScheme='light',expectDisplay=true,deliverInitial=true}={}) {
   rejectDownload=false; rejectMessage=false;
   await page.emulateMedia({colorScheme:osColourScheme});
   await page.setContent('<!doctype html><html><body style="margin:0"><iframe id="workbook-host-frame" title="Controlled MCP workbook host" sandbox="allow-scripts" style="display:block;border:0;width:100%;height:1000px"></iframe></body></html>');
-  await page.evaluate(({html,initial,downloadFile,message,theme})=>{
+  await page.evaluate(({html,initial,downloadFile,message,theme,deliverInitial})=>{
     if(window.workbookListener)window.removeEventListener('message',window.workbookListener);
     window.workbookHostInitialised=false;
     window.workbookListener=async event=>{
@@ -115,7 +115,7 @@ async function mount(initial, {downloadFile=true,message=true,theme='light',osCo
           hostContext:{theme,displayMode:'inline'},
         });
         else if(request.method==='ui/notifications/initialized') {
-          event.source.postMessage({jsonrpc:'2.0',method:'ui/notifications/tool-result',params:initial},'*');
+          if(deliverInitial)event.source.postMessage({jsonrpc:'2.0',method:'ui/notifications/tool-result',params:initial},'*');
           window.workbookHostInitialised=true;
         }
         else if(request.method==='ui/notifications/size-changed')hostFrame.style.height=`${Math.min(Math.max(Number(request.params.height)||1000,300),20000)}px`;
@@ -126,7 +126,7 @@ async function mount(initial, {downloadFile=true,message=true,theme='light',osCo
     };
     window.addEventListener('message',window.workbookListener);
     document.getElementById('workbook-host-frame').srcdoc=html;
-  },{html,initial,downloadFile,message,theme});
+  },{html,initial,downloadFile,message,theme,deliverInitial});
   frame=page.frameLocator('#workbook-host-frame');
   await page.waitForFunction(()=>window.workbookHostInitialised===true);
   if(expectDisplay) {
@@ -223,6 +223,13 @@ function assertFileMessage(message) {
 }
 try {
   let result=await call('start_workshop',{group});
+  await mount(null,{expectDisplay:false,deliverInitial:false});
+  assert.equal(viewRequests.length,0);await screenshot('handshake-without-result-suppressed');
+  const firstRequested=await call('show_workbook',{record:result.structuredContent.record,phase:1});
+  await emit(firstRequested);await waitRecord(firstRequested.structuredContent.record);
+  assert.equal(await frame.locator('.inline-workbook').count(),1);
+  await assertReadOnly();await screenshot('explicit-workbook-after-no-result');
+  checks.push('A host handshake with no tool result leaves the view entirely empty after connection completion. A later actual show_workbook response renders the requested snapshot without inventing answers or approval.');
   const bareErrors=[];
   for(const request of [
     {name:'save_workshop_phase',arguments:{record:result.structuredContent.record,phase:1,answers:{kpi:42}}},

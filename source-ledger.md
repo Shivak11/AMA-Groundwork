@@ -1,5 +1,9 @@
 # Source ledger
 
+## Approval-envelope recovery, 11 September 2026
+
+In the refreshed ChatGPT v0.5.1 test, Step 2 was saved, but the next confirmation supplied a reconstructed historical phase with confirmation instead of approvalNote. The strict validator rejected it; the host then guessed timestamps and stopped. The v0.5.2 repair publishes the record envelope and exact historical field names, forwards unknown transport keys for contextual diagnosis, and retains strict canonical validation. It does not infer or repair past approval. Claude independently confirmed its first two steps using the correct record. Neither observation establishes a complete host journey.
+
 ## Routine attachment and cached-definition checks, 11 September 2026
 
 Actual host checks of version 0.5.0 found that Claude and ChatGPT still listed older installed tool definitions. Claude was reconnected and exposed all eleven current tools. ChatGPT's installed definition still included seven older tools and the retired Prefab resource before refresh. ChatGPT also requested file materialisation for an initial JSON checkpoint. Version 0.5.1 removes embedded JSON resources from routine responses and marks routine/error responses as non-visual while retaining the full model-readable record. Its isolated browser check tests both an initially suppressed view and preservation of an existing read-only view. Live refresh and complete host journeys remain separate verification gates.

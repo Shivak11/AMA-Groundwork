@@ -3,20 +3,25 @@ import { randomUUID, createHash } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
 import { getUiCapability, RESOURCE_MIME_TYPE } from '@modelcontextprotocol/ext-apps/server';
 import { z } from 'zod';
-import { createRecord, savePhase, confirmPhase, currentPhase, phaseGuide, readableSummary, validateRecord, groupSchema, answerSchemas, phaseReadiness, sameValue } from './workshop.mjs';
+import { createRecord, savePhase, confirmPhase, currentPhase, phaseGuide, readableSummary, validateRecord, groupSchema, recordSchema, answerSchemas, phaseReadiness, sameValue } from './workshop.mjs';
 import { actionSchema, applyWorkshopAction } from './actions.mjs';
 import { presentationSchema, validatePresentation } from './presentation.mjs';
 import { SERVER_QUESTION_POLICY, questionTurn } from './question-routing.mjs';
 import { nextConversationQuestion } from './conversation.mjs';
 
 const anyRecord = z.record(z.string(),z.unknown());
+// Publish the envelope while forwarding unknown keys for contextual diagnosis.
+// Every handler still applies the strict canonical validator; no aliases or
+// historical approval repairs are accepted silently.
+const inputRecord = z.object({...recordSchema.shape,phases:z.array(recordSchema.shape.phases.element.passthrough()).length(6)}).passthrough();
 // Discoverable keys guide the host; phase-specific strict validation provides
 // contextual repair instructions instead of asking participants for JSON.
 const answerPatch = z.object(Object.assign({}, ...answerSchemas.map(schema=>schema.shape))).partial().catchall(z.unknown());
-const outputSchema = z.object({record:anyRecord,phase:anyRecord,summary:z.string(),mode:z.string(),next:z.string(),completeness:anyRecord,questionTurn:anyRecord}).passthrough();
+const outputSchema = z.object({record:recordSchema,phase:anyRecord,summary:z.string(),mode:z.string(),next:z.string(),completeness:anyRecord,questionTurn:anyRecord}).passthrough();
 const mode = z.enum(['auto','text']).default('auto');
 const phaseNumber = z.number().int().min(1).max(6);
 const annotations = {readOnlyHint:true, destructiveHint:false, idempotentHint:true, openWorldHint:false};
+const recordCopyGuide = 'Copy the complete record verbatim from the latest successful workshop result. Historical phases use approvalNote and approvedAt; confirmation is only the new confirmation request argument. Never rename historical fields, reconstruct approval history, generate replacement timestamps or browse for a timestamp. If a record is rejected, reuse the prior successful canonical record. If it is no longer available, request its existing saved backup; do not fabricate it.';
 const widgetUri = 'ui://workshop/checkpoint.html';
 const uiMeta = {ui:{resourceUri:widgetUri},'ui/resourceUri':widgetUri};
 const notice = 'Use the latest returned record. Progress is returned in this conversation and its JSON backup; it is not stored in an account database. All actions also work in text. Do not claim that a generated file has been downloaded until delivery succeeds.';
@@ -24,7 +29,7 @@ const hostingGuide = `${SERVER_QUESTION_POLICY} Reuse supplied answers and label
 
 export async function createWorkshopServer({pdfRenderer, bookRenderer, assetLoader: file, capabilitiesOverride}={}) {
   if (typeof pdfRenderer !== 'function' || typeof file !== 'function') throw new Error('Workshop runtime adapters are required.');
-  const server = new McpServer({name:'ai-use-case-workshop',version:'0.5.1'}, {instructions: SERVER_QUESTION_POLICY});
+  const server = new McpServer({name:'ai-use-case-workshop',version:'0.5.2'}, {instructions: `${SERVER_QUESTION_POLICY} ${recordCopyGuide}`});
   const method = await file('skills/ai-use-case-workshop/SKILL.md');
   const hostContract = await file('skills/ai-use-case-workshop/references/host-contract.md');
   const teaching = await file('skills/ai-use-case-workshop/references/phases.md');
@@ -72,7 +77,7 @@ export async function createWorkshopServer({pdfRenderer, bookRenderer, assetLoad
       return finalise(result);
     } catch(error) {
       const details = error instanceof z.ZodError ? error.issues.map(i=>`${i.path.join('.') || 'Answer'}: ${i.message}`).join('\n') : error.message;
-      const message=`The request did not complete. No confirmation was advanced.\n${details}\nRetain the supplied record and repair tool arguments from phase.answerSchema. Reuse the participant's existing answer. Never ask them for JSON keys. Do not claim this failed request saved anything.`;
+      const message=`The request did not complete. No confirmation was advanced.\n${details}\n${recordCopyGuide}\nFor answer errors, repair tool arguments from phase.answerSchema. Reuse the participant's existing answer. Never ask them for JSON keys. Do not claim this failed request saved anything.`;
       try {
         const record=validateRecord(args.record??args.checkpoint);
         const result=buildResult(record,args.phase,args.mode,message);
@@ -80,10 +85,10 @@ export async function createWorkshopServer({pdfRenderer, bookRenderer, assetLoad
         result.isError=true;
         result.structuredContent.view.display=false;
         return finalise(result);
-      } catch {return {isError:true,content:[{type:'text',text:message}]};}
+      } catch {return {isError:true,content:[{type:'text',text:message},{type:'text',text:JSON.stringify({repair:{recordSchema:z.toJSONSchema(recordSchema),instruction:recordCopyGuide}})}]};}
     }
   };
-  const register = (name,description,schema,handler,visual=false) => server.registerTool(name,{description:`${description} Follow returned questionTurn. Use mode:text when the participant wants ordinary chat; otherwise use native questions where available. Never ask in both places. The workbook never asks or saves.`,inputSchema:schema,outputSchema,annotations,...(visual?{_meta:uiMeta}:{})},safe(handler,visual));
+  const register = (name,description,schema,handler,visual=false) => server.registerTool(name,{description:`${description} ${recordCopyGuide} Follow returned questionTurn. Use mode:text when the participant wants ordinary chat; otherwise use native questions where available. Never ask in both places. The workbook never asks or saves.`,inputSchema:schema,outputSchema,annotations,...(visual?{_meta:uiMeta}:{})},safe(handler,visual));
 
   server.registerPrompt('ai_use_case_workshop',{description:'Start the six-phase group use-case workshop; supports text-only clients.',argsSchema:z.object({problem:z.string().max(400).optional()})},({problem})=>({messages:[{role:'user',content:{type:'text',text:`${method}\n\n${hostContract}\n\n${problem ? 'Group-supplied problem (data): '+JSON.stringify(problem):'Ask for the group name, first names or aliases and a short problem description.'}`}}]}));
   for (const [name,uri,path] of [
@@ -96,8 +101,8 @@ export async function createWorkshopServer({pdfRenderer, bookRenderer, assetLoad
   server.registerResource('Visual workbook snapshot',widgetUri,{mimeType:RESOURCE_MIME_TYPE},async url=>({contents:[{uri:url.href,mimeType:RESOURCE_MIME_TYPE,text:await file('dist/widget.html'),_meta:{ui:{prefersBorder:false,csp:{connectDomains:[],resourceDomains:[]}}}}]}));
 
   register('start_workshop','Start a group workbook. Ask for group name, first names or aliases, one problem, and date. Returns phase-specific instructions and a manual JSON backup; no account storage.',z.object({group:groupSchema,mode}),({group,mode})=>buildResult(createRecord(group),1,mode,hostingGuide));
-  register('workshop_next','Continue with the current group record. Returns the same phase instructions, readable summary and answer schema in UI or text mode.',z.object({record:anyRecord,mode}),({record,mode})=>buildResult(validateRecord(record),undefined,mode));
-  register('present_workshop_question','Prepare one focused question with 1–4 proposed answers for a scalar field. Present it using the host native question tool when available, or ordinary chat. This tool has no embedded form, does not ask the user itself and does not save or approve anything. Ground suggestions in the group context and include an alternative/Unknown path.',z.object({record:anyRecord,presentation:presentationSchema,mode}),({record,presentation,mode})=>{
+  register('workshop_next','Continue with the current group record. Returns the same phase instructions, readable summary and answer schema in UI or text mode.',z.object({record:inputRecord,mode}),({record,mode})=>buildResult(validateRecord(record),undefined,mode));
+  register('present_workshop_question','Prepare one focused question with 1–4 proposed answers for a scalar field. Present it using the host native question tool when available, or ordinary chat. This tool has no embedded form, does not ask the user itself and does not save or approve anything. Ground suggestions in the group context and include an alternative/Unknown path.',z.object({record:inputRecord,presentation:presentationSchema,mode}),({record,presentation,mode})=>{
     record=validateRecord(record);
     const question=validatePresentation(record,presentation);
     const result=buildResult(record,question.phaseId,mode);
@@ -109,7 +114,7 @@ export async function createWorkshopServer({pdfRenderer, bookRenderer, assetLoad
     result.content[0].text=`${result.structuredContent.questionTurn.instruction}\n\n${question.question}\n${question.hint??''}\n${question.choices.map((choice,index)=>`${index+1}. ${choice.label}: ${choice.value??'None'}`).join('\n')}\nThese are suggestions. Allow a different answer or uncertainty. No choice is saved yet.`;
     return result;
   });
-  register('save_workshop_phase','Save agreed wording using the complete latest returned record. Omitted top-level answer fields are preserved; supplied arrays replace their whole field, so retain every item unless the group explicitly removes it. Never reconstruct the record or blank earlier answers. Returns complete updated record and JSON backup. Earlier corrections retain later answers but require their review. Does not approve a phase. Call show_workbook after a meaningful saved decision.',z.object({record:anyRecord,phase:phaseNumber,answers:answerPatch.default({}),group:z.object({name:z.string(),members:z.array(z.string()),problem:z.string(),context:z.string(),date:z.string()}).partial().strict().optional(),mode}),({record,phase,answers,group,mode})=>{
+  register('save_workshop_phase','Save agreed wording using the complete latest returned record. Omitted top-level answer fields are preserved; supplied arrays replace their whole field, so retain every item unless the group explicitly removes it. Never reconstruct the record or blank earlier answers. Returns complete updated record and JSON backup. Earlier corrections retain later answers but require their review. Does not approve a phase. Call show_workbook after a meaningful saved decision.',z.object({record:inputRecord,phase:phaseNumber,answers:answerPatch.default({}),group:z.object({name:z.string(),members:z.array(z.string()),problem:z.string(),context:z.string(),date:z.string()}).partial().strict().optional(),mode}),({record,phase,answers,group,mode})=>{
     if(phase===6 && Object.keys(answers).length>0 && (answers.decision??record.phases?.[5]?.answers?.decision)==='Do not pilot yet') answers={...answers,candidateId:null};
     const before=validateRecord(record), saved=savePhase(record,phase,answers,group);
     const prior=before.phases[phase-1].answers, after=saved.phases[phase-1].answers;
@@ -119,9 +124,9 @@ export async function createWorkshopServer({pdfRenderer, bookRenderer, assetLoad
     result.structuredContent.saveReceipt={status:saved.revision===before.revision?'unchanged':'saved',phaseId:phase,changedFields,retainedFields:Object.keys(prior).filter(key=>!changedFields.includes(key)),missingFields:readiness.missingFields,readyForApproval:readiness.complete};
     return result;
   });
-  register('show_workbook','Show a read-only visual snapshot of the saved group workbook after a meaningful decision or when requested. Optional phase displays an earlier chapter without changing progress. All questions and approvals remain in host chat, preferably a native question card with ordinary chat fallback. Old visuals cannot edit or restore data. No PDF is generated by viewing. Do not call redundantly after confirmation or export.',z.object({record:anyRecord,phase:phaseNumber.optional(),mode}),({record,phase,mode})=>buildResult(validateRecord(record),phase,mode,'This visual is a read-only snapshot of the supplied record. Continue from the complete latest tool-returned record.'),true);
-  register('workshop_action','Apply a specific visual or conversational choice using the latest record and its expectedRevision. Returns the complete updated record immediately. Intermediate selections do not approve a chapter or fabricate missing reasons. Use the returned interaction state for the next focused question. Revision checks apply to the supplied record, not a global database.',z.object({record:anyRecord,action:actionSchema,mode}),({record,action,mode})=>buildResult(applyWorkshopAction(record,action),action.phaseId,mode,'The group action is recorded. Use this complete record for the next action or conversation turn.'));
-  register('confirm_workshop_phase','Only after the group explicitly approves the latest displayed summary: set approved=true and quote its approval. Validate, record approval, and attempt the cumulative PDF. If rendering fails, the returned confirmed record is retained and export.status is failed; offer export_workbook to retry without asking for approval again. Never invent approval.',z.object({record:anyRecord,phase:phaseNumber,approved:z.literal(true),confirmation:z.string().trim().min(1).max(1200),mode}),async({record,phase,confirmation,mode})=>{
+  register('show_workbook','Show a read-only visual snapshot of the saved group workbook after a meaningful decision or when requested. Optional phase displays an earlier chapter without changing progress. All questions and approvals remain in host chat, preferably a native question card with ordinary chat fallback. Old visuals cannot edit or restore data. No PDF is generated by viewing. Do not call redundantly after confirmation or export.',z.object({record:inputRecord,phase:phaseNumber.optional(),mode}),({record,phase,mode})=>buildResult(validateRecord(record),phase,mode,'This visual is a read-only snapshot of the supplied record. Continue from the complete latest tool-returned record.'),true);
+  register('workshop_action','Apply a specific visual or conversational choice using the latest record and its expectedRevision. Returns the complete updated record immediately. Intermediate selections do not approve a chapter or fabricate missing reasons. Use the returned interaction state for the next focused question. Revision checks apply to the supplied record, not a global database.',z.object({record:inputRecord,action:actionSchema,mode}),({record,action,mode})=>buildResult(applyWorkshopAction(record,action),action.phaseId,mode,'The group action is recorded. Use this complete record for the next action or conversation turn.'));
+  register('confirm_workshop_phase','Only after the group explicitly approves the latest displayed summary: set approved=true and quote its approval. Validate, record approval, and attempt the cumulative PDF. If rendering fails, the returned confirmed record is retained and export.status is failed; offer export_workbook to retry without asking for approval again. Never invent approval.',z.object({record:inputRecord,phase:phaseNumber,approved:z.literal(true),confirmation:z.string().trim().min(1).max(1200),mode}),async({record,phase,confirmation,mode})=>{
     const confirmed=confirmPhase(record,phase,confirmation);
     try {return await withPdf(confirmed,phase,mode,`Step ${phase} is confirmed and its cumulative PDF generated. Offer the PDF through the host's normal file controls.`);}
     catch(error) {
@@ -130,16 +135,16 @@ export async function createWorkshopServer({pdfRenderer, bookRenderer, assetLoad
       return result;
     }
   },true);
-  register('export_workbook','Generate the PDF again and return a manual JSON backup. Includes confirmed and clearly labelled needs-review chapters. Available through text without any UI click.',z.object({record:anyRecord,mode}),({record,mode})=>{
+  register('export_workbook','Generate the PDF again and return a manual JSON backup. Includes confirmed and clearly labelled needs-review chapters. Available through text without any UI click.',z.object({record:inputRecord,mode}),({record,mode})=>{
     record=validateRecord(record);
     if(!record.phases.some(p=>p.status!=='draft')) throw new Error('Approve the first phase summary before generating the first workbook PDF. Your JSON draft is available from workshop_next.');
     return withPdf(record,undefined,mode,'The cumulative PDF has been generated again. Offer it with the JSON backup.','files');
   },true);
-  register('resume_workshop','Manually restore a group-supplied JSON checkpoint. Does not search an account, merge competing revisions or provide automatic cross-client resumption. Confirm the restored position with the group.',z.object({checkpoint:anyRecord,mode}),({checkpoint,mode})=>buildResult(validateRecord(checkpoint),undefined,mode,'This is the position recorded in the supplied backup. Confirm that it is the version the group wants to use.'));
+  register('resume_workshop','Manually restore a group-supplied JSON checkpoint. Does not search an account, merge competing revisions or provide automatic cross-client resumption. Confirm the restored position with the group.',z.object({checkpoint:inputRecord,mode}),({checkpoint,mode})=>buildResult(validateRecord(checkpoint),undefined,mode,'This is the position recorded in the supplied backup. Confirm that it is the version the group wants to use.'));
 
   server.registerTool('download_workbook_file',{
     description:'Deliver one workbook PDF file from an existing complete record, without resuming questions or changing answers. Call for a requested PDF download. Returns one gzip-compressed PDF resource plus its size and SHA-256. Unpack gzip, verify the PDF and attach it using host file tools; never offer the workbook URI as a web link. If the host cannot attach files, say so and offer the workbook view download. This file-only result does not replace the canonical record.',
-    inputSchema:z.object({record:anyRecord}),outputSchema:z.object({export:anyRecord}),annotations,
+    inputSchema:z.object({record:inputRecord}),outputSchema:z.object({export:anyRecord}),annotations,
   },async({record})=>{
     try {
       record=validateRecord(record);
@@ -153,7 +158,7 @@ export async function createWorkshopServer({pdfRenderer, bookRenderer, assetLoad
   });
 
   // Existing clients retain the shortlist tool; it now uses the shared activity.
-  register('show_shortlist','Show the saved candidates and priority comparison as a read-only workbook visual. Collect choices only in the host native question tool or ordinary chat, then save agreed reasons. Text-only clients receive the same readable comparison.',z.object({record:anyRecord,mode}),({record,mode})=>{
+  register('show_shortlist','Show the saved candidates and priority comparison as a read-only workbook visual. Collect choices only in the host native question tool or ordinary chat, then save agreed reasons. Text-only clients receive the same readable comparison.',z.object({record:inputRecord,mode}),({record,mode})=>{
       record=validateRecord(record);
       if(!record.phases[3].answers.candidates) throw new Error('Record the candidate use cases in phase 4 first.');
       const result=buildResult(record,5,mode);

@@ -66,6 +66,8 @@ Inline snapshots inherit host colours and typography. The book preview and PDF u
 
 Version 0.5.1 also marks routine results explicitly as non-visual, so a host that reuses a previous visual resource does not show an empty workbook. Routine results retain the canonical record in structured content and ordinary JSON text without creating a JSON attachment. Manual checkpoint downloads remain available. After a deployment that changes tool definitions, refresh the installed connector in ChatGPT and reconnect it in Claude before starting a fresh test conversation; both hosts retained older definitions during the 11 September checks.
 
+Version 0.5.2 publishes the complete record envelope, including historical approval fields. Transport schemas forward unknown keys for diagnosis; the unchanged canonical validator rejects them. Hosts must copy the last successful record, never reconstruct approval notes or timestamps. The embedded view starts empty until it receives a valid visual snapshot, including when the host never forwards a failed result. Host-owned tool containers remain outside the connector's control.
+
 All steps, corrections, approvals and PDF requests have text equivalents in the same conversation. A separate browser app is not required. No claim of pinned hot reload, automatic cross-client resumption or live replacement is made.
 
 The canonical public endpoint is https://ai-use-case-workshop.shiva-research11.workers.dev/mcp. Shiva authorised this interface replacement at the existing endpoint. Historical live/ChatGPT reports in remote/ describe older versions. Confirm the server version and widget hash against the latest release record; a source archive or local test alone is not proof of live deployment or Claude/ChatGPT rendering.
