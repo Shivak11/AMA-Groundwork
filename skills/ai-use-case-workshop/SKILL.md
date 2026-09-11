@@ -1,6 +1,6 @@
 ---
 name: ai-use-case-workshop
-description: Guide a classroom group through six short conversations to identify and prioritise grounded AI use cases, with an approved cumulative PDF after each phase. Use for facilitated business workshops across industries, including groups using text-only MCP clients.
+description: Guide a classroom group through conversation and varied visual decisions to identify grounded AI use cases and build a personalised visual workbook. Use for facilitated business workshops across industries, with equivalent text participation and a cumulative PDF after each confirmed phase.
 ---
 
 # AI Use-Case Workshop
@@ -19,12 +19,12 @@ Keep the latest complete record returned by a tool. Use `workshop_next` for the 
 
 Ask one manageable question or activity at a time. Reuse what the group has already said. The six participation formats are:
 
-1. Complete an outcome statement and choose how to recognise improvement.
-2. Sort concrete information and authority barriers.
-3. Reconstruct one difficult recent case, including waits and hand-offs.
-4. Review candidate use cases against particular workflow steps.
-5. Compare priorities and invite a member to argue against the first choice.
-6. Agree a recommendation, a proposed owner and a small test, or explain why a pilot should wait.
+1. Choose and refine an outcome, then connect it to a success measure (KPI) and safeguard. An unknown baseline is acceptable.
+2. Sort the group's information and authority barriers on a map of who holds what.
+3. Reconstruct a difficult case as a task journey. Let the group reorder it and choose one task to make instant; ask what would still delay the outcome.
+4. Compare candidates attached to those tasks, with visible AI work, human checks and simpler non-AI alternatives. Let the group keep or reconsider each.
+5. Place the candidates in First, Later or Do not pursue. Invite another member to challenge the choice and retain the response.
+6. Refine the proposed next step from the preceding choices, including the owner, evidence and stop rule. A justified no-pilot recommendation completes the exercise.
 
 Let participants commit before offering model suggestions or examples. Ask for the reason behind a consequential choice. Describe an AI proposal as a proposal until the group accepts it. Keep disagreements and unknowns visible; do not manufacture consensus, measurements, benefits or readiness.
 
@@ -36,13 +36,17 @@ Use plain language for novices. Explain a technical term only when it helps the 
 
 Use `save_workshop_phase` for the agreed draft. Then show a short, editable summary including uncertainty and any model suggestions the group has accepted. Ask whether the group approves this summary for its workbook or wants a correction.
 
-Call `confirm_workshop_phase` only after the group explicitly approves the summary that is currently shown. A successful confirmation returns the cumulative PDF and JSON checkpoint. Offer both and state the completed phase. If the tool fails, do not claim the phase is completed or a PDF exists; retain the draft and follow the returned recovery instruction. Groups continue themselves once confirmation succeeds.
+Call `confirm_workshop_phase` only after the group explicitly approves the summary currently shown. It returns the accepted record and attempts the cumulative PDF. If `export.status` is `failed`, keep the confirmed record, explain that the PDF needs retrying, and use `export_workbook` when requested. Do not ask the group to approve the same summary again. If validation fails, the phase is not confirmed. PDF generation, successful download and a stored account record are separate outcomes. Groups continue themselves.
 
 Use `export_workbook` when a group needs its current PDF again. When an earlier answer changes, preserve subsequent work and explain which confirmed phases now need review. Follow the first non-confirmed phase; do not skip validation to restore the appearance of progress.
 
 ## Support conversation with optional views
 
-Where the actual client supports MCP Apps, the shared views can make a problem card editable, show the case chronology, attach use-case cards to work, compare priorities and preview a checkpoint. A visual action must become a visible, revision-labelled request using the same tools and record.
+Where the client supports MCP Apps, use the returned activity as a working part of the conversation. Do not retype its choices as another questionnaire. `workshop_action` applies a specific choice immediately and returns the complete record; the same tool accepts equivalent conversational choices. Use its advertised schema. The app supplies this latest record through model context before the next chat turn.
+
+Inspect `record.interaction` as well as phase answers. A priority or candidate click may be an incomplete decision, awaiting a reason, evidence or an updated candidate set. Ask only the meaningful missing question, then reconcile it with `save_workshop_phase`. Never invent a reason or an Unknown that the group did not choose. Do not confuse a selected candidate with chapter approval. If the app reports failed context synchronisation, recover the latest record before proceeding.
+
+At confirmation, the book view gains a composed chapter. Keep the active interaction small and the book readable; avoid repeated summaries, technical counters or backup controls in the main conversation. The host owns whether the book can remain beside chat. Do not promise pinned live updates or independent cross-client storage.
 
 Text-only participation is complete. If UI support is absent, uncertain, broken or unwanted, use plain-language questions, numbered choices, editable summaries and readable tables. Participants can correct an answer, confirm a phase and obtain every PDF without clicking a widget. Do not send them to a separate browser app as a required fallback.
 

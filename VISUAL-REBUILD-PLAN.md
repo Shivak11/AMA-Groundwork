@@ -36,3 +36,9 @@ First prove phase 1 through actual tools, widget transport and generated PDF. Th
 ## Recovery
 
 No live activation in this implementation turn. Candidate can be discarded without touching live state. Preserve canonical source and prior candidate. Do not automatically migrate or replace old participant backups. Before future release compare old/new records and prepare named rollback artifact.
+
+## Implementation clarifications
+
+Independent failure review required more explicit decision reconciliation: pending priority changes must match the saved choice; unchanged candidate saves do not erase Reconsider; selecting a different zero-second task invalidates the earlier counterfactual answer. PDF and optional book-preview delivery fail independently of the accepted record.
+
+The browser uses the same semantic record validator as the server. Local unsaved editors survive view changes. Repeated host messages cannot clear failed context synchronisation, and conflicting records pause edits until the group explicitly resolves them. Because v1 has no immutable group identity, changed group details require an explicit record-selection step. No database identity or automatic merging is inferred.

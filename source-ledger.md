@@ -1,5 +1,15 @@
 # Source ledger
 
+## Visual revision reviewed on 11 September 2026
+
+The current candidate implements Shiva's approved conversation/activity/book model. The fictional hiring example in examples/hiring.mjs carries the CV-to-approved-offer journey through all six steps; it contains no real applicant or client data. It retains human selection, compensation and release authority, an unknown baseline, a manual comparator and the limit of retrospective evidence.
+
+The [official MCP Apps overview](https://modelcontextprotocol.io/extensions/apps/overview) and the installed ext-apps 1.7.5 source establish tool calls, host-context updates and sandboxed views. Actual support for pinning, updates and downloads remains host-specific and must be tested separately.
+
+[pdfcn documentation](https://www.pdfcn.dev/docs) and its [KeyValue component](https://www.pdfcn.dev/docs/components/takumi/key-value) informed the review of composed document components. The raw registry payload was not inspectable and no pdfcn code or dependency was installed. Mermaid, React Flow and tldraw were considered; the candidate uses bundled custom HTML/SVG because these guided decisions do not require a free-form editor or another service.
+
+The earlier evidence below describes the original release and its foundations. It is not deployment evidence for this revision.
+
 Reviewed on 8 September 2026. This records the method's provenance, not proof that participants' proposed use cases work.
 
 | Material | Use in this package | Evidence boundary |

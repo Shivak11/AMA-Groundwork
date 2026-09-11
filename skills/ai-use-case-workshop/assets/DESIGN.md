@@ -1,12 +1,14 @@
 # Our AI Use-Case Portfolio
 
-This design contract is shared by the conversation's optional activity views, its previews and every PDF checkpoint. The portfolio belongs to the group. Its visual hierarchy should make the group's problem, evidence, disagreements and proposed decisions easy to find.
+The portfolio belongs to the group. Its visual hierarchy makes the group's problem, evidence, disagreements and proposed decisions easy to find. The inline activity and composed book use the same semantic record but different visual treatments.
+
+Inline activities inherit host typography, light/dark colours and a transparent outer surface. The book preview and PDF retain the Terracotta design below. Keep the action in focus, with the growing book beside it when space and host capabilities permit; otherwise use an accessible book tab. Never imitate host attribution or permission controls.
 
 ## Direction
 
 Keep the Terracotta direction selected by Shiva: warm paper, brown serif headings and a functional clay accent. Use the cover's title as the strongest visual element. Interior structure follows the work: a sequence for the difficult case, cards for distinct candidates and a table for their comparison. Do not turn every answer into the same card.
 
-The first page says `Our AI Use-Case Portfolio`, followed by the group name, its members and the problem in their own words. Context and date are secondary. Show the six phases and their actual approval state without scoring the group. A later revision must not appear to be an agreed final answer.
+The group's problem in its own words is the strongest cover text. `Our AI Use-Case Portfolio`, the group name and members identify the document. Context and date are secondary. Show the six steps and their actual approval state without scoring the group. A later revision must not appear to be an agreed final answer.
 
 ## Tokens
 
@@ -29,7 +31,7 @@ DM Serif Display regular, locally embedded, carries titles and chapter headings.
 
 The PDF uses A4 portrait with 16 mm side margins. Each completed phase begins a chapter on a new page; long answers continue naturally. Body text is 10.5 pt with 1.45 line spacing. Do not shrink the type or truncate answers to force seven pages. The usual short version is a cover followed by six chapters, but content determines the final page count.
 
-Chapter headings state the question and include their actual phase number. No eyebrow, kicker, decorative tag, all-capital label or introductory framework panel is added. One highlighted answer may establish the chapter's main decision; supporting evidence uses plain sections with whitespace and restrained rules.
+Chapter headings include Step 1, Step 2 and so on. No eyebrow, kicker, decorative tag, all-capital label or introductory framework panel is added. Each chapter uses its own visual structure: goal relationships, information/authority map, task journey, candidate work/checks, priority comparison or bounded test. Supporting evidence uses plain sections and full group wording. Do not invent quantitative charts from qualitative answers.
 
 The case replay uses a numbered vertical chronology with the actor, work and friction at the same step. Candidates identify their attached workflow steps. Priorities show the group's decision alongside its reason and missing evidence; colours never imply an AI-assigned quality score. The final recommendation gives the proposed owner and a stop rule equal clarity to the intended benefit.
 
@@ -37,9 +39,9 @@ Every page has `Prepared by Dr. Shiva Kakkar` and a working profile link with a 
 
 ## State and interaction
 
-Optional MCP Apps views use the same group record as the conversation and PDF. They do not create a separate workflow or quietly save answers in browser storage. Controls name the action they cause; edits remain visibly pending until the host returns the updated record. Use revision-labelled messages for changes and explain how to continue through chat if a view cannot load.
+MCP Apps views use the same group record as the conversation and PDF. They do not quietly save answers in browser storage. Controls name the action they cause; edits remain visibly pending until workshop_action returns the updated record. The app then updates model context. If that synchronisation fails, show the recovery action and do not silently continue with divergent records. Equivalent text actions remain available.
 
-Never gate a phase behind a widget. The entire exercise, corrections, approval, progress and downloads must work through plain-language questions, numbered choices and readable summaries. A PDF is shown as generated only after the renderer returns its bytes. Errors preserve the previous approved record and name a retry action.
+Never gate a phase behind a widget. The entire exercise, corrections, approval, progress and downloads work through plain-language questions, numbered choices and readable summaries. A PDF is shown as generated only after the renderer returns its bytes. A PDF failure preserves the newly confirmed record and exposes an export retry. Technical counters and backup controls stay behind disclosure.
 
 Confirmed chapters are included. Chapters marked `needs_review` are included with the visible sentence `This phase needs your review because an earlier answer changed.` Draft chapters are omitted. The cover's progress makes this distinction explicit. A blank value is shown as `Not recorded`; an explicit `Unknown` stays as entered.
 

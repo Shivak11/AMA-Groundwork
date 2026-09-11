@@ -1,6 +1,31 @@
 # Verification record
 
-The newer Cloudflare adaptation and release status are recorded in [remote/verification.md](remote/verification.md). The checks below describe the earlier local package and must not be read as proof of remote deployment or client registration.
+## Visual rebuild candidate — 11 September 2026
+
+Version 0.2.0 is an isolated local candidate. It has not replaced the canonical package, installed connector or public Worker. Historical Cloudflare and ChatGPT reports below describe version 0.1.0 and do not verify this revision.
+
+| Layer | Current evidence |
+| --- | --- |
+| State and protocol | 59 Node tests pass. Existing v1 records work without interaction state. Tests cover revision fencing against the supplied record, bounded undo, strict references, explicit approval/refusal, corrections, pending decision reconciliation and text-only completion. The remote parser also accepts a valid multilingual record-plus-edit envelope exceeding the former 180,000-byte cap while rejecting requests above 350,000 bytes. |
+| Actual local MCP journey | `scripts/verify-visual-journey.mjs` runs the returned self-contained widget in a sandboxed controlled host. Clicks and conversation fixtures use the real MCP tools. Six UI confirmations produce six actual cumulative PDFs; 15 captured screens include side-by-side/book views, a blocked context update and retry, priority reconciliation, earlier correction, 320/390 px reflow, dark mode and reduced motion. No external browser requests or runtime errors. |
+| Transport | `scripts/verify-stdio.mjs` initialises the real stdio server with no UI capability, reads method resources, saves and confirms a phase, and receives a 103,655-byte actual PDF. |
+| PDF and book | The fictional hiring example is nine A4 pages with selectable text, profile-link annotations on every page and no PDF JavaScript. Cover, each visual type, dense priority page, continuation pages and final recommendation were rendered to PNG and inspected. Named running Step labels remain visible on continuation pages. The book preview and PDF use the same composition. |
+| Long answer and escaping | `scripts/verify-visual-long.mjs` retains a 1,101-character answer including literal script/image-like text in the actual PDF. It makes no external requests or script execution and has no horizontal overflow at 320, 390, 768 or 1280 px. Dependent chapters remain labelled for review. The eleven-page variant was inspected, including its two-page cover. This is a bounded stress case, not proof of every maximum-length combination. |
+| Failure and recovery | Tests prove confirmation returns the accepted record if PDF generation fails, including simultaneous optional-preview failure. Re-export does not require approval again. Pending priorities cannot inherit conflicting reasons; changed zero-second task choices need renewed reasoning. UI recovery checks are recorded separately in the review evidence. |
+| Browser recovery | `scripts/verify-widget-recovery.mjs` passes 12 checks against the actual bundled widget and controlled host/domain actions. These include failed context sync plus idle echoes, unsaved drafts/disclosures, blocked approval with unsaved wording, explicit conflicting-record choice, renamed group details, invalid references, no-op saves, duplicate pending replies, late replies and retained book document/scroll position. Save wording works without granting HTML form submission in the sandbox. No external requests or page errors. |
+| Package | Self-contained widget builds. Cloudflare `wrangler deploy --dry-run` builds successfully with the Worker disabled/unconfigured; this performs no deployment. Official skill and plugin validators pass. No runtime Prefab import or additional participant MCP is required. |
+
+The final local widget is 548,375 bytes. Remote dry-run output is 2,547.44 KiB before compression (542.28 KiB gzip). The recovery evidence records the exact widget SHA-256; the durable review package records its source commit and artifact hashes.
+
+The local host deliberately controls conversation answers and simulates the MCP Apps bridge. It does not establish whether an actual model asks appropriate follow-up questions, whether Claude or ChatGPT keep a view beside chat, or whether their file controls deliver the PDF. The `downloadFile` capability is simulated in this harness; an actual host download is not claimed.
+
+Record revisions protect a request against its supplied record, not a server-held global version. There is no participant database, authenticated group ownership, automatic cross-client resume or concurrent-copy merge. Keep one conversation and the latest view per group. Old v1 records have no immutable group identity; changed group details require explicit review in the view rather than silent adoption.
+
+Remaining release checks: review the visual candidate with Shiva, test it in actual target Claude and ChatGPT clients, verify Cloudflare rendering/runtime under the intended configuration, and approve production activation separately. Classroom timing, assistive-technology testing, load and participant usability remain unproved.
+
+## Historical local package — 8 September 2026
+
+The Cloudflare adaptation and earlier release status are recorded in [remote/verification.md](remote/verification.md). Everything below concerns the previous local package and must not be read as current candidate verification.
 
 Verified locally on 8 September 2026. Main implementation commit: `6547594`. The final-location verification scripts were subsequently corrected to decode paths containing spaces; application behaviour was unchanged.
 

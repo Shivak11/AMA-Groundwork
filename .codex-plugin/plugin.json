@@ -1,14 +1,14 @@
 {
   "name": "ai-use-case-workshop",
-  "version": "0.1.0",
-  "description": "Guide groups through six conversations and produce their cumulative AI use-case portfolio.",
+  "version": "0.2.0",
+  "description": "Guide groups through conversation and visual choices to create their AI use-case portfolio.",
   "author": { "name": "Dr. Shiva Kakkar", "url": "https://www.shivakakkar.com/" },
   "keywords": ["workshop", "ai-adoption", "use-cases", "mcp", "education"],
   "skills": "./skills/",
   "interface": {
     "displayName": "AI Use-Case Workshop",
-    "shortDescription": "A group conversation with a cumulative workbook",
-    "longDescription": "Work through six short phases, compare grounded use cases and confirm a group portfolio. The companion local MCP server generates a PDF after every approved phase. Optional Prefab views support the shortlist exercise; the complete conversation also works in text.",
+    "shortDescription": "Visual group decisions and a growing workbook",
+    "longDescription": "Work through six phases with goal maps, workflow replay, candidate comparisons and a priority board. Each approved chapter enters the group workbook and triggers a cumulative PDF. The same exercise also works through conversation. This package is a local review candidate, not a live connector update.",
     "developerName": "Dr. Shiva Kakkar",
     "category": "Productivity",
     "capabilities": ["Interactive"],

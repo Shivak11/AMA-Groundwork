@@ -1,6 +1,6 @@
 {
   "name": "ai-use-case-workshop",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A conversational group workshop with cumulative use-case PDFs and optional MCP Apps views.",
   "type": "module",
   "private": true,
@@ -10,7 +10,7 @@
   "scripts": {
     "start": "node src/stdio.mjs",
     "build": "node scripts/build-widget.mjs",
-    "build:remote": "npm run build && node scripts/build-prefab-remote.mjs && wrangler deploy --dry-run --outdir dist/worker",
+    "build:remote": "npm run build && wrangler deploy --dry-run --outdir dist/worker",
     "verify:http": "node scripts/verify-http.mjs",
     "test": "node --test tests/*.test.mjs",
     "examples": "node scripts/build-examples.mjs"
