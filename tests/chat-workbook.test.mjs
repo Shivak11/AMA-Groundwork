@@ -172,3 +172,40 @@ test('PDF failure retains approval and export retry delivers files without askin
     assert.equal(delivered.record.phases[0].approvedAt,data.record.phases[0].approvedAt);
   } finally {await s.close();}
 });
+
+test('changing a complete no-pilot draft to a test asks for the missing candidate before approval',async()=>{
+  const s=await session();
+  try {
+    const record=completed(5);
+    const noPilot=await s.call('save_workshop_phase',{record,phase:6,answers:{...answers[5],decision:'Do not pilot yet',candidateId:null}});
+    const before=structuredClone(dataOf(noPilot).record);
+    const changed=await s.call('save_workshop_phase',{record:before,phase:6,answers:{decision:'Test a use case'}});
+    const data=dataOf(changed);
+    assert.deepEqual(data.record.phases[5].answers,{...before.phases[5].answers,decision:'Test a use case'});
+    assert.equal(data.record.phases[5].answers.candidateId,null);
+    assert.equal(data.nextQuestion.kind,'answer');assert.equal(data.nextQuestion.field,'candidateId');
+    assert.equal(data.phase.questionField,'candidateId');assert(data.phase.question);
+    assert(data.nextQuestion.choices.some(choice=>choice.value===answers[5].candidateId));
+    const selected=await s.call('save_workshop_phase',{record:data.record,phase:6,answers:{candidateId:answers[5].candidateId}});
+    const selectedData=dataOf(selected);
+    assert.equal(selectedData.nextQuestion.kind,'approval');assert.equal(selectedData.phase.question,null);
+    assert.deepEqual(selectedData.record.phases[5].answers,{...before.phases[5].answers,decision:'Test a use case',candidateId:answers[5].candidateId});
+    const approved=await s.call('confirm_workshop_phase',{record:selectedData.record,phase:6,approved:true,confirmation:'Our group approves the saved test recommendation.'});
+    assert.equal(dataOf(approved).record.phases[5].status,'confirmed');
+  } finally {await s.close();}
+});
+
+test('group-only and empty saves preserve a completed no-pilot recommendation and its approval',async()=>{
+  let renders=0;const s=await session({pdfRenderer:async()=>{renders++;return pdfStub();}});
+  try {
+    const record=confirmPhase(savePhase(completed(5),6,{...answers[5],decision:'Do not pilot yet',candidateId:null}),6,'Our group approves the no-pilot recommendation.');
+    const before=structuredClone(record),members=[...group.members,'Fictional member alias'];
+    const renamed=await s.call('save_workshop_phase',{record,phase:6,group:{members}});const data=dataOf(renamed);
+    assert.deepEqual(record,before);assert.deepEqual(data.record.phases,before.phases);
+    assert.deepEqual(data.record.group,{...before.group,members});assert.equal(data.record.revision,before.revision+1);
+    assert.equal(data.nextQuestion.kind,'complete');assert.equal(data.phase.question,null);
+    assert.deepEqual(jsonCheckpoint(renamed),data.record);assert.equal(renders,0);
+    const empty=await s.call('save_workshop_phase',{record:data.record,phase:6,answers:{}});const emptyData=dataOf(empty);
+    assert.deepEqual(emptyData.record,data.record);assert.equal(emptyData.nextQuestion.kind,'complete');assert.equal(renders,0);
+  } finally {await s.close();}
+});

@@ -40,7 +40,15 @@ export function nextConversationQuestion(record) {
   const a=record.phases[id-1].answers;
   const pending = id===5 && Object.keys(record.interaction?.priorities??{}).length;
   const reconsidered = id===4 && Object.values(record.interaction?.candidateDispositions??{}).includes('Reconsider');
-  let field = pending ? 'choices' : reconsidered ? 'candidates' : fieldOrder[id-1].find(key => !(id===6&&key==='candidateId'&&a.decision==='Do not pilot yet') && !recorded(a[key]));
+  let field = pending ? 'choices' : reconsidered ? 'candidates' : fieldOrder[id-1].find(key => {
+    if(id===6 && key==='candidateId') {
+      if(a.decision==='Do not pilot yet') return false;
+      // A null candidate is valid only for no pilot. Switching back to a test
+      // requires the group to select the candidate before approval.
+      return !a.candidateId;
+    }
+    return !recorded(a[key]);
+  });
   if (!field) return {kind:'approval',field:null,question:`Does your group approve the saved Step ${id} summary?`,hint:'Show the complete summary first. An answer or option selection is not approval.',choices:[{label:'Approve this step',value:'Approve'},{label:'We want to correct something',value:'Correct'}]};
   let [question,hint]=fieldQuestions[field];
   let choices=[];

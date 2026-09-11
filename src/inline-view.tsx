@@ -128,7 +128,12 @@ export function InlineWorkshop(props: InlineProps) {
   const phase = record?.phases[phaseId - 1];
 
   useEffect(() => {
-    if (bookOpen && dialog.current && !dialog.current.open) dialog.current.showModal();
+    if (bookOpen && dialog.current && !dialog.current.open) {
+      // A modal centres within the whole auto-resized iframe, which may be
+      // much taller than the visible chat. Keep the book in document flow.
+      dialog.current.show();
+      requestAnimationFrame(() => dialog.current?.scrollIntoView({block:'start'}));
+    }
     if (!bookOpen && dialog.current?.open) dialog.current.close();
   }, [bookOpen]);
   async function run(operation: () => Promise<void>) {
