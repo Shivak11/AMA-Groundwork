@@ -8,33 +8,39 @@ Follow `structuredContent.questionTurn` and `nextQuestion`. The owner is always 
 
 The connector provides instructions, not control of the host's question tools. Do not claim a tool is available without checking. Permission prompts and higher-priority host requirements remain intact. Legacy `mode` arguments cannot restore UI question ownership.
 
-If the participant requests ordinary chat, pass mode='text' on subsequent workshop calls until they change their preference. Check completeness before asking for phase approval. An invalid reference or pending selection can require correction even when every answer field is populated. Reuse facts already supplied; ask about unknown causes rather than diagnosing employee motivation from the complaint. Keep turns brief.
+If the participant requests ordinary chat, use set_workshop_preference with mode='text'. This persists separately from answers. A mode override on a read applies only to that turn. Check completeness before asking for phase approval. An invalid reference or pending selection can require correction even when every answer field is populated. Reuse facts already supplied; ask about unknown causes rather than diagnosing employee motivation from the complaint. Keep turns brief.
 
 `nextQuestion` identifies the next missing field. Reuse saved answers and anything already supplied in the conversation. `kind: approval` means show the complete current summary, including uncertainties, before asking for approval or correction. A selected option, saved answer or request to continue is not phase approval. An export result requests file delivery only and must not restart the questionnaire.
 
 ## One current record
 
-Use the complete latest tool-returned record. Version 1 contains group details, a revision and six ordered phases. Existing checkpoints with interaction state remain valid. The first non-confirmed phase is current. Optional historical workbook views change only `view.phaseId`; their phase guidance still concerns the current conversation phase.
+The deployed persistent connector uses a short record reference containing only key and revision. Cloudflare D1 holds the canonical version-1 workbook with group details and six ordered phases. Use the server-returned reference; never reconstruct full answers or approval history. The first non-confirmed phase is current. workshop_next with an optional phase loads an earlier step's wording for correction. Historical show_workbook and export_workbook can read an immutable revision without restoring it.
 
-There is no participant database or server-held latest-record lock. Keep one conversation per group. Never reconstruct answers from memory or copy an old card's record over the latest tool result. If conflicting records appear, show the difference and ask which to continue. JSON is a manual recovery mechanism, not automatic cross-client resumption.
+The workbook and revision history have no automatic expiry and remain until explicit deletion. A private write reference authorises that group's edits; a separate stable reading link allows viewing and downloads only. Keep the write reference confidential within the group. A server revision check rejects stale changes, returns current context and preserves newer feedback. resume_workshop can recover the latest record in another chat months later. An old JSON backup requires explicit import into a newly prepared session. There is no public listing or name-based recovery. Without either access reference or a saved backup, do not promise account recovery.
 
 ## Tools
 
 | Tool | Host behaviour |
 | --- | --- |
-| start_workshop | Create a record from group name, first names or aliases, one problem and date. Organisation and roles are optional. Do not require emails or confidential documents. |
+| start_workshop | Explain private storage without expiry. First prepare a reference without group data; then activate the same reference with group name, first names or aliases, problem and date. Retrying activation must not create a new workbook. |
 | workshop_next | Read the active phase, answer schema, saved work and next missing question. |
 | present_workshop_question | Prepare one scalar question and 1–4 grounded options for native questions or chat. It does not save an answer or open a form. |
-| save_workshop_phase | Save agreed top-level fields promptly. Omitted scalars survive; arrays replace their entire field. Send complete updated arrays with stable IDs. |
+| save_workshop_phase | Save agreed changes using the current reference. Omitted fields survive; use arrayEdits for one item. Explicit removal or replacement requires the group's request. |
 | workshop_action | Apply a specific conversational choice with the latest record and expectedRevision. Inspect its schema rather than inventing parameters. |
 | show_workbook | Render a read-only snapshot after a meaningful decision or on request. It does not save, confirm, export or change the current phase. |
 | show_shortlist | Render saved candidates and priorities without changing them. |
 | confirm_workshop_phase | After explicit approval of the current displayed summary, set approved=true and quote the approval. Validation precedes confirmation and PDF generation. The result already includes a visual workbook. |
 | export_workbook | Generate or retry the cumulative PDF without new approval. Deliver files without restarting questions. The result already includes a visual workbook. |
-| resume_workshop | Validate a supplied JSON backup and summarise its recorded position before continuing. |
+| resume_workshop | Load the actual latest saved record from a private reference, even when its supplied revision is old. Summarise the position before continuing. |
+| set_workshop_preference | Persist auto/native-first or text/ordinary-chat preference, without changing answers or approvals. |
+| workshop_history | List saved revision numbers and times. Opening history does not restore it. |
+| import_workshop | With explicit group approval, import a version-1 JSON backup into a newly prepared private reference. Never overwrite an existing workbook. |
+| delete_workshop | Only after an explicit request, delete this workbook, its history and file tickets using the current revision and exact group name. |
 | download_workbook_file | Generate and return a single gzip-compressed PDF file with a size and SHA-256 manifest. Unpack and attach the PDF using host file tools. It has no questionnaire, visual or record changes. |
 
-Only show_workbook, show_shortlist, confirm_workshop_phase and export_workbook advertise visual resources. Do not request a fresh visual card after every routine question or save, or immediately after a confirmation/export that already has one. Normal results return the complete record, exact phase answer schema and next question in structured output and ordinary JSON text. The separate file-only result does not replace that record. The widget renders its book from bundled assets, so routine replies do not carry book HTML, font or PDF bytes. Technical payloads are not participant prose.
+Only show_workbook, show_shortlist, confirm_workshop_phase and export_workbook advertise visual resources. Do not request another card after every routine question or save, or immediately after confirmation/export. Model-visible output contains the short reference, selected step's wording, relevant task/candidate references, exact answer schema and next question. The canonical record for rendering is in _meta.workbook. Oversized visuals use the stable reading link instead. No book HTML, font or PDF bytes are duplicated in normal results. Technical payloads are not participant prose.
+
+For an unusually long step, phase.answerAccess explicitly lists fields and array item counts instead of claiming that an incomplete reply contains every answer. Read them with workshop_next using phase, field and itemIndex. An answerWindow is a partial context read, not permission to approve or repeat a question. Assemble all saved wording before presenting the approval summary. Nothing in storage is shortened to meet the tool-result size limit.
 
 ## Decisions and correction
 
@@ -48,12 +54,14 @@ An earlier correction preserves subsequent answers and marks dependent confirmat
 
 Validation failure means no transition occurred. Keep the returned valid record and repair arguments from phase.answerSchema using answers already supplied. Never ask the participant for technical field names or JSON. Ask a participant a question only when substantive information is missing. Empty saves fail; unchanged retries preserve approvals. Inspect saveReceipt for actual changed and missing fields. If confirmation returns export.status='failed', retain its confirmed record and retry export_workbook without another approval. Generation is established only after the renderer returns valid PDF bytes.
 
-Use download_workbook_file and normal host file tools when the participant asks for the PDF or a widget download is unavailable. The compressed resource is transport, not a public URL: unpack it, verify its size and SHA-256, then attach the PDF. If the host has no file tools, explicitly say that attachment is unavailable and offer the view's download control or a facilitator-assisted export. Do not fabricate a download link. The view may request file delivery in conversation using a short message with no old record attached. Some hosts place that message in the composer; do not claim it was submitted automatically. Keep generation, host acceptance and actual file receipt separate.
+Use export_workbook for ordinary chat file requests. Return its actual HTTPS PDF and JSON links plus the stable reading link. File tickets expire after 15 minutes; the workbook does not expire, so participants can regenerate them months later. Never fabricate a URL. download_workbook_file remains a compressed native-download compatibility route; it is not required for ordinary delivery. The view can send a file request containing the private reference; some hosts place it in the composer, so do not claim automatic submission. Keep generation, host acceptance and actual file receipt separate.
+
+Approval retry receipts identify appliedRevision and currentRevision. If later corrections exist, the retry's PDF belongs to the original approved revision, while the current context retains its actual review status. A failed PDF does not reverse a saved approval. Explicit deletion removes application records and invalidates access keys and tickets; downloaded files, chat copies and Cloudflare backups are outside immediate application deletion. No request bodies, private keys, file URLs or participant names belong in logs.
 
 ## Presentation boundary
 
 Snapshots inherit host colours and typography; the book and PDF retain the packaged Terracotta design. Each phase has an appropriate visual structure grounded in the group's saved words. Do not invent values for charts. Drafts, confirmations and needs-review states remain distinguishable. File controls and the full book are secondary disclosures.
 
-The host decides whether a result opens inline, beside chat, or in a separate card. Older cards remain read-only; do not promise pinned hot reload or live replacement. Text participation includes every question, correction, summary, approval and PDF request without a required browser app. Actual PDF attachment requires a host file capability and must be tested separately.
+The host decides whether a result opens inline, beside chat, or in a separate card. Older cards remain read-only; do not promise pinned hot reload or live replacement. Text participation includes every question, correction, summary, approval and PDF request without a required browser app. HTTPS file links do not require a host attachment tool, but successful participant receipt must still be tested separately.
 
 All visuals and PDF generation are bundled. Participants do not install Mermaid, tldraw, pdfcn or another MCP. Proposed owners have not accepted work, and classroom planning grants no access to company, employee or customer data.

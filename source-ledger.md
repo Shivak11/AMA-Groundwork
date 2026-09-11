@@ -1,5 +1,9 @@
 # Source ledger
 
+## Persistent recovery and retention, 11 September 2026
+
+Shiva explicitly approved private Cloudflare session recovery, then rejected seven-day workbook expiry because feedback and delivery could occur three months later. Version 0.6.0 implements no automatic expiry for active workbooks or immutable revision history; only temporary file tickets expire. The actual-host v0.5.2 failures remain recorded separately. Cloudflare's official [D1 limits](https://developers.cloudflare.com/d1/platform/limits/) distinguish active database storage from the plan-specific Time Travel backup window. The backup window does not expire application workbook rows. Logical admission limits preserve existing data rather than deleting it when capacity is reached. Local SQLite and protocol checks do not establish actual-host completion or successful participant downloads.
+
 ## Approval-envelope recovery, 11 September 2026
 
 In the refreshed ChatGPT v0.5.1 test, Step 2 was saved, but the next confirmation supplied a reconstructed historical phase with confirmation instead of approvalNote. The strict validator rejected it; the host then guessed timestamps and stopped. The v0.5.2 repair publishes the record envelope and exact historical field names, forwards unknown transport keys for contextual diagnosis, and retains strict canonical validation. It does not infer or repair past approval. Claude independently confirmed its first two steps using the correct record. Neither observation establishes a complete host journey.

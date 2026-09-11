@@ -66,6 +66,7 @@ export function protectedResponse(body, {status = 200, headers = {}} = {}) {
     'Cache-Control': 'no-store',
     'X-Content-Type-Options': 'nosniff',
     'Referrer-Policy': 'no-referrer',
+    'X-Robots-Tag': 'noindex, nofollow',
     ...headers,
   }});
 }

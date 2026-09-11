@@ -8,7 +8,7 @@ import workbookCss from '../skills/ai-use-case-workshop/assets/workbook.css';
 import workbookFont from '../skills/ai-use-case-workshop/assets/fonts/DMSerifDisplay-Regular.ttf';
 import { decodePdfFile } from './pdf-file.mjs';
 
-const app = new App({name:'AI Use-Case Workshop',version:'0.5.2'}, {availableDisplayModes:['inline','fullscreen']}, {autoResize:true});
+const app = new App({name:'AI Use-Case Workshop',version:'0.6.0'}, {availableDisplayModes:['inline','fullscreen']}, {autoResize:true});
 const root = createRoot(document.getElementById('workshop-root'));
 let current=null, metadata={}, capabilities={}, host={}, bookHtml;
 let connected=false, pending=false, generation=0;
@@ -22,13 +22,14 @@ function sameGroup(a,b) {return JSON.stringify(a.group)===JSON.stringify(b.group
 // context, send a record to the host, or invoke a record-changing server tool.
 function receive(result) {
   if (!result || result.isError) throw new Error(errorText(result)||'This workbook could not be loaded. Continue in the conversation.');
-  const record=validateRecord(result.structuredContent?.record);
+  const persisted=result.structuredContent?.record?.key;
+  const record=validateRecord(persisted?result._meta?.workbook:result.structuredContent?.record);
   if(current) {
-    if(!sameGroup(record,current.record)) throw new Error('This reply belongs to different group details. The existing snapshot is retained.');
+    if(persisted ? persisted!==current.reference?.key : !sameGroup(record,current.record)) throw new Error('This reply belongs to a different workbook. The existing snapshot is retained.');
     if(record.revision<current.record.revision) return;
     if(record.revision===current.record.revision && JSON.stringify(record)!==JSON.stringify(current.record)) throw new Error('A conflicting reply was ignored. Use the latest saved record in the conversation.');
   }
-  current={...result.structuredContent,record}; metadata=result._meta??{};
+  current={...result.structuredContent,record,reference:persisted?result.structuredContent.record:undefined}; metadata=result._meta??{};
   try {bookHtml=renderWorkbookHtml(record,{css:workbookCss,font:workbookFont});}
   catch {bookHtml=undefined;}
   generation++;pending=false;
@@ -40,7 +41,8 @@ async function requestFiles() {
   if(!supports('message')) {showNotice('Ask in the conversation: “Please give us the latest workbook PDF and JSON backup.”');return;}
   const token=generation;pending=true;render();
   try {
-    const response=await app.sendMessage({role:'user',content:[{type:'text',text:'Please give us the latest saved workbook PDF and JSON backup as normal file links. Use the latest record in this conversation. This is a file request; do not restart the workshop questions.'}]},{timeout:15000});
+    const referenceText=current?.reference?` Use this private continuation reference to load the latest saved workbook: ${JSON.stringify(current.reference)}.`:' Use the latest record in this conversation.';
+    const response=await app.sendMessage({role:'user',content:[{type:'text',text:`Please give us the latest saved workbook PDF and JSON backup as normal file links.${referenceText} This is a file request; do not restart the workshop questions.`}]},{timeout:15000});
     if(token!==generation)return;
     showNotice(response?.isError?'The file request was not accepted. Ask for the latest PDF and JSON in the conversation.':'The file request is ready in the conversation. Send it if your chat app asks you to.',Boolean(response?.isError));
   } catch {if(token===generation)showNotice('The file request could not be prepared. Ask for the latest PDF and JSON in the conversation.',true);}
@@ -56,7 +58,7 @@ async function download(kind) {
     let file={name:`workshop-revision-${current.record.revision}.json`,text:JSON.stringify(current.record,null,2)};
     if(isPdf) {
       showNotice('Preparing this snapshot’s PDF. Your answers are unchanged.');
-      const result=await app.callServerTool({name:'download_workbook_file',arguments:{record:current.record}},{timeout:60000});
+      const result=await app.callServerTool({name:'download_workbook_file',arguments:{record:current.reference??current.record}},{timeout:60000});
       if(token!==generation)return;
       if(result.isError)throw new Error(errorText(result)||'The PDF could not be prepared.');
       file=await decodePdfFile(result,current.record.revision);
@@ -78,6 +80,8 @@ function render() {
     record,phaseId:current?.view?.phaseId??record?.phases.find(p=>p.status!=='confirmed')?.id??6,
     bookHtml,hasPdf:Boolean(record?.phases.some(phase=>phase.status!=='draft')),exportFailed:current?.export?.status==='failed',
     notice,noticeError,busy:pending,connected,onDownload:download,onRequestFiles:requestFiles,
+    workspaceUrl:current?.workspace?.url,continuation:current?.reference,latestRevision:current?.currentRevision,
+    onOpenWorkspace:async()=>{if(current?.workspace?.url)await app.openLink({url:current.workspace.url});},
   }));
 }
 function hostContext(context={}) {

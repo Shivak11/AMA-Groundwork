@@ -23,4 +23,6 @@ export type InlineProps = {
   notice: string; noticeError: boolean; busy: boolean; connected: boolean;
   onDownload: (kind: 'pdf' | 'checkpoint') => Promise<void>;
   onRequestFiles: () => Promise<void>;
+  workspaceUrl?: string; continuation?: {key:string;revision:number}; latestRevision?: number;
+  onOpenWorkspace?: () => Promise<void>;
 };

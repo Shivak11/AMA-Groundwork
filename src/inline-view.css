@@ -217,3 +217,7 @@
   .cw-task-path { margin-left: 0; }
   .cw-file-actions { align-items: stretch; }
 }
+.cw-persistent-access {margin-top:24px;padding-top:20px;border-top:1px solid var(--color-border-primary,#8885)}
+.cw-persistent-access p {line-height:1.6}
+.cw-persistent-access pre,.cw-access-link {white-space:pre-wrap;overflow-wrap:anywhere;max-width:100%}
+.cw-persistent-access details {margin-top:16px}

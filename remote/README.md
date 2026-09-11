@@ -1,21 +1,22 @@
 # Cloudflare connector
 
-Version 0.2.0 is a local review candidate. The Cloudflare adapter uses the same workshop rules and book composition as local stdio. It bundles the teaching resources, licensed font and interactive activity/book view. Prefab and Python are no longer imported into this runtime or required by its build. Cloudflare Browser Run generates remote PDFs.
+Version 0.6.0 adds private D1 storage, immutable revision history and short-reference recovery. Workbooks do not automatically expire. Cloudflare Browser Run generates PDFs from saved snapshots. The existing inline visual, Terracotta workbook and native-question/plain-chat behaviour are retained.
 
-The previously approved Worker is at https://ai-use-case-workshop.shiva-research11.workers.dev/mcp on the shiva.research11 account. This candidate has not replaced it. The committed configuration starts disabled and unconfigured. The existing consultant Worker is unchanged.
+The authorised endpoint remains https://ai-use-case-workshop.shiva-research11.workers.dev/mcp. The dedicated database is ai-use-case-workshop-sessions, bound as WORKSHOP_DB. The committed configuration starts disabled and unconfigured; deployment and actual-host proof belong in the release record. Other Workers and databases are outside this change.
 
 ## Build and check
 
 Install the locked Node dependencies described in the main README. Run `npm test`, `npm run build:remote`, and `node scripts/verify-stdio.mjs`. The remote build is a dry run, not deployment. Local PDF tests require Chromium; an existing executable can be provided through `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`.
 
-For a loopback-only protocol check:
+For a loopback-only persistent protocol check:
 
 ```sh
+npx wrangler d1 migrations apply ai-use-case-workshop-sessions --local
 npx wrangler dev --local --ip 127.0.0.1 --port 8876 --var WORKSHOP_ENABLED:true --var ACCESS_MODE:public
-node scripts/verify-http.mjs http://127.0.0.1:8876/mcp
+node scripts/verify-persistent-remote.mjs http://127.0.0.1:8876/mcp --skip-pdf
 ```
 
-Run `node scripts/verify-http.mjs https://ai-use-case-workshop.shiva-research11.workers.dev/mcp --pdf` to check the deployed connector. The script uses fictional groups and generates an actual PDF only when `--pdf` is supplied. Private deployments require `WORKSHOP_ACCESS_TOKEN` through a protected environment; never put it in a URL or command argument.
+Run `node scripts/verify-persistent-remote.mjs` after deploying the exact reviewed build. It creates a fictional group, verifies six real PDF checkpoints and recovery/correction, then explicitly deletes only that run's session. Its report excludes credentials and file-ticket URLs. Private deployments require connector authentication in addition to per-workbook keys; never put a connector token in a URL or command argument.
 
 For this candidate's screen-by-screen exercise, run `node scripts/verify-visual-journey.mjs`. It uses the actual local MCP tools and returned widget with a fictional hiring group, confirms all six phases and writes the review HTML plus PDF checkpoints to `output/visual-review/`. Run `node scripts/verify-widget-recovery.mjs` for adversarial local view-state checks.
 
@@ -33,13 +34,17 @@ Record actual host tests separately from SDK checks: discovery, starting a ficti
 
 ## Access and privacy
 
-`WORKSHOP_ENABLED=false` is the containment switch. `ACCESS_MODE=public` permits anyone to use the stateless connector. `ACCESS_MODE=private` requires a `WORKSHOP_ACCESS_TOKEN` of at least 32 characters stored as a Worker secret. This private bearer option is for clients that support headers; it is not an OAuth implementation or an assertion of compatibility with ChatGPT's custom-connector authentication screen.
+`WORKSHOP_ENABLED=false` stops the service. `WORKSHOP_WRITES_ENABLED=false` pauses workshop mutations while retaining saved reads and exports. `ACCESS_MODE=public` opens MCP discovery and preparation, not access to other groups' data. `ACCESS_MODE=private` adds a connector bearer credential; this is not OAuth. Every workbook read/write still requires its own private key. The separate reading page accepts only read keys and cannot mutate a workbook.
 
-No group database or application request-body log is created. Participants' supplied text is processed by Cloudflare for the requested tool call and PDF rendering, then returned to their chat client. Chat providers and Cloudflare retain their own platform-level policies. This is not a promise of zero platform retention. Downloadable JSON remains the recovery mechanism.
+Group summaries, aliases, approvals and snapshots stay in D1 until explicit deletion. No application request-body logging is enabled. Write/read credentials and temporary file tickets are stored only as hashes. The stable reading credential stays in a URL fragment and is sent only to same-origin APIs in an authorisation header. No external page assets, analytics or fonts are requested. Chat providers and Cloudflare retain their own platform policies; application deletion does not erase downloaded copies or provider backups.
 
 The `Mcp-Session-Id` header carries only the client's declared rendering capability. It never grants access, identifies a group owner or refers to stored answers. Every private request still needs the access credential. Clients may edit this rendering preference without changing authorisation.
 
-The request parser permits at most 350,000 raw bytes for the complete record, replacement patch and JSON-RPC envelope. The domain record remains limited to 150,000 UTF-8 bytes, including undo. Oversized requests fail before tool handling. Request and PDF rate limits reduce bursts. They are per-location, eventually consistent guards, not a global spend cap. Shared classroom networks and chat-provider egress may combine many groups. Classroom concurrency and Browser Run capacity need a cohort-sized test before claiming load readiness. See [Cloudflare rate-limit behaviour](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/).
+The request parser permits at most 350,000 bytes; the canonical record remains limited to 150,000 UTF-8 bytes. Preparation and mutation rate limits reduce bursts but are per-location, not global spend caps. Atomic database admission limits refuse excess writes without deleting retained work: 500 sessions, 1000 revisions, 2000 operation receipts per session and a conservative 200 MB logical byte budget. There may be 256 unexpired tickets per group; only expired file tickets are cleaned. The reading page offers direct authenticated downloads without allocating a ticket, including at the application byte cap. Physical Cloudflare quotas can still limit service; no unlimited-capacity claim is made. See [Cloudflare D1 limits](https://developers.cloudflare.com/d1/platform/limits/) and [rate-limit behaviour](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/).
+
+## Migration and rollback
+
+Apply the additive migration locally and run protocol/SQLite checks before remote migration. Apply the remote migration only to ai-use-case-workshop-sessions, then deploy the reviewed source. A missing binding fails closed. Never delete the database during rollback. Prefer write-disabled containment so participants retain reading and downloads. Returning directly to the old stateless Worker would strand short references; retain the persistent reader or export affected records before such a rollback. Old v0.1–v0.5 verification files are historical evidence, not this release's runtime proof.
 
 ## Dependencies and release boundary
 
