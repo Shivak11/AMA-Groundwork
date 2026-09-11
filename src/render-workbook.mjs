@@ -27,7 +27,7 @@ export async function renderWorkbookPdf(record, options = {}) {
     browser = await chromium.launch({
       headless: true,
       timeout: timeoutMs,
-      ...(options.executablePath ? { executablePath: options.executablePath } : {}),
+      ...((options.executablePath || process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH) ? { executablePath:options.executablePath || process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH } : {}),
     });
     const context = await browser.newContext({ javaScriptEnabled: false, serviceWorkers: 'block' });
     await context.route('**/*', route => route.abort('blockedbyclient'));

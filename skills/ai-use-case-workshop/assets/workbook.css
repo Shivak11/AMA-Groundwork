@@ -94,7 +94,120 @@ em, i { font-style: normal; }
 .book-footer a { color: var(--muted); }
 .book-footer .footer-page-space { display: none; }
 
+.visual-cover { border-top: 0; border-left: 3mm solid var(--functional-clay); }
+.visual-cover h1 { margin: 0; max-width: none; font-size: 35pt; line-height: 1.12; letter-spacing: -.02em; }
+.visual-cover.cover-long-title h1 { font-size: 28pt; }
+.visual-cover .book-name { margin-top: 5mm; color: var(--muted); font-size: 12pt; }
+.cover-group { padding-top: 7mm; margin-top: 7mm; border-top: 1px solid var(--rule); }
+.cover-outcome { margin-top: 7mm; padding-left: 4mm; border-left: 1.2mm solid var(--functional-clay); }
+.cover-outcome h2 { margin-bottom: 2mm; font: 600 10.5pt/1.35 "Avenir Next", Avenir, "Segoe UI", Arial, sans-serif; letter-spacing: 0; }
+.cover-outcome .answer { font-size: 12pt; }
+.cover-start, .cover-review { margin-top: 4mm; color: var(--muted); }
+.visual-cover .cover-credit { margin-top: 7mm; font-size: 9pt; }
+.visual-cover .cover-authorship { margin-top: 0; }
+.cover-credit a { display: inline-block; margin-top: 1.5mm; }
+.phase-index .state-confirmed .index-number { color: white; background: var(--ink); border-color: var(--ink); }
+.phase-index .index-number { display: grid; place-items: center; width: 7mm; height: 7mm; border: 1px solid var(--rule); border-radius: 50%; font-size: 12pt; }
+.phase-index li { grid-template-columns: 7mm 1fr; gap: 3mm; align-items: start; }
+.diagram-node { min-width: 0; padding: 5mm; border: 1px solid var(--rule); background: var(--white); }
+.diagram-node h3 { font-size: 10.5pt; margin-bottom: 2.5mm; break-after: avoid; }
+.diagram-node .answer { font-size: 10.5pt; line-height: 1.45; }
+.goal-outcome { border: 0; padding: 7mm; background: var(--ink); color: var(--paper); }
+.goal-outcome .answer { font: 400 22pt/1.26 "DM Serif Display", Georgia, serif; }
+.diagram-connector { display: flex; justify-content: center; height: 8mm; }
+.diagram-connector span { height: 6mm; border-left: 1px solid var(--functional-clay); position: relative; }
+.diagram-connector span::after { content: ''; position: absolute; left: -2mm; bottom: -1mm; width: 3.5mm; height: 3.5mm; border-right: 1px solid var(--functional-clay); border-bottom: 1px solid var(--functional-clay); transform: rotate(45deg); }
+.measure-connection { display: grid; grid-template-columns: 1.5fr 1fr; }
+.goal-measure { border-right: 0; border-top: 1.2mm solid var(--functional-clay); }
+.goal-baseline { background: var(--paper); border-top: 1.2mm solid var(--rule); }
+.goal-guardrail { border: 2px solid var(--ink); }
+.goal-hypothesis { padding: 5mm 0 0; border: 0; background: transparent; }
+
+h4 { margin: 0 0 2mm; font-size: 10pt; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; break-after: avoid; }
+.book-field { margin-top: 6mm; }
+.book-field h3 { margin-bottom: 2.5mm; break-after: avoid; }
+.book-field:first-child { margin-top: 0; }
+.chapter-footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 3mm; border-top: 1px solid var(--rule); margin-top: 12mm; padding-top: 4mm; font-size: 9pt; color: var(--muted); }
+.recorded-choice { font-size: 9pt; font-weight: 600; color: var(--functional-clay); margin-top: 3mm; }
+.gap-route { display: grid; grid-template-columns: .8fr 1.1fr 1.1fr; margin-bottom: 7mm; border-bottom: 1px solid var(--rule); }
+.gap-information { grid-column: 1 / -1; background: var(--ink); color: var(--paper); padding: 4mm; font: 400 18pt/1.25 "DM Serif Display", Georgia, serif; }
+.gap-holder, .gap-barrier, .gap-unlock { min-width: 0; padding: 4mm; }
+.gap-holder { border-left: 1px solid var(--rule); }
+.gap-barrier { background: var(--paper); border-left: 1px solid var(--rule); border-right: 1px solid var(--rule); }
+.gap-unlock { border-right: 1px solid var(--rule); border-top: 1mm solid var(--functional-clay); }
+.first-gap { padding: 5mm 0 0 5mm; border-left: 1.2mm solid var(--functional-clay); }
+.first-gap .answer { font-size: 12pt; }
+.workflow-selection ul { display: flex; flex-wrap: wrap; gap: 3mm; padding: 0; margin: 3mm 0 0; list-style: none; }
+.workflow-selection li { flex: 1 1 40mm; padding: 3mm; border: 1px solid var(--rule); font-size: 10pt; }
+.workflow-selection .chosen-workflow { border: 1.5px solid var(--ink); background: var(--paper); }
+.workflow-choice { display: block; margin-top: 2mm; color: var(--functional-clay); font-size: 9pt; }
+.chosen-workflow-field { margin-top: 4mm; }
+.case-replay { margin: 6mm 0; padding: 4mm 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+.task-journey > h3 { margin-bottom: 4mm; }
+.work-journey { list-style: none; margin: 0; padding: 0; }
+.work-journey > li { display: grid; grid-template-columns: 9mm 1.1fr 1fr; gap: 4mm; position: relative; padding-bottom: 4mm; }
+.journey-number { display: grid; align-content: start; justify-content: center; padding-top: 2mm; position: relative; color: var(--functional-clay); font: 400 20pt/1.15 "DM Serif Display", Georgia, serif; }
+.journey-number::after { content: ''; position: absolute; top: 12mm; bottom: -2mm; left: 50%; width: 0; border-left: 1px solid var(--rule); }
+.work-journey > li:last-child .journey-number::after { display: none; }
+.journey-work { min-width: 0; padding: 3mm 0 3mm 3mm; border-left: 1px solid var(--rule); }
+.journey-friction { min-width: 0; padding: 3mm; background: var(--paper); border-left: 1.2mm solid var(--rule); }
+.selected-zero-task .journey-friction { border-left-color: var(--functional-clay); }
+.zero-comparison { margin-top: 5mm; border: 1px solid var(--ink); }
+.zero-comparison > h3 { padding: 3mm 4mm; background: var(--ink); color: var(--paper); }
+.zero-selected, .zero-remaining, .zero-redesign { padding: 4mm; }
+.zero-selected { border-bottom: 1px solid var(--rule); }
+.zero-redesign { background: var(--paper); border-top: 1px solid var(--rule); }
+.candidate-map { margin-top: 8mm; }
+.candidate-map:first-child { margin-top: 0; }
+.candidate-title { margin: 0 0 4mm; padding-bottom: 3mm; border-bottom: 2px solid var(--ink); font: 400 22pt/1.2 "DM Serif Display", Georgia, serif; break-after: avoid; }
+.candidate-map > .recorded-choice { margin: -1mm 0 4mm; }
+.candidate-route { display: grid; grid-template-columns: 1fr 1.1fr 1.1fr; border: 1px solid var(--rule); }
+.candidate-route > div { min-width: 0; padding: 4mm; }
+.candidate-input { background: var(--paper); }
+.candidate-input ul { list-style: none; margin: 0; padding: 0; }
+.candidate-input li + li { margin-top: 3mm; }
+.task-reference { display: block; font-size: 9pt; color: var(--muted); margin-bottom: 1mm; }
+.candidate-ai { border-left: 1px solid var(--rule); border-right: 1px solid var(--rule); border-top: 1.2mm solid var(--functional-clay); }
+.candidate-human { border-top: 1.2mm solid var(--ink); }
+.candidate-comparator { padding: 4mm; background: var(--paper); border: 1px solid var(--rule); border-top: 0; }
+.candidate-case { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; padding-top: 4mm; }
+.candidate-case > div { min-width: 0; }
+.priority-map { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 0 0 6mm; }
+.priority-map caption { text-align: left; margin-bottom: 4mm; font-size: 12pt; font-weight: 600; }
+.priority-map th, .priority-map td { padding: 4mm; vertical-align: top; text-align: left; }
+.priority-map thead th { color: var(--muted); font-size: 10pt; padding-top: 0; }
+.priority-map thead th:first-child { width: 28%; }
+.priority-map thead th:nth-child(2) { width: 36%; }
+.priority-band th { padding: 3mm 4mm; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); background: var(--paper); font: 400 19pt/1.2 "DM Serif Display", Georgia, serif; }
+.priority-first .priority-band th { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.priority-stop .priority-band th { border-left: 1.2mm solid var(--rule); }
+.priority-entry th { font-weight: 600; }
+.priority-entry td { border-left: 1px solid var(--rule); }
+.priority-entry td, .priority-entry th { border-bottom: 1px solid var(--rule); }
+.empty-decision { font-size: 10pt; color: var(--muted); }
+.challenge-record { border-left: 1.2mm solid var(--functional-clay); padding-left: 4mm; }
+.cost-record { margin-top: 5mm; }
+.test-decision { padding: 6mm; background: var(--ink); color: var(--paper); }
+.test-decision h3 { font: 400 25pt/1.2 "DM Serif Display", Georgia, serif; margin-bottom: 4mm; }
+.test-decision .answer { font-size: 12pt; }
+.test-candidate { margin-top: 5mm; }
+.test-accountability { padding: 4mm 0; margin-top: 4mm; border-top: 1px solid var(--rule); }
+.test-evidence { padding: 4mm; background: var(--paper); border: 1px solid var(--rule); }
+.test-accountability h3, .test-evidence h3, .test-action h3, .test-people h3, .test-stop h3 { font-size: 10.5pt; margin-bottom: 2.5mm; break-after: avoid; }
+.test-action { padding: 5mm; border: 1px solid var(--rule); border-top: 1.2mm solid var(--functional-clay); }
+.test-people { padding: 4mm 0; }
+.test-stop { padding: 4mm; border: 2px solid var(--ink); }
+
 @page { size: A4 portrait; margin: 14mm 16mm 22mm; }
+@page workbook-step-1 { @top-left { content: "Step 1. What should improve?"; } }
+@page workbook-step-2 { @top-left { content: "Step 2. What prevents progress?"; } }
+@page workbook-step-3 { @top-left { content: "Step 3. What actually happens?"; } }
+@page workbook-step-4 { @top-left { content: "Step 4. Where could AI help?"; } }
+@page workbook-step-5 { @top-left { content: "Step 5. Which should we pursue first?"; } }
+@page workbook-step-6 { @top-left { content: "Step 6. What do we recommend?"; } }
+@page {
+  @top-left { font-family: Arial, sans-serif; font-size: 10.5pt; font-weight: 400; color: #6F5A4E; vertical-align: bottom; padding-bottom: 3mm; }
+}
 
 @media print {
   :root { font-size: 10.5pt; background: white; }
@@ -102,7 +215,36 @@ em, i { font-style: normal; }
   main { max-width: none; margin: 0; }
   .cover, .chapter { padding: 0; margin: 0; }
   .cover { min-height: 255mm; border-top-width: 3mm; padding: 9mm 8mm 6mm; }
-  .cover h1 { margin-top: 0; font-size: 49pt; }
+  .cover h1 { margin-top: 0; }
+  .visual-cover { min-height: 247mm; padding: 8mm 7mm; }
+  .visual-cover h1 { font-size: 33pt; }
+  .visual-cover.cover-long-title h1 { font-size: 27pt; }
+  .diagram-node { break-inside: auto; }
+  .chapter-footer { display: none; }
+  #phase-1 { page: workbook-step-1; }
+  #phase-2 { page: workbook-step-2; }
+  #phase-3 { page: workbook-step-3; }
+  #phase-4 { page: workbook-step-4; }
+  #phase-5 { page: workbook-step-5; }
+  #phase-6 { page: workbook-step-6; }
+  .chapter .chapter-header { padding: 0 0 4mm; margin-bottom: 5mm; }
+  #phase-3 .workflow-selection li { font-size: 10.5pt; padding: 2.5mm; }
+  #phase-3 .case-replay { margin: 4mm 0; padding: 3mm 0; }
+  #phase-3 .task-journey > h3 { margin-bottom: 3mm; }
+  #phase-3 .work-journey > li { padding-bottom: 2mm; gap: 3mm; }
+  #phase-3 .journey-work { padding-top: 2.5mm; padding-bottom: 2.5mm; }
+  #phase-3 .journey-friction { padding: 2.5mm 3mm; }
+  #phase-3:not(.long-content) .zero-comparison { break-inside: avoid; }
+  .gap-route, .candidate-route, .candidate-map, .candidate-case, .work-journey > li, .zero-comparison, .priority-map tr, .test-plan > section, .test-plan > div { break-inside: auto; }
+  .priority-map thead { display: table-header-group; }
+  .priority-band { break-after: avoid; }
+  .long-content .measure-connection, .long-content .gap-route, .long-content .candidate-route, .long-content .candidate-case, .long-content .work-journey > li { display: block; }
+  .long-candidate .candidate-route, .long-candidate .candidate-case { display: block; }
+  .long-candidate .candidate-case > div + div { margin-top: 4mm; }
+  .long-content .candidate-case > div + div { margin-top: 4mm; }
+  .long-content .journey-number { display: block; padding: 2mm 0; }
+  .long-content .journey-number::after { display: none; }
+  .long-content .goal-measure { border-right: 1px solid var(--rule); }
   .cover .problem { margin-top: 7mm; }
   .cover-bottom { margin-top: 9mm; }
   .cover-authorship { margin-top: 7mm; }
@@ -139,4 +281,26 @@ em, i { font-style: normal; }
   .comparison td::before { content: attr(data-label); display: block; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
   .comparison td:first-child { background: var(--paper); }
   .book-footer { padding: 18px 22px; flex-direction: column; gap: 8px; }
+  .visual-cover h1, .visual-cover.cover-long-title h1 { font-size: clamp(28px, 8vw, 42px); }
+  .measure-connection { display: block; }
+  .goal-measure { border-right: 1px solid var(--rule); }
+  .goal-baseline { border-top: 0; }
+  .goal-outcome .answer { font-size: 25px; }
+  .gap-route, .candidate-route, .candidate-case { display: block; }
+  .gap-information { font-size: 23px; }
+  .gap-holder, .gap-barrier, .gap-unlock { border: 1px solid var(--rule); border-top: 0; }
+  .gap-unlock { border-left: 3px solid var(--functional-clay); }
+  .work-journey > li { grid-template-columns: 28px minmax(0, 1fr); gap: 8px; padding-bottom: 16px; }
+  .journey-number { grid-row: span 2; font-size: 24px; }
+  .journey-friction { grid-column: 2; }
+  .candidate-route > div + div { border-top: 1px solid var(--rule); }
+  .candidate-ai { border-left: 3px solid var(--functional-clay); border-right: 0; }
+  .candidate-human { border-left: 3px solid var(--ink); }
+  .candidate-case > div + div { margin-top: 14px; }
+  .priority-map, .priority-map tbody, .priority-map tr, .priority-map td, .priority-map th { display: block; width: 100%; }
+  .priority-map caption { display: block; }
+  .priority-map thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .priority-entry td { border-left: 0; }
+  .priority-entry [data-label]::before { content: attr(data-label); display: block; margin-bottom: 5px; color: var(--muted); font-size: 12px; font-weight: 600; }
+  .chapter-footer { display: flex; flex-direction: column; gap: 8px; }
 }
