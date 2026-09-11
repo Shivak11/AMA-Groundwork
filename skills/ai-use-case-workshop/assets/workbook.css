@@ -52,6 +52,12 @@ em, i { font-style: normal; }
 .cover-authorship { margin-top: 9mm; font-size: 9pt; }
 .cover-date { color: var(--muted); margin-top: 1mm; }
 .chapter-header { padding-bottom: 7mm; border-bottom: 2px solid var(--clay); margin-bottom: 7mm; break-inside: avoid; break-after: avoid; }
+.chapter-layout { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0; }
+.chapter-layout > thead > .chapter-title-row > td,
+.chapter-layout > tbody > .chapter-block > td { padding: 0; border: 0; vertical-align: top; }
+.chapter-layout > thead > .chapter-title-row > td { text-align: left; }
+.chapter-layout > tbody > .chapter-block > td > .book-field { margin-top: 6mm; }
+.chapter-layout > tbody > .chapter-block:first-child > td > .book-field { margin-top: 0; }
 .review-note { border-left: 3px solid var(--functional-clay); padding: 3mm 4mm; background: var(--paper); margin-bottom: 6mm; }
 .main-answer { margin: 0 0 8mm; padding: 6mm; background: var(--paper); border-left: 3px solid var(--clay); }
 .main-answer h3 { margin-bottom: 3mm; }
@@ -159,6 +165,7 @@ h4 { margin: 0 0 2mm; font-size: 10pt; font-weight: 600; line-height: 1.35; over
 .zero-redesign { background: var(--paper); border-top: 1px solid var(--rule); }
 .candidate-map { margin-top: 8mm; }
 .candidate-map:first-child { margin-top: 0; }
+.candidate-atlas-continuation { margin-top: 8mm; }
 .candidate-title { margin: 0 0 4mm; padding-bottom: 3mm; border-bottom: 2px solid var(--ink); font: 400 22pt/1.2 "DM Serif Display", Georgia, serif; break-after: avoid; }
 .candidate-map > .recorded-choice { margin: -1mm 0 4mm; }
 .candidate-route { display: grid; grid-template-columns: 1fr 1.1fr 1.1fr; border: 1px solid var(--rule); }
@@ -174,6 +181,7 @@ h4 { margin: 0 0 2mm; font-size: 10pt; font-weight: 600; line-height: 1.35; over
 .candidate-case > div { min-width: 0; }
 .priority-map { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 0 0 6mm; }
 .priority-map caption { text-align: left; margin-bottom: 4mm; font-size: 12pt; font-weight: 600; }
+.priority-caption { margin-bottom: 4mm; font-size: 12pt; font-weight: 600; }
 .priority-map th, .priority-map td { padding: 4mm; vertical-align: top; text-align: left; }
 .priority-map thead th { color: var(--muted); font-size: 10pt; padding-top: 0; }
 .priority-map thead th:first-child { width: 28%; }
@@ -199,15 +207,6 @@ h4 { margin: 0 0 2mm; font-size: 10pt; font-weight: 600; line-height: 1.35; over
 .test-stop { padding: 4mm; border: 2px solid var(--ink); }
 
 @page { size: A4 portrait; margin: 14mm 16mm 22mm; }
-@page workbook-step-1 { @top-left { content: "Step 1. What should improve?"; } }
-@page workbook-step-2 { @top-left { content: "Step 2. What prevents progress?"; } }
-@page workbook-step-3 { @top-left { content: "Step 3. What actually happens?"; } }
-@page workbook-step-4 { @top-left { content: "Step 4. Where could AI help?"; } }
-@page workbook-step-5 { @top-left { content: "Step 5. Which should we pursue first?"; } }
-@page workbook-step-6 { @top-left { content: "Step 6. What do we recommend?"; } }
-@page {
-  @top-left { font-family: Arial, sans-serif; font-size: 10.5pt; font-weight: 400; color: #6F5A4E; vertical-align: bottom; padding-bottom: 3mm; }
-}
 
 @media print {
   :root { font-size: 10.5pt; background: white; }
@@ -221,12 +220,13 @@ h4 { margin: 0 0 2mm; font-size: 10pt; font-weight: 600; line-height: 1.35; over
   .visual-cover.cover-long-title h1 { font-size: 27pt; }
   .diagram-node { break-inside: auto; }
   .chapter-footer { display: none; }
-  #phase-1 { page: workbook-step-1; }
-  #phase-2 { page: workbook-step-2; }
-  #phase-3 { page: workbook-step-3; }
-  #phase-4 { page: workbook-step-4; }
-  #phase-5 { page: workbook-step-5; }
-  #phase-6 { page: workbook-step-6; }
+  /* Native repeating table headers also work in the remote Chromium 128.
+     Logical body rows avoid one page-spanning cell containing a whole chapter. */
+  .chapter-layout { margin: 0; }
+  .chapter-layout > thead { display: table-header-group; break-inside: avoid; }
+  .chapter-layout > thead > tr { break-inside: avoid; }
+  .chapter-layout > tbody > .chapter-block { break-inside: avoid; }
+  .long-content .chapter-layout > tbody > .chapter-block { break-inside: auto; }
   .chapter .chapter-header { padding: 0 0 4mm; margin-bottom: 5mm; }
   #phase-3 .workflow-selection li { font-size: 10.5pt; padding: 2.5mm; }
   #phase-3 .case-replay { margin: 4mm 0; padding: 3mm 0; }
@@ -237,6 +237,9 @@ h4 { margin: 0 0 2mm; font-size: 10pt; font-weight: 600; line-height: 1.35; over
   #phase-3:not(.long-content) .zero-comparison { break-inside: avoid; }
   .gap-route, .candidate-route, .candidate-map, .candidate-case, .work-journey > li, .zero-comparison, .priority-map tr, .test-plan > section, .test-plan > div { break-inside: auto; }
   .priority-map thead { display: table-header-group; }
+  .chapter-layout.priority-map > thead { break-after: avoid; }
+  .chapter-layout.priority-map .priority-entry { break-inside: avoid; }
+  .long-content .chapter-layout.priority-map .priority-entry { break-inside: auto; }
   .priority-band { break-after: avoid; }
   .long-content .measure-connection, .long-content .gap-route, .long-content .candidate-route, .long-content .candidate-case, .long-content .work-journey > li { display: block; }
   .long-candidate .candidate-route, .long-candidate .candidate-case { display: block; }
@@ -300,6 +303,13 @@ h4 { margin: 0 0 2mm; font-size: 10pt; font-weight: 600; line-height: 1.35; over
   .priority-map, .priority-map tbody, .priority-map tr, .priority-map td, .priority-map th { display: block; width: 100%; }
   .priority-map caption { display: block; }
   .priority-map thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .chapter-layout, .chapter-layout > thead, .chapter-layout > tbody,
+  .chapter-layout > thead > .chapter-title-row,
+  .chapter-layout > thead > .chapter-title-row > td,
+  .chapter-layout > tbody > .chapter-block,
+  .chapter-layout > tbody > .chapter-block > td { display: block; width: 100%; }
+  .chapter-layout > thead { position: static; height: auto; overflow: visible; clip-path: none; }
+  .chapter-layout > thead > .priority-columns { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .priority-entry td { border-left: 0; }
   .priority-entry [data-label]::before { content: attr(data-label); display: block; margin-bottom: 5px; color: var(--muted); font-size: 12px; font-weight: 600; }
   .chapter-footer { display: flex; flex-direction: column; gap: 8px; }
