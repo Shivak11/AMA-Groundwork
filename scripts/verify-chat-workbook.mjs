@@ -1,0 +1,263 @@
+import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
+import {mkdir, readFile, writeFile} from 'node:fs/promises';
+import {chromium} from 'playwright';
+import {Client} from '@modelcontextprotocol/sdk/client/index.js';
+import {InMemoryTransport} from '@modelcontextprotocol/sdk/inMemory.js';
+import {createWorkshopServer} from '../src/server.mjs';
+import {group, answers} from '../examples/hiring.mjs';
+
+// This harness exercises the bundled view and actual local MCP tools. It does
+// not impersonate Claude's question tool or claim native-host/model proof.
+const html = await readFile(new URL('../dist/widget.html', import.meta.url), 'utf8');
+const out = new URL('../output/chat-workbook/', import.meta.url);
+const screens = new URL('screens/', out);
+await mkdir(screens, {recursive:true});
+const pdfStub = Buffer.from('%PDF-explicit-protocol-stub-not-a-rendered-document');
+const server = await createWorkshopServer({pdfRenderer:async()=>pdfStub});
+const client = new Client({name:'read-only-workbook-browser-check', version:'1'}, {
+  capabilities:{extensions:{'io.modelcontextprotocol/ui':{mimeTypes:['text/html;profile=mcp-app']}}},
+});
+const [serverTransport, clientTransport] = InMemoryTransport.createLinkedPair();
+await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+const browser = await chromium.launch({headless:true, ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ? {executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH} : {})});
+const page = await browser.newPage({viewport:{width:1180,height:1000}, reducedMotion:'reduce'});
+page.setDefaultTimeout(10000);
+const checks = [], modelCalls = [], viewRequests = [], downloads = [], messages = [], errors = [], screenshots = [];
+const networkAttempts = [];
+page.on('pageerror', error=>errors.push(error.message));
+await page.route(/^(https?|wss?):/, route=>{networkAttempts.push(route.request().url()); return route.abort();});
+let frame, rejectDownload = false, rejectMessage = false, failure, failureLayout;
+const visuals = ['goal','blockers','workflow','candidates','priorities','test'];
+const chapterMarkers = [answers[0].outcome,answers[1].firstGap,answers[2].chosenWorkflow,answers[3].candidates[0].title,answers[4].challenge,answers[5].recommendation];
+const body = () => frame.locator('body');
+const flush = () => body().evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+async function call(name, args) {
+  const result = await client.callTool({name, arguments:args});
+  assert(!result.isError, result.content?.[0]?.text);
+  modelCalls.push({name,revision:result.structuredContent?.record?.revision,phase:args.phase});
+  return result;
+}
+await page.exposeFunction('workbookHostRequest', async request=>{
+  viewRequests.push({method:request.method,params:request.params});
+  if(request.method==='tools/call' || request.method==='ui/update-model-context') {
+    throw new Error(`Read-only workbook attempted ${request.method}`);
+  }
+  if(request.method==='ui/download-file') {
+    downloads.push(request.params);
+    return rejectDownload ? {isError:true} : {};
+  }
+  if(request.method==='ui/message') {
+    messages.push(request.params);
+    return rejectMessage ? {isError:true} : {};
+  }
+  throw new Error(`Unexpected workbook request: ${request.method}`);
+});
+async function mount(initial, {downloadFile=true,message=true,theme='light'}={}) {
+  rejectDownload=false; rejectMessage=false;
+  await page.setContent('<!doctype html><html><body style="margin:0"><iframe id="workbook-host-frame" title="Controlled MCP workbook host" sandbox="allow-scripts" style="display:block;border:0;width:100%;height:1000px"></iframe></body></html>');
+  await page.evaluate(({html,initial,downloadFile,message,theme})=>{
+    if(window.workbookListener)window.removeEventListener('message',window.workbookListener);
+    window.workbookListener=async event=>{
+      const hostFrame=document.getElementById('workbook-host-frame');
+      if(event.source!==hostFrame?.contentWindow)return;
+      const request=event.data;if(request?.jsonrpc!=='2.0')return;
+      const reply=result=>event.source.postMessage({jsonrpc:'2.0',id:request.id,result},'*');
+      try {
+        if(request.method==='ui/initialize')reply({
+          protocolVersion:request.params.protocolVersion,
+          hostInfo:{name:'Controlled read-only workbook host',version:'1'},
+          // Advertise write capabilities so zero writes is proved by behaviour,
+          // not by hiding those capabilities from a regressed implementation.
+          hostCapabilities:{serverTools:{},updateModelContext:{},...(downloadFile?{downloadFile:{}}:{}),...(message?{message:{text:{}}}:{})},
+          hostContext:{theme,displayMode:'inline'},
+        });
+        else if(request.method==='ui/notifications/initialized')event.source.postMessage({jsonrpc:'2.0',method:'ui/notifications/tool-result',params:initial},'*');
+        else if(request.method==='ui/notifications/size-changed')hostFrame.style.height=`${Math.min(Math.max(Number(request.params.height)||1000,300),20000)}px`;
+        else if(request.id!==undefined)reply(await window.workbookHostRequest(request));
+      } catch(error) {
+        event.source.postMessage({jsonrpc:'2.0',id:request.id,error:{code:-32000,message:error.message}},'*');
+      }
+    };
+    window.addEventListener('message',window.workbookListener);
+    document.getElementById('workbook-host-frame').srcdoc=html;
+  },{html,initial,downloadFile,message,theme});
+  frame=page.frameLocator('#workbook-host-frame');
+  await frame.locator('.inline-workbook').waitFor();
+  await waitRecord(initial.structuredContent.record);
+  await flush();
+}
+async function emit(result) {
+  await page.evaluate(params=>document.getElementById('workbook-host-frame').contentWindow.postMessage({jsonrpc:'2.0',method:'ui/notifications/tool-result',params},'*'),result);
+  await flush();
+}
+async function waitRecord(record) {
+  await frame.getByLabel('Complete JSON record',{exact:true}).waitFor({state:'attached'});
+  await frame.getByLabel('Complete JSON record',{exact:true}).evaluate((node,expected)=>new Promise((resolve,reject)=>{
+    const start=Date.now();
+    const poll=()=>{
+      const saved=document.querySelector('[aria-label="Complete JSON record"]');
+      if(saved && JSON.stringify(JSON.parse(saved.textContent))===expected)return resolve();
+      if(Date.now()-start>8000)return reject(new Error('Expected complete snapshot record was not shown'));
+      requestAnimationFrame(poll);
+    };poll();
+  }),JSON.stringify(record));
+}
+async function assertReadOnly() {
+  assert.equal(await frame.locator('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="checkbox"], [role="radio"], [role="slider"]').count(),0);
+  const allowed=new Set(['Open workbook','Close workbook','Download PDF','Download saved record','Request current file links']);
+  const buttons=await frame.getByRole('button',{includeHidden:true}).allTextContents();
+  for(const text of buttons)assert(allowed.has(text.trim()) || text.includes('Open workbook'),`Unexpected interactive control: ${text}`);
+  assert.equal(viewRequests.filter(r=>r.method==='tools/call').length,0);
+  assert.equal(viewRequests.filter(r=>r.method==='ui/update-model-context').length,0);
+}
+async function assertNoOverflow() {
+  const measure=await body().evaluate(()=>({viewport:innerWidth,page:document.documentElement.scrollWidth,body:document.body.scrollWidth}));
+  assert(measure.page<=measure.viewport+1 && measure.body<=measure.viewport+1,`Horizontal overflow: ${JSON.stringify(measure)}`);
+}
+async function screenshot(name) {
+  await flush();
+  const path=new URL(`${name}.png`,screens).pathname;
+  await page.screenshot({path,fullPage:true});screenshots.push(path);
+}
+async function openBook() {
+  const opener=frame.getByRole('button',{name:'Open workbook',exact:true}).filter({visible:true}).first();
+  await opener.click();
+  await frame.locator('#workshop-book-dialog').waitFor({state:'visible'});
+  const book=frame.frameLocator('iframe[title="Composed workshop workbook"]');
+  await book.locator('body').waitFor();
+  assert((await book.locator('body').textContent()).includes('Prepared by Dr. Shiva Kakkar'));
+  assert.equal(await book.locator('input, textarea, select, [contenteditable]').count(),0);
+  return book;
+}
+async function closeBook() {
+  await frame.getByRole('button',{name:'Close workbook',exact:true}).click();
+  await frame.locator('#workshop-book-dialog').waitFor({state:'hidden'});
+  await flush();
+}
+async function waitIdle() {
+  await frame.locator('.inline-workbook[aria-busy="false"]').waitFor();
+  await flush();
+}
+function assertFileMessage(message) {
+  const text=(message.content??[]).map(item=>item.text??'').join('\n');
+  assert.equal(message.role,'user');
+  assert(text.length<350,'File request exposed an internal handoff prompt');
+  assert.match(text,/latest.*workbook PDF/i);
+  assert.match(text,/do not restart the workshop questions/i);
+  assert(!text.includes(group.name));
+  assert(!text.includes(answers[0].outcome));
+  assert(!/schemaVersion|record revision|questionTurn|phaseId|"phases"|owner\s*=|Return to activity/i.test(text));
+  assert.equal(Object.hasOwn(message,'structuredContent'),false);
+}
+try {
+  let result=await call('start_workshop',{group});
+  const snapshots=[];
+  for(let phase=1;phase<=6;phase++) {
+    result=await call('save_workshop_phase',{record:result.structuredContent.record,phase,answers:answers[phase-1]});
+    const draft=await call('show_workbook',{record:result.structuredContent.record,phase});
+    if(phase===1)await mount(draft);else {await emit(draft);await waitRecord(draft.structuredContent.record);}
+    assert.equal(await frame.locator('.inline-workbook').getAttribute('data-phase'),String(phase));
+    await frame.locator(`.cw-main > .cw-phase [data-visual="${visuals[phase-1]}"]`).waitFor();
+    await assertReadOnly();await assertNoOverflow();await screenshot(`step-${phase}-saved`);
+    result=await call('confirm_workshop_phase',{record:draft.structuredContent.record,phase,approved:true,confirmation:`The fictional group approves its saved Step ${phase} summary.`});
+    assert.equal(result.structuredContent.record.phases[phase-1].status,'confirmed');
+    assert.equal(result._meta.artifacts.pdf.blob,pdfStub.toString('base64'));
+    for(const marker of chapterMarkers.slice(0,phase))assert(result._meta.bookHtml.includes(marker),`Cumulative Step ${phase} book omitted saved wording: ${marker}`);
+    await emit(result);await waitRecord(result.structuredContent.record);
+    assert((await frame.locator('.cw-progress').innerText()).includes(`${phase} of 6 steps approved`));
+    await screenshot(`step-${phase}-approved`);
+    snapshots.push(result);
+  }
+  checks.push('All six phase visuals use actual saved MCP records; six explicit conversational confirmations carry cumulative book HTML and labelled protocol-stub PDFs.');
+  const completed=snapshots[5];
+  const book=await openBook();
+  assert((await book.locator('body').textContent()).includes(answers[5].recommendation));
+  await screenshot('complete-book');await assertReadOnly();await closeBook();
+  await openBook();await closeBook();await waitRecord(completed.structuredContent.record);
+  checks.push('Opening and reopening the composed book preserves every answer and emits no tool calls or context updates.');
+
+  await emit(snapshots[0]);await waitRecord(completed.structuredContent.record);
+  const conflict=structuredClone(completed);
+  conflict.structuredContent.record.phases[0].answers.outcome='Conflicting wording in the same revision.';
+  await emit(conflict);await waitRecord(completed.structuredContent.record);
+  await frame.getByText('A conflicting reply was ignored. Use the latest saved record in the conversation.',{exact:true}).waitFor();
+  await assertReadOnly();await screenshot('conflicting-reply-retained');
+  await emit(completed);await waitRecord(completed.structuredContent.record);
+  checks.push('Older results and same-revision conflicting records cannot replace the displayed snapshot or expose reconciliation/mutation controls.');
+
+  await frame.getByRole('button',{name:'Download PDF',exact:true}).filter({visible:true}).first().click();await waitIdle();
+  assert.equal(downloads.at(-1).contents[0].resource.mimeType,'application/pdf');
+  assert.equal(downloads.at(-1).contents[0].resource.blob,pdfStub.toString('base64'));
+  await frame.getByRole('button',{name:'Download saved record',exact:true}).filter({visible:true}).first().click();await waitIdle();
+  assert.deepEqual(JSON.parse(downloads.at(-1).contents[0].resource.text),completed.structuredContent.record);
+  rejectDownload=true;
+  await frame.getByRole('button',{name:'Download PDF',exact:true}).filter({visible:true}).first().click();await waitIdle();
+  await frame.getByText('The download was declined. Ask for normal file links in the conversation.',{exact:true}).waitFor();
+  await waitRecord(completed.structuredContent.record);await assertReadOnly();
+  checks.push('Snapshot PDF and JSON use native download requests; a declined download retains the complete record. No real download or rendered PDF is claimed.');
+
+  await mount(snapshots[0],{downloadFile:false});
+  await frame.getByRole('button',{name:'Download PDF',exact:true}).filter({visible:true}).first().click();await waitIdle();
+  assertFileMessage(messages.at(-1));
+  const afterFallback=messages.length;
+  await openBook();await closeBook();
+  assert.equal(messages.length,afterFallback,'Reading the old book must not message the host');
+  await frame.getByRole('button',{name:'Request current file links',exact:true}).click();await waitIdle();assertFileMessage(messages.at(-1));
+  rejectMessage=true;
+  await frame.getByRole('button',{name:'Request current file links',exact:true}).click();await waitIdle();
+  await frame.getByText('The file request was not accepted. Ask for the latest PDF and JSON in the conversation.',{exact:true}).waitFor();
+  await waitRecord(snapshots[0].structuredContent.record);await assertReadOnly();
+  checks.push('Historical cards request current file links without sharing their record, names, answers, revision or ownership; rejected messages leave the snapshot unchanged.');
+
+  await mount(snapshots[0],{downloadFile:false,message:false});
+  const beforeUnsupported=messages.length;
+  await frame.getByRole('button',{name:'Request current file links',exact:true}).click();await waitIdle();
+  await frame.getByText('Ask in the conversation: “Please give us the latest workbook PDF and JSON backup.”',{exact:true}).waitFor();
+  assert.equal(messages.length,beforeUnsupported);await assertReadOnly();
+  checks.push('Hosts without download/message support receive a readable fallback without record writes.');
+
+  await page.setViewportSize({width:320,height:900});
+  for(let phase=1;phase<=6;phase++) {
+    await mount(snapshots[phase-1],{theme:'dark'});
+    assert.equal(await frame.locator('html').evaluate(node=>node.classList.contains('dark')),true);
+    await assertNoOverflow();await assertReadOnly();await screenshot(`mobile-dark-step-${phase}`);
+  }
+  const long='Unbroken'.repeat(140);
+  const hostile='<img src="https://invalid.example/workbook-audit" onerror="window.workbookAuditInjected=true">';
+  const longResult=await call('save_workshop_phase',{record:completed.structuredContent.record,phase:1,answers:{outcome:long,kpi:hostile}});
+  const longView=await call('show_workbook',{record:longResult.structuredContent.record,phase:1});
+  await mount(longView,{theme:'dark'});
+  await assertNoOverflow();await assertReadOnly();
+  assert.equal(await frame.locator('img[src*="invalid.example"]').count(),0);
+  assert.equal(await body().evaluate(()=>Boolean(window.workbookAuditInjected)),false);
+  await frame.locator('.cw-full-wording summary').click();await assertNoOverflow();
+  await frame.locator('.cw-backup summary').click();await assertNoOverflow();
+  await screenshot('mobile-dark-long-wording');
+  await openBook();await assertNoOverflow();await screenshot('mobile-dark-book');await closeBook();
+  checks.push('All six visuals fit a 320px dark host; long unbroken text, expanded wording/JSON and the open book do not overflow the outer view. HTML-like answers remain text.');
+  await assertReadOnly();
+  assert.deepEqual(errors,[]);assert.deepEqual(networkAttempts,[]);
+} catch(error) {
+  failure=error;console.error(error.stack);
+  try {
+    failureLayout={
+      host:await page.evaluate(()=>({scrollY,innerHeight,frame:document.getElementById('workbook-host-frame')?.getBoundingClientRect().toJSON()})),
+      workbook:await body().evaluate(()=>({scrollY,innerHeight,dialog:document.getElementById('workshop-book-dialog')?.getBoundingClientRect().toJSON(),closeButton:[...document.querySelectorAll('button')].find(button=>button.textContent==='Close workbook')?.getBoundingClientRect().toJSON()})),
+    };
+    console.error(JSON.stringify({failureLayout}));
+  } catch {}
+  try {await screenshot('failure');} catch {}
+} finally {
+  await writeFile(new URL('evidence.json',out),JSON.stringify({
+    result:failure?'fail':'pass',createdAt:new Date().toISOString(),
+    widget:{bytes:Buffer.byteLength(html),sha256:createHash('sha256').update(html).digest('hex')},
+    checks,modelCalls,viewRequests,downloads:downloads.length,fileMessages:messages,errors,networkAttempts,screenshots,
+    toolCallsFromView:viewRequests.filter(r=>r.method==='tools/call').length,
+    modelContextUpdatesFromView:viewRequests.filter(r=>r.method==='ui/update-model-context').length,
+    failure:failure?.message,failureLayout,
+    boundary:'Actual bundled workbook in a controlled MCP Apps host, with real in-memory MCP state tools and composed book HTML. PDF bytes are an explicit stub. Native question cards, Claude/ChatGPT behaviour, real file delivery and live deployment are not proved by this harness.',
+  },null,2));
+  await browser.close();await client.close();await server.close();
+}
+if(failure)process.exitCode=1;else console.log(`Read-only workbook browser checks passed. Evidence: ${new URL('evidence.json',out).pathname}`);
