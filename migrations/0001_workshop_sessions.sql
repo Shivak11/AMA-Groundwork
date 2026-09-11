@@ -88,14 +88,14 @@ AFTER INSERT ON workshop_sessions
 BEGIN
   UPDATE workshop_storage_budget SET used_bytes=used_bytes+4096+coalesce(length(CAST(NEW.current_record AS BLOB)),0)
     WHERE id=1 AND used_bytes+4096+coalesce(length(CAST(NEW.current_record AS BLOB)),0)<=limit_bytes;
-  SELECT CASE WHEN changes()=0 THEN RAISE(ABORT,'WORKSHOP_STORAGE_LIMIT') END;
+  SELECT RAISE(ABORT,'WORKSHOP_STORAGE_LIMIT') WHERE changes()=0;
 END;
 CREATE TRIGGER IF NOT EXISTS workshop_session_budget_update
 AFTER UPDATE OF current_record ON workshop_sessions
 BEGIN
   UPDATE workshop_storage_budget SET used_bytes=used_bytes+coalesce(length(CAST(NEW.current_record AS BLOB)),0)-coalesce(length(CAST(OLD.current_record AS BLOB)),0)
     WHERE id=1 AND used_bytes+coalesce(length(CAST(NEW.current_record AS BLOB)),0)-coalesce(length(CAST(OLD.current_record AS BLOB)),0)<=limit_bytes;
-  SELECT CASE WHEN changes()=0 THEN RAISE(ABORT,'WORKSHOP_STORAGE_LIMIT') END;
+  SELECT RAISE(ABORT,'WORKSHOP_STORAGE_LIMIT') WHERE changes()=0;
 END;
 CREATE TRIGGER IF NOT EXISTS workshop_session_budget_delete
 AFTER DELETE ON workshop_sessions
@@ -106,7 +106,7 @@ AFTER INSERT ON workshop_revisions
 BEGIN
   UPDATE workshop_storage_budget SET used_bytes=used_bytes+4096+length(CAST(NEW.record_json AS BLOB))
     WHERE id=1 AND used_bytes+4096+length(CAST(NEW.record_json AS BLOB))<=limit_bytes;
-  SELECT CASE WHEN changes()=0 THEN RAISE(ABORT,'WORKSHOP_STORAGE_LIMIT') END;
+  SELECT RAISE(ABORT,'WORKSHOP_STORAGE_LIMIT') WHERE changes()=0;
 END;
 CREATE TRIGGER IF NOT EXISTS workshop_snapshot_budget_delete
 AFTER DELETE ON workshop_revisions
@@ -116,7 +116,7 @@ CREATE TRIGGER IF NOT EXISTS workshop_receipt_budget_insert
 AFTER INSERT ON workshop_operations
 BEGIN
   UPDATE workshop_storage_budget SET used_bytes=used_bytes+2048 WHERE id=1 AND used_bytes+2048<=limit_bytes;
-  SELECT CASE WHEN changes()=0 THEN RAISE(ABORT,'WORKSHOP_STORAGE_LIMIT') END;
+  SELECT RAISE(ABORT,'WORKSHOP_STORAGE_LIMIT') WHERE changes()=0;
 END;
 CREATE TRIGGER IF NOT EXISTS workshop_receipt_budget_delete
 AFTER DELETE ON workshop_operations
@@ -126,7 +126,7 @@ CREATE TRIGGER IF NOT EXISTS workshop_ticket_budget_insert
 AFTER INSERT ON workshop_file_tickets
 BEGIN
   UPDATE workshop_storage_budget SET used_bytes=used_bytes+2048 WHERE id=1 AND used_bytes+2048<=limit_bytes;
-  SELECT CASE WHEN changes()=0 THEN RAISE(ABORT,'WORKSHOP_STORAGE_LIMIT') END;
+  SELECT RAISE(ABORT,'WORKSHOP_STORAGE_LIMIT') WHERE changes()=0;
 END;
 CREATE TRIGGER IF NOT EXISTS workshop_ticket_budget_delete
 AFTER DELETE ON workshop_file_tickets

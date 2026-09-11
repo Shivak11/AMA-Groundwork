@@ -246,8 +246,8 @@ export async function createPersistentWorkshopServer({sessionStore:store,pdfRend
       if(before.revision!==0||before.phases.some(p=>Object.keys(p.answers).length))throw new Error('Import requires a newly prepared workbook.');
       return {...checkpoint,revision:1};
     });
-    if(args.mode)await store.setPreference(loaded.reference,args.mode);
-    return build(loaded,undefined,args.mode,'The group-provided backup was imported. Existing approvals come from that backup; confirm that it is the version your group intended.');
+    if(args.mode&&!loaded.replayed)await store.setPreference(loaded.reference,args.mode);
+    return build(loaded,undefined,loaded.replayed?undefined:args.mode,'The group-provided backup was imported. Existing approvals come from that backup; confirm that it is the version your group intended.');
   },{write:true});
   // Retained for native App download support. Ordinary chat uses HTTPS links.
   server.registerTool('download_workbook_file',{description:'Return a compressed PDF for the exact saved snapshot named by the record revision. File-only result; no questions or changes. Ordinary chat should use export_workbook for HTTPS links.',inputSchema:z.object({record:reference}),annotations:{readOnlyHint:true,destructiveHint:false,idempotentHint:true,openWorldHint:false}},async args=>{
