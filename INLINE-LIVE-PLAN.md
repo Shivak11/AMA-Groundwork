@@ -19,7 +19,7 @@ Shiva approved the inline conversation concept and requested deployment to the e
 
 - Orchestrator: src/widget.mjs transport/recovery adaptation; src/inline-types.ts contract; src/presentation.mjs; src/server-core.mjs; scripts/build-widget.mjs; package files; docs and tests/harnesses.
 - UI worker: src/inline-view.tsx and src/inline-view.css ONLY, consuming the committed props contract. No runtime/controller/server changes.
-- PDF worker: src/workbook-html.mjs, src/book-visuals.mjs and assets/workbook.css ONLY. Fix actual remote pagination with Chromium128-compatible repeated labels and keep heading with first table content.
+- PDF worker: src/workbook-html.mjs, src/book-visuals.mjs and skills/ai-use-case-workshop/assets/workbook.css ONLY. Fix actual remote pagination with Chromium128-compatible repeated labels and keep heading with first table content.
 - Independent scout/verifier: read-only; no implementation writes.
 
 Stat before first write. At unexpected foreign modification, immediately cp the file and git diff to scratch, then stop and escalate. Use apply_patch. Workers are not alone. Verify disk results and explicitly stage/commit verified units with a full status audit.

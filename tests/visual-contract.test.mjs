@@ -38,13 +38,26 @@ test('the native visual resource and action tool do not require Prefab or anothe
   const c=await session();
   try {
     const tools=await c.client.listTools();
-    for(const name of ['workshop_action','show_shortlist','confirm_workshop_phase']) {
+    for(const name of ['workshop_action','show_shortlist','confirm_workshop_phase','present_workshop_question']) {
       const tool=tools.tools.find(t=>t.name===name);assert(tool);assert.equal(tool._meta.ui.resourceUri,'ui://workshop/checkpoint.html');
     }
     const resources=await c.client.listResources();assert(!resources.resources.some(r=>r.uri.includes('prefab')));
     const view=await c.client.readResource({uri:'ui://workshop/checkpoint.html'});
     assert.equal(view.contents[0]._meta.ui.prefersBorder,false);
     assert.deepEqual(view.contents[0]._meta.ui.csp.connectDomains,[]);
+  } finally {await c.close();}
+});
+test('presented options return unchanged record and text fallback before an actual selection',async()=>{
+  const c=await session();
+  try {
+    const start=await c.call('start_workshop',{group});
+    const record=start.structuredContent.record;
+    const presentation={phaseId:1,field:'kpi',question:'How would we recognise less rework?',choices:[{label:'Returned requests',value:'Count requests returned for missing information each week.'}]};
+    const result=await c.call('present_workshop_question',{record,presentation,mode:'text'});
+    assert(!result.isError);assert.deepEqual(result.structuredContent.record,record);
+    assert.deepEqual(result.structuredContent.presentation,presentation);
+    assert.match(result.content[0].text,/No choice is saved yet/);
+    assert.equal(result.structuredContent.mode,'text');
   } finally {await c.close();}
 });
 test('unresolved visual choices prompt reconciliation instead of premature approval',async()=>{

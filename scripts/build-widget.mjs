@@ -8,8 +8,9 @@ const bundled = await build({
   absWorkingDir: root, entryPoints: ['src/widget.mjs'], bundle: true,
   write: false, minify: true, format: 'iife', platform: 'browser', target: ['es2022'],
   legalComments: 'inline',
+  define: {'process.env.NODE_ENV':'"production"'},
 });
-const css = await readFile(path.join(root, 'src', 'widget.css'), 'utf8');
+const css = await readFile(path.join(root, 'src', 'inline-view.css'), 'utf8');
 const font = await readFile(path.join(root, 'skills', 'ai-use-case-workshop', 'assets', 'fonts', 'DMSerifDisplay-Regular.ttf'));
 const fontCss = `@font-face{font-family:'DM Serif Display';font-style:normal;font-weight:400;font-display:swap;src:url(data:font/ttf;base64,${font.toString('base64')}) format('truetype')}`;
 const js = bundled.outputFiles[0].text.replace(/<\/script/gi, '<\\/script');

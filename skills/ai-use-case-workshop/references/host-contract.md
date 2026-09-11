@@ -14,6 +14,7 @@ There is no account database or authenticated automatic resumption. Revisions ar
 | --- | --- |
 | start_workshop | Collect group name, first names or aliases, one problem and date. Context is optional; emails and confidential documents are not required. |
 | workshop_next | Obtain the current step, guide, answer schema and existing work. Do not ask for answers already present. |
+| present_workshop_question | Offer one current scalar question with relevant suggested answer buttons. Choices are proposals until the group selects and saves one. Always allow its own answer. This presentation call changes no record. |
 | workshop_action | Apply one typed choice using record and action.expectedRevision. Chat and the app use this same route. Inspect the advertised action schema; do not invent parameters. |
 | save_workshop_phase | Save or correct top-level draft fields; arrays replace their field. Reconcile incomplete interaction selections with the group's actual reasoning. |
 | confirm_workshop_phase | Only after explicit approval of the displayed current summary, set approved=true and quote that approval. It validates the step and attempts a PDF. |
@@ -26,6 +27,8 @@ Every successful result carries structuredContent.record and phase guidance. The
 ## Conversation and decisions
 
 Ask one manageable question or activity. Participants commit before the AI suggests an answer; label proposals and unknowns. Keep click-driven choices useful: do not ask them to type the selected label again. Ask for reasoning only where it affects a choice or fills an essential gap. A click, sorting move or request for the next question is not chapter approval.
+
+When the group's context supports useful options, call present_workshop_question with the current record, phaseId, scalar field, short question and 1–4 label/value choices. This is especially useful for suggested success measures, a safeguard, a test boundary or an explicit unknown. Do not invent measured baselines or factual claims. For structured workflow, blocker or candidate arrays, use a short conversation, save the agreed structured details, and let the view render them. Do not put JSON into participant-facing choices. A typed answer and a visual selection both use the same record.
 
 Visual selections may precede complete answers. A First choice can be recorded before its reason and missing evidence are known. Read interaction as well as answers, ask for the missing reasoning, and save the complete agreed choice. Never fabricate placeholder agreement. If Keep/Reconsider choices contradict the candidate set, resolve them before confirming. A no-pilot recommendation is a valid outcome.
 
@@ -41,7 +44,7 @@ Generation and delivery differ. Use the host's ordinary file controls if an embe
 
 ## Host-dependent presentation
 
-MCP Apps support must be detected. Inline activities inherit host colours and typography. The Terracotta identity belongs to the composed book. A book tab or expanded view is available within the app; the host determines whether it can remain beside chat or receive later tool updates. Do not promise unsent-keystroke hot reload, a pinned sidebar, or actual Claude/ChatGPT compatibility without host testing.
+MCP Apps support must be detected. Inline activities inherit host colours and typography. The Terracotta identity belongs to the composed book. The view shows one current question and a secondary book preview, with the full book opened only on request. The host determines whether it can remain beside chat or receive later tool updates. Do not promise unsent-keystroke hot reload, a pinned sidebar, or actual Claude/ChatGPT compatibility without host testing.
 
 All actions have a complete text equivalent in the same conversation: choose an outcome, classify a barrier, reorder named tasks, select an instant-task counterfactual, keep/reconsider a candidate, set its priority, correct an answer, approve a step and export. No activity is gated on a separate browser or widget. Technical backup details stay behind disclosure unless requested.
 
