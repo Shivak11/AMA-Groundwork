@@ -1,4 +1,6 @@
-const MAX_REQUEST_BYTES = 180_000;
+// A call carries the validated record (up to 150 KB), a replacement field and
+// its JSON-RPC envelope. Undo remains inside the record's existing size limit.
+const MAX_REQUEST_BYTES = 350_000;
 const allowedOrigins = new Set(['https://chatgpt.com', 'https://chat.openai.com', 'https://claude.ai']);
 
 export function accessConfigured(env) {

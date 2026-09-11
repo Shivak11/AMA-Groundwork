@@ -16,7 +16,7 @@ const js = bundled.outputFiles[0].text.replace(/<\/script/gi, '<\\/script');
 const html = `<!doctype html>
 <html lang="en-IN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; font-src data:; img-src data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; font-src data:; img-src data:; frame-src 'self' about:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Our AI Use-Case Portfolio</title><style>${fontCss}\n${css.replace(/<\/style/gi, '<\\/style')}</style></head>
 <body><main id="workshop-root"></main><noscript>Continue in the conversation and ask for your workbook PDF and JSON checkpoint.</noscript><script>${js}</script></body></html>`;
 await mkdir(path.join(root, 'dist'), { recursive: true });

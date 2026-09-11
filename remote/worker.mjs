@@ -3,11 +3,7 @@ import { createWorkshopServer } from '../src/server-core.mjs';
 import { renderWorkbookPdf } from './render-pdf.mjs';
 import { assetLoader, workbookAssets } from './assets.mjs';
 import { accessConfigured, authorised, originAllowed, boundedJson, applyLimit, protectedResponse } from './access.mjs';
-import { createCompiledPrefabAdapter } from '../prefab/compiled-view.mjs';
-import templates from '../dist/prefab-templates.json';
-import rendererHtml from '../dist/prefab-renderer.html';
-
-const prefabAdapter = createCompiledPrefabAdapter({templates, rendererHtml});
+import { renderWorkbookHtml } from '../src/workbook-html.mjs';
 const uiCapabilities = {extensions:{'io.modelcontextprotocol/ui':{mimeTypes:['text/html;profile=mcp-app']}}};
 
 export default {
@@ -34,13 +30,13 @@ export default {
       const uiMarker = /^workshop-ui([01])-[a-f0-9-]{36}$/.exec(request.headers.get('mcp-session-id') ?? '');
       const handler = createMcpHandler(() => createWorkshopServer({
         assetLoader,
-        prefabAdapter,
+        bookRenderer:record=>renderWorkbookHtml(record,workbookAssets),
         ...(uiMarker ? {capabilitiesOverride:uiMarker[1] === '1' ? uiCapabilities : {}} : {}),
         pdfRenderer: async record => {
           await applyLimit(env.PDF_LIMIT, caller);
           await applyLimit(env.PDF_REGIONAL_LIMIT, 'workshop');
           try {return await renderWorkbookPdf(record, {binding:env.BROWSER, ...workbookAssets});}
-          catch {throw new Error('The PDF service could not complete this export. No confirmation was advanced. Keep the latest draft and retry.');}
+          catch {throw new Error('The PDF service could not complete this export. Keep the returned record and retry the PDF.');}
         },
       }), {legacy:'stateless', responseMode:'auto'});
       const response = await handler.fetch(request);

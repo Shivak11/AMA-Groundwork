@@ -35,17 +35,36 @@ test('text-only MCP journey uses all six confirmations and exposes actual file r
     assert.deepEqual(restored.structuredContent.record,record);
   } finally {await c.close();}
 });
-test('renderer failure reports no confirmation and permits identical retry',async()=>{
+test('renderer failure retains confirmed work and permits export retry without another approval',async()=>{
   let fail=true;const c=await connected({pdfRenderer:async()=>{if(fail)throw new Error('Simulated render failure');return stub();}});
   try {
     let r=(await c.client.callTool({name:'start_workshop',arguments:{group}})).structuredContent.record;
     r=(await c.client.callTool({name:'save_workshop_phase',arguments:{record:r,phase:1,answers:answers[0]}})).structuredContent.record;
     const args={record:r,phase:1,approved:true,confirmation:'Approved'};
     const failed=await c.client.callTool({name:'confirm_workshop_phase',arguments:args});
-    assert(failed.isError);assert.equal(r.phases[0].status,'draft');assert.match(failed.content[0].text,/No confirmation was advanced/);
-    fail=false;const success=await c.client.callTool({name:'confirm_workshop_phase',arguments:args});
+    assert(!failed.isError);assert.equal(r.phases[0].status,'draft');
+    assert.equal(failed.structuredContent.record.phases[0].status,'confirmed');
+    assert.equal(failed.structuredContent.export.status,'failed');
+    assert(!failed._meta.artifacts.pdf);
+    fail=false;const success=await c.client.callTool({name:'export_workbook',arguments:{record:failed.structuredContent.record}});
     assert.equal(success.structuredContent.record.phases[0].status,'confirmed');
+    assert.equal(success.structuredContent.export.status,'ready');
+    assert.equal(success.structuredContent.record.revision,failed.structuredContent.record.revision);
   } finally {await c.close();}
+});
+test('optional preview failure cannot lose approval, including when PDF generation also fails',async()=>{
+  for (const pdfFails of [false,true]) {
+    const c=await connected({bookRenderer:()=>{throw new Error('Preview failure');},pdfRenderer:async()=>{if(pdfFails)throw new Error('PDF failure');return stub();}});
+    try {
+      let result=await c.client.callTool({name:'start_workshop',arguments:{group,mode:'text'}});
+      assert(!result.isError);assert.equal(result.structuredContent.bookPreview.status,'failed');
+      result=await c.client.callTool({name:'save_workshop_phase',arguments:{record:result.structuredContent.record,phase:1,answers:answers[0],mode:'text'}});
+      result=await c.client.callTool({name:'confirm_workshop_phase',arguments:{record:result.structuredContent.record,phase:1,approved:true,confirmation:'Approved',mode:'text'}});
+      assert(!result.isError);assert.equal(result.structuredContent.record.phases[0].status,'confirmed');
+      assert.equal(result.structuredContent.export.status,pdfFails?'failed':'ready');
+      assert(result._meta.artifacts.checkpoint);assert(!result._meta.bookHtml);
+    } finally {await c.close();}
+  }
 });
 test('a problem correction returns the earliest phase needing review',async()=>{
   const c=await connected({pdfRenderer:stub});
