@@ -22,6 +22,7 @@ export type InlineProps = {
   bookHtml?: string; hasPdf: boolean; exportFailed: boolean; presentation?: Presentation;
   notice: string; noticeError: boolean; busy: boolean; canMutate: boolean; canChat: boolean;
   connected: boolean; contextBlocked: boolean; conflict: null | {kind: string; incoming: WorkshopRecord};
+  chatActive: boolean; onResumeUi: () => Promise<void>;
   onAction: (action: Action) => Promise<void>; onAsk: (prompt: string) => Promise<void>;
   onConfirm: (phase: PhaseId) => Promise<void>; onExport: () => Promise<void>; onDownload: (kind: 'pdf' | 'checkpoint') => Promise<void>;
   onPhase: (phase: PhaseId) => void; onRetrySync: () => Promise<void>; onResolve: (incoming: boolean) => Promise<void>;
