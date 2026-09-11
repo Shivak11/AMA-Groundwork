@@ -39,9 +39,10 @@ function assertRouting(result,{field,kind,files=false}={}) {
   if(next.question)assert(textOf(result).includes(next.question),'Plain-chat fallback is missing the active question.');
 }
 function assertCheckpoint(result) {
-  const json=result.content.find(item=>item.type==='resource'&&item.resource.mimeType==='application/json');
-  assert(json,'The full JSON checkpoint must be returned.');
-  assert.deepEqual(JSON.parse(json.resource.text),result.structuredContent.record);
+  assert(!result.content.some(item=>item.type==='resource'),'Routine results must not create file attachments.');
+  const json=result.content.find(item=>item.type==='text'&&item.text.startsWith('{'));
+  assert(json,'The full JSON state must be returned as ordinary text.');
+  assert.deepEqual(JSON.parse(json.text).record,result.structuredContent.record);
   assert.deepEqual(JSON.parse(result._meta.artifacts.checkpoint.text),result.structuredContent.record);
 }
 async function call(name,args) {
@@ -68,7 +69,7 @@ function assertProtected(response) {
 
 try {
   await client.connect(new StreamableHTTPClientTransport(endpoint));
-  const serverVersion=client.getServerVersion();assert.equal(serverVersion.version,'0.5.0');evidence.serverVersion=serverVersion;
+  const serverVersion=client.getServerVersion();assert.equal(serverVersion.version,'0.5.1');evidence.serverVersion=serverVersion;
   const instructions=client.getInstructions();
   assert.match(instructions,/host conversation owns every workshop question/i);
   assert.match(instructions,/available native question tool/i);assert.match(instructions,/ordinary chat/i);
@@ -87,7 +88,7 @@ try {
   const widget=await readFile(new URL('../dist/widget.html',import.meta.url));
   assert.equal(hash(Buffer.from(view.text)),hash(widget));assert.equal(view._meta.ui.prefersBorder,false);
   assert.deepEqual(view._meta.ui.csp.connectDomains,[]);assert.deepEqual(view._meta.ui.csp.resourceDomains,[]);
-  evidence.checks.push({name:'Version 0.5.0, eleven tools, exclusive visual metadata and exact built widget served live',pass:true,widgetBytes:widget.length,widgetSha256:hash(widget)});
+  evidence.checks.push({name:'Version 0.5.1, eleven tools, exclusive visual metadata and exact built widget served live',pass:true,widgetBytes:widget.length,widgetSha256:hash(widget)});
 
   let result=await call('start_workshop',{group});assertRouting(result,{field:'outcome',kind:'answer'});
   result=await call('save_workshop_phase',{record,phase:1,answers:{outcome:answers[0].outcome,baseline:answers[0].baseline}});

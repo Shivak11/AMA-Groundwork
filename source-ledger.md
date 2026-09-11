@@ -1,5 +1,9 @@
 # Source ledger
 
+## Routine attachment and cached-definition checks, 11 September 2026
+
+Actual host checks of version 0.5.0 found that Claude and ChatGPT still listed older installed tool definitions. Claude was reconnected and exposed all eleven current tools. ChatGPT's installed definition still included seven older tools and the retired Prefab resource before refresh. ChatGPT also requested file materialisation for an initial JSON checkpoint. Version 0.5.1 removes embedded JSON resources from routine responses and marks routine/error responses as non-visual while retaining the full model-readable record. Its isolated browser check tests both an initially suppressed view and preservation of an existing read-only view. Live refresh and complete host journeys remain separate verification gates.
+
 ## Host reliability and progress hierarchy, 11 September 2026
 
 The actual Group 1A remote-team Claude test lost required Step 3 fields and exposed technical repair work to the participant. The repair exposes the exact schema and canonical record as ordinary JSON text, validates readiness, and preserves unknowns and corrections. Shiva additionally requested clearer progression and host-compatible light/dark colour. Design of Everyday Things and Impeccable informed the step-first hierarchy; this is design guidance, not measured classroom effectiveness.

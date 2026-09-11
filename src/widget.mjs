@@ -8,10 +8,10 @@ import workbookCss from '../skills/ai-use-case-workshop/assets/workbook.css';
 import workbookFont from '../skills/ai-use-case-workshop/assets/fonts/DMSerifDisplay-Regular.ttf';
 import { decodePdfFile } from './pdf-file.mjs';
 
-const app = new App({name:'AI Use-Case Workshop',version:'0.5.0'}, {availableDisplayModes:['inline','fullscreen']}, {autoResize:true});
+const app = new App({name:'AI Use-Case Workshop',version:'0.5.1'}, {availableDisplayModes:['inline','fullscreen']}, {autoResize:true});
 const root = createRoot(document.getElementById('workshop-root'));
 let current=null, metadata={}, capabilities={}, host={}, bookHtml;
-let connected=false, pending=false, generation=0;
+let connected=false, pending=false, generation=0, suppressed=false;
 let notice='Connecting to the workbook.', noticeError=false;
 const supports = key => Boolean(capabilities[key]);
 const errorText = result => (result?.content??[]).filter(item=>item.type==='text').map(item=>item.text).join('\n').slice(0,1500);
@@ -70,6 +70,7 @@ async function download(kind) {
   finally {if(token===generation){pending=false;render();}}
 }
 function render() {
+  if(suppressed && !current) {root.render(null);return;}
   const record=current?.record??null;
   root.render(createElement(InlineWorkshop,{
     record,phaseId:current?.view?.phaseId??record?.phases.find(p=>p.status!=='confirmed')?.id??6,
@@ -85,7 +86,13 @@ function hostContext(context={}) {
   if(context.styles?.css?.fonts)applyHostFonts(context.styles.css.fonts);
   for(const side of ['top','right','bottom','left']) {const value=Number(host.safeAreaInsets?.[side]);document.documentElement.style.setProperty(`--safe-${side}`,Number.isFinite(value)&&value>=0?`${Math.min(value,100)}px`:'0px');}
 }
-app.ontoolresult=result=>{try{receive(result);render();}catch(error){showNotice(error.message,true);}};
+app.ontoolresult=result=>{
+  // Some hosts mount the app even for tools with no UI metadata. Do not turn
+  // their routine result into another workbook or replace a historical view.
+  if(result?.isError || result.structuredContent?.view?.display===false) {suppressed=true;render();return;}
+  suppressed=false;
+  try{receive(result);render();}catch(error){showNotice(error.message,true);}
+};
 app.onhostcontextchanged=hostContext;
 app.ontoolcancelled=()=>{generation++;pending=false;showNotice('The operation was cancelled. This saved snapshot remains available.');};
 app.onclose=()=>{connected=false;generation++;pending=false;showNotice('This is a saved snapshot. Continue the workshop in the conversation.');};

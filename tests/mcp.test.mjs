@@ -17,18 +17,27 @@ async function connected(options={}) {
 // Protocol/state tests use a clearly labelled renderer stub. Actual PDF generation
 // is independently exercised by the stdio test and the six example exports.
 const stub=async()=>Buffer.from('%PDF-renderer-stub-for-protocol-tests');
+function canonicalText(result) {
+  assert(!result.content.some(block=>block.type==='resource'),'A normal tool response must not create a file attachment.');
+  const blocks=result.content.filter(block=>block.type==='text'&&block.text.trim().startsWith('{')).map(block=>JSON.parse(block.text));
+  assert.equal(blocks.length,1);assert.deepEqual(blocks[0],result.structuredContent);
+  return blocks[0];
+}
 test('text-only MCP journey generates six cumulative PDFs and receives byte-identical files through the dedicated tool',async()=>{
   const rendered=[];const c=await connected({pdfRenderer:async record=>{rendered.push(structuredClone(record));return stub();}});
   try {
     const list=await c.client.listTools();assert(list.tools.some(t=>t.name==='resume_workshop'));
     const p=await c.client.getPrompt({name:'ai_use_case_workshop',arguments:{}});assert.match(p.messages[0].content.text,/one manageable/);
     let result=await c.client.callTool({name:'start_workshop',arguments:{group,mode:'text'}});
-    assert.equal(result.structuredContent.mode,'text');let record=result.structuredContent.record;
+    assert.equal(canonicalText(result).mode,'text');assert.equal(canonicalText(result).view.display,false);
+    let record=canonicalText(result).record;
     for(let i=1;i<=6;i++) {
       result=await c.client.callTool({name:'save_workshop_phase',arguments:{record,phase:i,answers:answers[i-1],mode:'text'}});
-      assert(!result.isError,JSON.stringify(result));record=result.structuredContent.record;
+      assert(!result.isError,JSON.stringify(result));record=canonicalText(result).record;
+      assert.equal(canonicalText(result).view.display,false);
       result=await c.client.callTool({name:'confirm_workshop_phase',arguments:{record,phase:i,approved:true,confirmation:'We approve the displayed summary.',mode:'text'}});
-      assert(!result.isError,JSON.stringify(result));record=result.structuredContent.record;
+      assert(!result.isError,JSON.stringify(result));record=canonicalText(result).record;
+      assert.equal(canonicalText(result).view.display,true);
       assert.equal(result.structuredContent.export.status,'ready');
       assert.equal(result.structuredContent.export.downloadTool,'download_workbook_file');
       assert.equal(rendered.length,i*2-1,'Each confirmation still invokes the PDF renderer.');
@@ -36,7 +45,7 @@ test('text-only MCP journey generates six cumulative PDFs and receives byte-iden
       assert.equal(result._meta?.bookHtml,undefined);assert.equal(result._meta?.artifacts?.pdf,undefined);
       assert.equal(result.structuredContent.bookPreview.status,'client-rendered');
       assert(!result.content.some(b=>b.type==='resource'&&['application/pdf','application/gzip'].includes(b.resource.mimeType)));
-      assert(result.content.some(b=>b.type==='resource'&&b.resource.mimeType==='application/json'));
+      assert.deepEqual(canonicalText(result).record,record);
       const before=structuredClone(record);
       const file=await c.client.callTool({name:'download_workbook_file',arguments:{record}});
       assert(!file.isError,JSON.stringify(file));
@@ -75,6 +84,26 @@ test('renderer failure retains confirmed work and permits export retry without a
     assert.equal(success.structuredContent.record.phases[0].status,'confirmed');
     assert.equal(success.structuredContent.export.status,'ready');
     assert.equal(success.structuredContent.record.revision,failed.structuredContent.record.revision);
+  } finally {await c.close();}
+});
+test('SDK type/refusal errors and malformed-record errors stay file-free and do not change the last valid checkpoint',async()=>{
+  let renders=0;const c=await connected({pdfRenderer:async()=>{renders++;return stub();}});
+  try {
+    const record=canonicalText(await c.client.callTool({name:'start_workshop',arguments:{group}})).record;
+    const before=structuredClone(record);
+    for(const request of [
+      {name:'save_workshop_phase',arguments:{record,phase:1,answers:{kpi:42}}},
+      {name:'confirm_workshop_phase',arguments:{record,phase:1,approved:false,confirmation:'No approval was given.'}},
+      {name:'workshop_next',arguments:{record:{schemaVersion:1}}},
+    ]) {
+      const rejected=await c.client.callTool(request);
+      assert.equal(rejected.isError,true);assert.equal(rejected.structuredContent,undefined);
+      assert(rejected.content.some(item=>item.type==='text'&&item.text.length));
+      assert(!rejected.content.some(item=>item.type==='resource'));assert.deepEqual(record,before);
+    }
+    const resumed=canonicalText(await c.client.callTool({name:'workshop_next',arguments:{record}}));
+    assert.deepEqual(resumed.record,before);assert(resumed.record.phases.every(phase=>phase.status==='draft'));
+    assert.equal(resumed.view.display,false);assert.equal(renders,0);
   } finally {await c.close();}
 });
 test('normal tools use client-rendered previews and retain approval even when PDF generation fails',async()=>{

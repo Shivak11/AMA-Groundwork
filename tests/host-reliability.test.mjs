@@ -9,6 +9,7 @@ import {group,answers} from '../examples/remote-team.mjs';
 
 const approval='Our group explicitly approves this complete saved fictional summary.';
 const pdfStub=async()=>Buffer.from('%PDF-host-reliability-protocol-stub-not-a-rendered-workbook');
+const visualTools=new Set(['show_workbook','show_shortlist','confirm_workshop_phase','export_workbook']);
 async function session(options={}) {
   const server=await createWorkshopServer({pdfRenderer:pdfStub,...options});
   const client=new Client({name:'text-only-host-reliability-regression',version:'1'},{capabilities:{}});
@@ -22,7 +23,10 @@ async function session(options={}) {
       const result=await client.callTool({name,arguments:args});
       assert.equal(result._meta?.bookHtml,undefined,'Normal tool results must not duplicate bundled book HTML.');
       assert.equal(result._meta?.artifacts?.pdf,undefined,'Normal tool results must not duplicate PDF bytes.');
-      assert(!result.content.some(item=>item.type==='resource'&&['application/pdf','application/gzip'].includes(item.resource.mimeType)),'Normal tools return a PDF manifest; the separate file tool carries the bytes.');
+      assert(!result.content.some(item=>item.type==='resource'),'Normal tools must not cause attachment materialisation.');
+      const ordinary=result.content.filter(item=>item.type==='text'&&item.text.trim().startsWith('{')).map(item=>JSON.parse(item.text));
+      assert.equal(ordinary.length,1,'The canonical model result remains available as ordinary JSON text.');
+      assert.equal(ordinary[0].view.display,!result.isError&&visualTools.has(name),`${name} must declare whether it should display a workbook.`);
       return {isError:result.isError===true,content:result.content.filter(item=>item.type==='text').map(item=>({type:'text',text:item.text}))};
     },
     close:async()=>{await client.close();await server.close();},
@@ -38,6 +42,7 @@ function payload(result,{error=false}={}) {
   assert.equal(data.record.phases.length,6);
   assert.deepEqual(data.phase.answerSchema,z.toJSONSchema(answerSchemas[data.phase.id-1]));
   assert.equal(data.bookPreview.status,'client-rendered');
+  assert.equal(typeof data.view.display,'boolean');
   return data;
 }
 function completed(through=6) {

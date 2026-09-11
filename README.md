@@ -64,6 +64,8 @@ Confirmation validates and retains group approval, then attempts its PDF. A rend
 
 Inline snapshots inherit host colours and typography. The book preview and PDF use the shared Terracotta contract. Open workbook shows the cumulative document. Only show_workbook, show_shortlist, confirm_workshop_phase and export_workbook advertise visual resources. Routine starts, questions and saves do not open more cards. The host determines where each snapshot appears and whether an existing card receives updates.
 
+Version 0.5.1 also marks routine results explicitly as non-visual, so a host that reuses a previous visual resource does not show an empty workbook. Routine results retain the canonical record in structured content and ordinary JSON text without creating a JSON attachment. Manual checkpoint downloads remain available. After a deployment that changes tool definitions, refresh the installed connector in ChatGPT and reconnect it in Claude before starting a fresh test conversation; both hosts retained older definitions during the 11 September checks.
+
 All steps, corrections, approvals and PDF requests have text equivalents in the same conversation. A separate browser app is not required. No claim of pinned hot reload, automatic cross-client resumption or live replacement is made.
 
 The canonical public endpoint is https://ai-use-case-workshop.shiva-research11.workers.dev/mcp. Shiva authorised this interface replacement at the existing endpoint. Historical live/ChatGPT reports in remote/ describe older versions. Confirm the server version and widget hash against the latest release record; a source archive or local test alone is not proof of live deployment or Claude/ChatGPT rendering.

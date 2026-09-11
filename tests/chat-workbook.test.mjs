@@ -7,12 +7,19 @@ import {createRecord,savePhase,confirmPhase} from '../src/workshop.mjs';
 import {group,answers} from '../examples/hiring.mjs';
 
 const pdfStub=async()=>Buffer.from('%PDF-chat-workbook-protocol-test-stub');
+const visualTools=new Set(['show_workbook','show_shortlist','confirm_workshop_phase','export_workbook']);
 async function session(options={}) {
   const server=await createWorkshopServer({pdfRenderer:pdfStub,...options});
   // No native-question or UI capability is advertised. Plain chat must suffice.
   const client=new Client({name:'chat-workbook-regression',version:'1'},{capabilities:{}});
   const [a,b]=InMemoryTransport.createLinkedPair();await Promise.all([server.connect(a),client.connect(b)]);
-  return {client,call:(name,args)=>client.callTool({name,arguments:args}),close:async()=>{await client.close();await server.close();}};
+  return {client,call:async(name,args)=>{
+    const result=await client.callTool({name,arguments:args});
+    assert(!result.content.some(item=>item.type==='resource'),'Normal tools must not materialise files.');
+    assert.equal(result.structuredContent.view.display,!result.isError&&visualTools.has(name),name);
+    assert.deepEqual(jsonCheckpoint(result),result.structuredContent.record);
+    return result;
+  },close:async()=>{await client.close();await server.close();}};
 }
 function dataOf(result) {assert(!result.isError,result.content?.[0]?.text);return result.structuredContent;}
 function completed(through=6) {
@@ -21,8 +28,10 @@ function completed(through=6) {
   return record;
 }
 function jsonCheckpoint(result) {
-  const block=result.content.find(item=>item.type==='resource'&&item.resource.mimeType==='application/json');
-  assert(block,'The authoritative JSON checkpoint must be returned.');return JSON.parse(block.resource.text);
+  const blocks=result.content.filter(item=>item.type==='text'&&item.text.trim().startsWith('{')).map(item=>JSON.parse(item.text));
+  assert.equal(blocks.length,1,'One ordinary JSON text block must retain the complete canonical result.');
+  assert.deepEqual(blocks[0],result.structuredContent);
+  return blocks[0].record;
 }
 
 test('only the four snapshot and export tools register a UI resource',async()=>{

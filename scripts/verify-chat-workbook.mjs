@@ -43,6 +43,7 @@ await page.route(/^(https?|wss?):/, route=>{
 await page.goto(harnessUrl,{waitUntil:'domcontentloaded'});
 let frame, expectedDownloadRecord, rejectDownload = false, rejectMessage = false, failure, failureLayout;
 const visuals = ['goal','blockers','workflow','candidates','priorities','test'];
+const visualTools = new Set(['show_workbook','show_shortlist','confirm_workshop_phase','export_workbook']);
 const chapterMarkers = [answers[0].outcome,answers[1].firstGap,answers[2].chosenWorkflow,answers[3].candidates[0].title,answers[4].challenge,answers[5].recommendation];
 const body = () => frame.locator('body');
 const flush = () => body().evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
@@ -52,7 +53,10 @@ async function call(name, args) {
   assert.equal(result._meta?.bookHtml,undefined);
   assert.equal(result._meta?.artifacts?.pdf,undefined);
   assert.equal(result.structuredContent.bookPreview.status,'client-rendered');
-  assert(!result.content.some(item=>item.type==='resource'&&['application/pdf','application/gzip'].includes(item.resource.mimeType)));
+  assert(!result.content.some(item=>item.type==='resource'),'Normal calls must not cause file materialisation.');
+  assert.equal(result.structuredContent.view.display,visualTools.has(name));
+  const ordinary=result.content.filter(item=>item.type==='text'&&item.text.trim().startsWith('{')).map(item=>JSON.parse(item.text));
+  assert.equal(ordinary.length,1);assert.deepEqual(ordinary[0],result.structuredContent);
   modelCalls.push({name,revision:result.structuredContent?.record?.revision,phase:args.phase});
   return result;
 }
@@ -89,12 +93,13 @@ await page.exposeFunction('workbookHostRequest', async request=>{
   }
   throw new Error(`Unexpected workbook request: ${request.method}`);
 });
-async function mount(initial, {downloadFile=true,message=true,theme='light',osColourScheme='light'}={}) {
+async function mount(initial, {downloadFile=true,message=true,theme='light',osColourScheme='light',expectDisplay=true}={}) {
   rejectDownload=false; rejectMessage=false;
   await page.emulateMedia({colorScheme:osColourScheme});
   await page.setContent('<!doctype html><html><body style="margin:0"><iframe id="workbook-host-frame" title="Controlled MCP workbook host" sandbox="allow-scripts" style="display:block;border:0;width:100%;height:1000px"></iframe></body></html>');
   await page.evaluate(({html,initial,downloadFile,message,theme})=>{
     if(window.workbookListener)window.removeEventListener('message',window.workbookListener);
+    window.workbookHostInitialised=false;
     window.workbookListener=async event=>{
       const hostFrame=document.getElementById('workbook-host-frame');
       if(event.source!==hostFrame?.contentWindow)return;
@@ -109,7 +114,10 @@ async function mount(initial, {downloadFile=true,message=true,theme='light',osCo
           hostCapabilities:{serverTools:{},updateModelContext:{},...(downloadFile?{downloadFile:{}}:{}),...(message?{message:{text:{}}}:{})},
           hostContext:{theme,displayMode:'inline'},
         });
-        else if(request.method==='ui/notifications/initialized')event.source.postMessage({jsonrpc:'2.0',method:'ui/notifications/tool-result',params:initial},'*');
+        else if(request.method==='ui/notifications/initialized') {
+          event.source.postMessage({jsonrpc:'2.0',method:'ui/notifications/tool-result',params:initial},'*');
+          window.workbookHostInitialised=true;
+        }
         else if(request.method==='ui/notifications/size-changed')hostFrame.style.height=`${Math.min(Math.max(Number(request.params.height)||1000,300),20000)}px`;
         else if(request.id!==undefined)reply(await window.workbookHostRequest(request));
       } catch(error) {
@@ -120,8 +128,14 @@ async function mount(initial, {downloadFile=true,message=true,theme='light',osCo
     document.getElementById('workbook-host-frame').srcdoc=html;
   },{html,initial,downloadFile,message,theme});
   frame=page.frameLocator('#workbook-host-frame');
-  await frame.locator('.inline-workbook').waitFor();
-  await waitRecord(initial.structuredContent.record);
+  await page.waitForFunction(()=>window.workbookHostInitialised===true);
+  if(expectDisplay) {
+    await frame.locator('.inline-workbook').waitFor();
+    await waitRecord(initial.structuredContent.record);
+  } else {
+    expectedDownloadRecord=undefined;
+    await assertSuppressed();
+  }
   await flush();
   const actual=await body().evaluate(()=>({secureContext:isSecureContext,webCryptoAvailable:Boolean(globalThis.crypto?.subtle),gzipAvailable:typeof DecompressionStream==='function',hostDark:document.documentElement.classList.contains('dark'),osDark:matchMedia('(prefers-color-scheme: dark)').matches,background:getComputedStyle(document.body).backgroundColor,text:getComputedStyle(document.body).color}));
   contextDiagnostics.push({origin:harnessUrl,requestedHostTheme:theme,requestedOsColourScheme:osColourScheme,...actual});
@@ -131,6 +145,20 @@ async function mount(initial, {downloadFile=true,message=true,theme='light',osCo
 async function emit(result) {
   await page.evaluate(params=>document.getElementById('workbook-host-frame').contentWindow.postMessage({jsonrpc:'2.0',method:'ui/notifications/tool-result',params},'*'),result);
   await flush();
+}
+async function assertSuppressed() {
+  await flush();
+  // Let the connection completion callback and subsequent paints run. A routine
+  // result must stay empty rather than briefly clearing then showing a scaffold.
+  await frame.locator('#workshop-root').evaluate(node=>new Promise((resolve,reject)=>{
+    const start=performance.now();
+    const check=()=>{
+      if(node.childElementCount || node.textContent.trim())return reject(new Error('A routine response mounted a workbook or waiting scaffold.'));
+      if(performance.now()-start>=250)return resolve();
+      requestAnimationFrame(check);
+    };requestAnimationFrame(check);
+  }));
+  assert.equal(await frame.locator('h1,h2,h3,h4,h5,h6,.inline-workbook,button').count(),0);
 }
 async function waitRecord(record) {
   await frame.getByLabel('Complete JSON record',{exact:true}).waitFor({state:'attached'});
@@ -195,11 +223,46 @@ function assertFileMessage(message) {
 }
 try {
   let result=await call('start_workshop',{group});
+  const bareErrors=[];
+  for(const request of [
+    {name:'save_workshop_phase',arguments:{record:result.structuredContent.record,phase:1,answers:{kpi:42}}},
+    {name:'confirm_workshop_phase',arguments:{record:result.structuredContent.record,phase:1,approved:false,confirmation:'No approval was given.'}},
+    {name:'workshop_next',arguments:{record:{schemaVersion:1}}},
+  ]) {
+    const rejected=await client.callTool(request);
+    assert.equal(rejected.isError,true);assert.equal(rejected.structuredContent,undefined);
+    assert(rejected.content.some(item=>item.type==='text'&&item.text.length));
+    assert(!rejected.content.some(item=>item.type==='resource'));
+    bareErrors.push(rejected);
+    await mount(rejected,{expectDisplay:false});
+    assert.equal(viewRequests.length,0);
+  }
+  await screenshot('bare-error-suppressed');
+  checks.push('Actual SDK type/refusal rejections and a malformed-record fallback have isError without structured display metadata. Freshly mounted views receiving each bare error stay empty after the handshake, with no scaffold, headings, controls or host requests.');
+  await mount(result,{expectDisplay:false});
+  assert.equal(viewRequests.length,0);await screenshot('routine-start-suppressed');
+  const routineError=await client.callTool({name:'save_workshop_phase',arguments:{record:result.structuredContent.record,phase:1,answers:{}}});
+  assert.equal(routineError.isError,true);assert.equal(routineError.structuredContent.view.display,false);
+  assert(!routineError.content.some(item=>item.type==='resource'));
+  await emit(routineError);await assertSuppressed();
+  checks.push('A newly mounted routine start remains empty after the real host handshake and connection completion, without a heading, waiting scaffold, controls or file attachment. A suppressed error also leaves it empty; canonical records and errors remain in ordinary model text.');
   const snapshots=[];
   for(let phase=1;phase<=6;phase++) {
+    const previouslyDisplayed=expectedDownloadRecord?structuredClone(expectedDownloadRecord):null;
     result=await call('save_workshop_phase',{record:result.structuredContent.record,phase,answers:answers[phase-1]});
+    await emit(result);
+    if(previouslyDisplayed)await waitRecord(previouslyDisplayed);else await assertSuppressed();
     const draft=await call('show_workbook',{record:result.structuredContent.record,phase});
-    if(phase===1)await mount(draft);else {await emit(draft);await waitRecord(draft.structuredContent.record);}
+    await emit(draft);await waitRecord(draft.structuredContent.record);
+    if(phase===1) {
+      const savedText=await body().innerText();await emit(routineError);
+      await waitRecord(draft.structuredContent.record);assert.equal(await body().innerText(),savedText);
+      for(const rejected of bareErrors) {
+        await emit(rejected);await waitRecord(draft.structuredContent.record);
+        assert.equal(await body().innerText(),savedText,'A bare error must not replace the snapshot or add an error scaffold.');
+      }
+      await screenshot('bare-errors-retain-snapshot');
+    }
     assert.equal(await frame.locator('.inline-workbook').getAttribute('data-phase'),String(phase));
     await frame.locator(`.cw-main > .cw-phase [data-visual="${visuals[phase-1]}"]`).waitFor();
     await assertReadOnly();await assertNoOverflow();await screenshot(`step-${phase}-saved`);
@@ -217,6 +280,8 @@ try {
     await screenshot(`step-${phase}-approved`);
     snapshots.push(result);
   }
+  checks.push('An explicit show_workbook result renders after a suppressed start. Later routine saves leave the previous visible record unchanged until an intended visual result arrives. Suppressed errors do not replace the saved view or add an error scaffold.');
+  checks.push('The three actual bare errors also leave an already displayed workbook byte-for-byte unchanged in its visible text and preserve its complete saved record.');
   checks.push('All six visuals use actual saved MCP records. Six explicit confirmations invoke the PDF renderer and return manifests without PDF bytes or book HTML. The widget composes each cumulative book from its snapshot and bundled assets; the opened book retains every approved chapter marker.');
   const completed=snapshots[5];
   const book=await openBook();
