@@ -31,6 +31,8 @@ Test worker owns new tests/host-reliability.test.mjs and new examples/remote-tea
 
 Reviewer is read-only and independently checks tool contracts, state loss and host compatibility against the exact diff. No simultaneous user-browser control; actual Claude and ChatGPT interactions are owned by the orchestrator.
 
+After the cover unit is frozen, the book worker additionally owns src/inline-view.tsx, src/inline-view.css and new tests/progress-hierarchy.test.mjs. Shiva explicitly requested clearer step progression and host-compatible colour on 11 September. Put the viewed step and its saved or approved state first, identify the active next step separately, and make the group name secondary. Use visible words as well as theme-aware colours for approved, current, future and needs-review states. Preserve read-only visuals and all existing download callbacks. The orchestrator continues to own src/widget.mjs, src/inline-types.ts and shared design guidance.
+
 Every builder reads this committed plan and relevant repository instructions. Builders are not alone: preserve foreign work, stat files before first write, and on an unexpected modification immediately copy the file plus git diff to a temporary snapshot, stop and report. Mid-flight ownership amendments require acknowledgement before the next write. The orchestrator reviews critical diffs and runs verification from disk, audits full status before and after narrow staging, and commits each verified unit.
 
 ## Verification gates
