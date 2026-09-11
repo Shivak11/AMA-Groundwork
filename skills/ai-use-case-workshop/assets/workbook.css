@@ -102,14 +102,15 @@ em, i { font-style: normal; }
 
 .visual-cover { border-top: 0; border-left: 3mm solid var(--functional-clay); }
 .visual-cover h1 { margin: 0; max-width: none; font-size: 35pt; line-height: 1.12; letter-spacing: -.02em; }
-.visual-cover.cover-long-title h1 { font-size: 28pt; }
-.visual-cover .book-name { margin-top: 5mm; color: var(--muted); font-size: 12pt; }
+.cover-problem { margin-top: 7mm; }
+.cover-problem h2 { font-family: inherit; font-size: 10.5pt; font-weight: 600; line-height: 1.35; letter-spacing: 0; margin-bottom: 2.5mm; break-after: avoid; }
+.cover-problem .answer { font-size: 12pt; line-height: 1.5; }
 .cover-group { padding-top: 7mm; margin-top: 7mm; border-top: 1px solid var(--rule); }
 .cover-outcome { margin-top: 7mm; padding-left: 4mm; border-left: 1.2mm solid var(--functional-clay); }
 .cover-outcome h2 { margin-bottom: 2mm; font: 600 10.5pt/1.35 "Avenir Next", Avenir, "Segoe UI", Arial, sans-serif; letter-spacing: 0; }
 .cover-outcome .answer { font-size: 12pt; }
 .cover-start, .cover-review { margin-top: 4mm; color: var(--muted); }
-.visual-cover .cover-credit { margin-top: 7mm; font-size: 9pt; }
+.visual-cover .cover-credit { margin-top: 7mm; font-size: 9pt; break-inside: avoid; }
 .visual-cover .cover-authorship { margin-top: 0; }
 .cover-credit a { display: inline-block; margin-top: 1.5mm; }
 .phase-index .state-confirmed .index-number { color: white; background: var(--ink); border-color: var(--ink); }
@@ -217,7 +218,6 @@ h4 { margin: 0 0 2mm; font-size: 10pt; font-weight: 600; line-height: 1.35; over
   .cover h1 { margin-top: 0; }
   .visual-cover { min-height: 247mm; padding: 8mm 7mm; }
   .visual-cover h1 { font-size: 33pt; }
-  .visual-cover.cover-long-title h1 { font-size: 27pt; }
   .diagram-node { break-inside: auto; }
   .chapter-footer { display: none; }
   /* Native repeating table headers also work in the remote Chromium 128.
@@ -284,7 +284,7 @@ h4 { margin: 0 0 2mm; font-size: 10pt; font-weight: 600; line-height: 1.35; over
   .comparison td::before { content: attr(data-label); display: block; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
   .comparison td:first-child { background: var(--paper); }
   .book-footer { padding: 18px 22px; flex-direction: column; gap: 8px; }
-  .visual-cover h1, .visual-cover.cover-long-title h1 { font-size: clamp(28px, 8vw, 42px); }
+  .visual-cover h1 { font-size: clamp(28px, 8vw, 42px); }
   .measure-connection { display: block; }
   .goal-measure { border-right: 1px solid var(--rule); }
   .goal-baseline { border-top: 0; }

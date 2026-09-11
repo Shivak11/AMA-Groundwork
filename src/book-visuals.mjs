@@ -38,9 +38,9 @@ export function renderBookCover(record) {
   const progress = `${confirmed} of 6 phases confirmed.${review ? ` ${review} ${review === 1 ? 'phase needs' : 'phases need'} review.` : ''}`;
   const outcome = first && first.status !== 'draft' ? first.answers.outcome : null;
   const status = phase => phase.status === 'confirmed' ? 'Confirmed' : phase.status === 'needs_review' ? 'Needs review' : 'Not yet confirmed';
-  return `<section class="cover visual-cover${group.problem.length > 160 ? ' cover-long-title' : ''}" aria-labelledby="book-title">
-    <h1 id="book-title" class="answer">${escapeBookText(group.problem)}</h1>
-    <p class="book-name">Our AI Use-Case Portfolio</p>
+  return `<section class="cover visual-cover" aria-labelledby="book-title">
+    <h1 id="book-title">Our AI Use-Case Portfolio</h1>
+    <section class="cover-problem" aria-labelledby="cover-problem-title"><h2 id="cover-problem-title">The problem we are examining</h2>${answer(group.problem)}</section>
     <div class="cover-group"><h2 class="group-name answer">${escapeBookText(group.name)}</h2><p class="members answer">${escapeBookText(group.members.join(', '))}</p></div>
     ${outcome ? `<section class="cover-outcome"><h2>The outcome we want</h2>${answer(outcome)}${first.status === 'needs_review' ? '<p class="cover-review">This outcome needs review because an earlier answer changed.</p>' : ''}</section>` : '<p class="cover-start">The group has not confirmed an outcome yet.</p>'}
     ${group.context ? `<p class="context answer">${escapeBookText(group.context)}</p>` : ''}
