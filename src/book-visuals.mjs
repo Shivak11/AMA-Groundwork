@@ -15,6 +15,7 @@ export function escapeBookText(value) {
 
 const recorded = value => value === null || value === undefined || value === '' ? 'Not recorded' : value;
 const answer = value => `<p class="answer">${escapeBookText(recorded(value))}</p>`;
+const componentStatusClass = value => value === 'Proposed' ? ' status-proposed' : value === 'Needs confirmation' ? ' status-needs-confirmation' : '';
 const node = (label, value, className = '') => `<section class="diagram-node ${className}"><h3>${escapeBookText(label)}</h3>${answer(value)}</section>`;
 const connector = '<div class="diagram-connector" aria-hidden="true"><span></span></div>';
 const phaseOf = (record, id) => record.phases.find(phase => phase.id === id);
@@ -129,7 +130,7 @@ function implementationParts(candidate, explained) {
   const parts = (proposal.components ?? []).map(component => {
     const definition = explained.has(component.kind) ? '' : `<p class="component-definition">${escapeBookText(componentExplanations[component.kind] ?? componentExplanations.Other)}</p>`;
     explained.add(component.kind);
-    return `<section class="implementation-component"><h4>${escapeBookText(component.kind)} <span class="component-status">${escapeBookText(component.status)}</span></h4>${definition}${field('What it would do', component.purpose)}${field('Why the requirement calls for it', component.basis)}</section>`;
+    return `<section class="implementation-component"><h4>${escapeBookText(component.kind)} <span class="component-status${componentStatusClass(component.status)}">${escapeBookText(component.status)}</span></h4>${definition}${field('What it would do', component.purpose)}${field('Why the requirement calls for it', component.basis)}</section>`;
   });
   return [
     `<section class="implementation-proposal" data-book-visual="implementation-proposal"><h3>Proposed implementation for ${escapeBookText(candidate.title)}</h3><p class="proposal-boundary">This is a proposed approach, not a verified or deployed integration.</p>${answer(proposal.approach)}${parts[0] ?? ''}</section>`,
@@ -180,10 +181,34 @@ function comparisonActivities(activities, side, continueAfter = false) {
   return `<ol class="book-comparison-activities">${activities.map((activity, index) => `<li><div class="book-comparison-activity${side === 'proposed' && activity.actor === 'AI' ? ' book-comparison-ai' : ''}"><h4>${escapeBookText(activity.actor)}</h4>${answer(activity.action)}</div>${index < activities.length - 1 || continueAfter ? comparisonArrow : ''}</li>`).join('')}</ol>`;
 }
 
-function comparisonPair(stage, title, index, nextStages) {
+function comparisonContext(comparison, detail, colspan = 1) {
+  return `<tr class="book-comparison-context-row"><th${colspan > 1 ? ` colspan="${colspan}"` : ' scope="col"'}>Use case: ${escapeBookText(comparison.title)} <span class="case-reference">(${escapeBookText(comparison.candidateId)})</span>. ${escapeBookText(detail)}</th></tr>`;
+}
+
+function comparisonPair(stage, comparison, index, nextStages) {
   const current = stage.current.length ? comparisonActivities(stage.current, 'current', nextStages.some(next => next.current.length)) : '<p class="book-comparison-empty">This is an added step in the proposal.</p>';
   const proposed = stage.proposed.length ? comparisonActivities(stage.proposed, 'proposed', nextStages.some(next => next.proposed.length)) : '<p class="book-comparison-empty">This current step is not included in the proposal.</p>';
-  return `<table class="book-comparison-pair${bookHasLongAnswer(stage) ? ' book-comparison-long' : ''}" aria-label="${escapeBookText(`${title}: comparison stage ${index + 1}`)}"><thead><tr><th scope="col">Current work</th><th scope="col">Proposed work</th></tr></thead><tbody><tr><td data-label="Current work">${current}</td><td data-label="Proposed work">${proposed}</td></tr></tbody></table>`;
+  return `<table class="book-comparison-pair${bookHasLongAnswer(stage) ? ' book-comparison-long' : ''}" aria-label="${escapeBookText(`${comparison.title}: comparison stage ${index + 1}`)}"><thead>${comparisonContext(comparison, `This is comparison stage ${index + 1} of ${comparison.stages.length}.`, 2)}<tr><th scope="col">Current work</th><th scope="col">Proposed work</th></tr></thead><tbody><tr><td data-label="Current work">${current}</td><td data-label="Proposed work">${proposed}</td></tr></tbody></table>`;
+}
+
+function comparisonSequence(comparison, activities, side) {
+  const sideLabel = side === 'current' ? 'current work' : 'proposed work';
+  if (!activities.length) {
+    const empty = side === 'current' ? 'No related current task is recorded in this workbook.' : 'No proposed sequence is recorded in this workbook.';
+    return [`<table class="book-comparison-sequence" data-sequence="${side}"><thead>${comparisonContext(comparison, empty)}</thead><tbody><tr><td><p>${empty}</p></td></tr></tbody></table>`];
+  }
+  return activities.map((activity, index) => `<table class="book-comparison-sequence${bookHasLongAnswer(activity) ? ' book-comparison-long' : ''}" data-sequence="${side}"><thead>${comparisonContext(comparison, `This is step ${index + 1} of ${activities.length} in the ${sideLabel} sequence.`)}</thead><tbody><tr><td>${comparisonActivities([activity], side, index < activities.length - 1)}</td></tr></tbody></table>`);
+}
+
+function comparisonSummary(comparison, wrapper) {
+  const components = comparison.components ?? [];
+  const summaryItems = ['the human check'];
+  if (comparison.output) summaryItems.push('the recorded output');
+  if (components.length) summaryItems.push('the proposed components');
+  const summaryList = summaryItems.length === 1 ? summaryItems[0] : `${summaryItems.slice(0, -1).join(', ')} and ${summaryItems.at(-1)}`;
+  const summaryIsLong = bookHasLongAnswer([comparison.humanCheck, comparison.output, components]);
+  const componentRows = components.map((component, index) => `<tr class="book-comparison-component-row"><td>${index === 0 ? `<h4 class="book-comparison-components-title">Proposed components for ${escapeBookText(comparison.title)}</h4>` : ''}<section class="book-comparison-component"><h4>${escapeBookText(component.kind)} <span class="component-status${componentStatusClass(component.status)}">${escapeBookText(component.status)}</span></h4>${answer(component.purpose)}</section></td></tr>`).join('');
+  return wrapper(`<table class="book-comparison-summary-table" aria-label="${escapeBookText(`${comparison.title}: ${summaryList}`)}"><thead>${comparisonContext(comparison, `This comparison concludes with ${summaryList}.`)}</thead><tbody><tr class="book-comparison-result-row"><td><div class="book-comparison-human"><h4>What a person must check or decide</h4>${answer(comparison.humanCheck)}</div>${comparison.output ? field('What someone receives', comparison.output, 'book-comparison-output') : ''}</td></tr>${componentRows}</tbody></table>`, `book-comparison-summary${summaryIsLong ? ' book-comparison-long' : ''}`);
 }
 
 export function renderBookWorkflowComparisons(record) {
@@ -193,15 +218,12 @@ export function renderBookWorkflowComparisons(record) {
     const heading = `<h3 class="book-comparison-title">${escapeBookText(comparison.title)} <span class="case-reference">(${escapeBookText(comparison.candidateId)})</span></h3><p class="book-comparison-scope">This comparison covers the current tasks linked to this use case.</p><p class="book-comparison-priority">${comparison.priority ? `Recorded priority: ${escapeBookText(comparison.priority)}.${priorityNeedsReview ? ' This priority needs review.' : ''}` : 'No priority is confirmed in this workbook.'}</p>${comparison.review ? '<p class="review-note">This comparison needs review alongside the recorded work and recommendation.</p>' : ''}`;
     let steps;
     if (comparison.mode === 'aligned') {
-      steps = comparison.stages.map((stage, index) => wrapper(`${index === 0 ? heading : ''}${comparisonPair(stage, comparison.title, index, comparison.stages.slice(index + 1))}`, index === 0 ? 'book-comparison-start' : ''));
+      steps = comparison.stages.map((stage, index) => wrapper(`${index === 0 ? heading : ''}${comparisonPair(stage, comparison, index, comparison.stages.slice(index + 1))}`, index === 0 ? 'book-comparison-start' : ''));
     } else {
-      const sequence = (activities, side) => activities.length ? activities.map((activity, index) => `<div class="book-comparison-sequence" data-sequence="${side}"><h4>${side === 'current' ? 'Current work' : 'Proposed work'} · Step ${index + 1}</h4>${comparisonActivities([activity], side, index < activities.length - 1)}</div>`) : [`<div class="book-comparison-sequence" data-sequence="${side}"><h4>${side === 'current' ? 'Current work' : 'Proposed work'}</h4><p>${side === 'current' ? 'No related current task is recorded in this workbook.' : 'No proposed sequence is recorded in this workbook.'}</p></div>`];
-      const sequences = [...sequence(comparison.current, 'current'), ...sequence(comparison.proposed, 'proposed')];
+      const sequences = [...comparisonSequence(comparison, comparison.current, 'current'), ...comparisonSequence(comparison, comparison.proposed, 'proposed')];
       steps = sequences.map((content, index) => wrapper(`${index === 0 ? `${heading}<p class="book-comparison-unmapped">The sequences are shown separately because no exact stage mapping is confirmed.</p>` : ''}${content}`, index === 0 ? 'book-comparison-start' : ''));
     }
-    const check = wrapper(`<div class="book-comparison-human"><h4>What a person must check or decide</h4>${answer(comparison.humanCheck)}</div>${comparison.output ? field('What someone receives', comparison.output, 'book-comparison-output') : ''}`);
-    const components = comparison.components.map((component, index) => wrapper(`${index === 0 ? `<h4 class="book-comparison-components-title">Proposed components for ${escapeBookText(comparison.title)}</h4>` : ''}<section class="book-comparison-component"><h4>${escapeBookText(component.kind)} <span class="component-status">${escapeBookText(component.status)}</span></h4>${answer(component.purpose)}</section>`));
-    return [...steps, check, ...components];
+    return [...steps, comparisonSummary(comparison, wrapper)];
   });
 }
 

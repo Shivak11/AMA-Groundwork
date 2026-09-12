@@ -50,6 +50,28 @@ test('final chapter pairs only explicitly mapped related work in separate pagina
   assert.match(pairs[0],/current tasks linked to this use case/);
 });
 
+test('print units repeat use-case and step context and keep the ordinary conclusion together', () => {
+  const record=fixture(),parts=renderBookWorkflowComparisons(record);
+  const pairs=parts.filter(part=>part.includes('class="book-comparison-pair'));
+  assert.equal(pairs.length,4);
+  pairs.forEach((part,index)=>assert.match(part,new RegExp(`Use case: Clarify an agreed update[\\s\\S]*This is comparison stage ${index+1} of 4\\.`)));
+  const summaries=parts.filter(part=>part.includes('book-comparison-summary'));
+  assert.equal(summaries.length,1);
+  assert.match(summaries[0],/Use case: Clarify an agreed update[\s\S]*This comparison concludes with the human check, the recorded output and the proposed components\./);
+  assert.match(summaries[0],/What a person must check or decide[\s\S]*What someone receives[\s\S]*Proposed components for Clarify an agreed update[\s\S]*Skill[\s\S]*Connector/);
+  assert.equal((summaries[0].match(/class="book-comparison-component"/g)||[]).length,2);
+  assert(!summaries[0].includes('book-comparison-long'));
+
+  record.phases[3].answers.candidates[0].implementation.components[1].purpose='Permission detail '.repeat(60);
+  const longSummary=renderBookWorkflowComparisons(record).find(part=>part.includes('book-comparison-summary'));
+  assert.match(longSummary,/book-comparison-summary book-comparison-long/);
+
+  delete record.phases[5].answers.workflowComparisons;
+  const separate=renderBookWorkflowComparisons(record).filter(part=>part.includes('data-sequence='));
+  assert(separate.every(part=>/Use case: Clarify an agreed update/.test(part)));
+  assert.match(separate[1],/This is step 2 of 3 in the current work sequence\./);
+});
+
 test('missing or invalid alignment shows separate sequences without invented positional pairs', () => {
   const record = fixture();
   delete record.phases[5].answers.workflowComparisons;
@@ -81,6 +103,8 @@ test('every deferred or rejected use case retains its own workflow and case-leve
   assert.match(html,/Recorded priority: Do not pursue/);
   assert.match(html,/Do not pilot yet/);
   assert.equal((html.match(/Apply the agreed update format/g)||[]).length,1);
+  assert.match(html,/component-status status-proposed">Proposed/);
+  assert.match(html,/component-status status-needs-confirmation">Needs confirmation/);
   assert(!html.includes('The group uses a repeated format'));
   assert.match(renderBookVisual(record,4),/The group uses a repeated format/);
   assert(parts.filter(part=>part.includes('class="book-comparison-pair')).every(part=>!part.includes('Read permitted updates')));
@@ -183,15 +207,41 @@ test('comparison CSS retains full wrapping, flat semantic colours and per-stage 
   assert.match(comparisonCss,/font-family: inherit/);
   assert.match(comparisonCss,/var\(--cw-ink, var\(--ink\)\)/);
   assert.match(comparisonCss,/overflow-wrap: anywhere/);
-  assert.match(comparisonCss,/padding: 4\.25mm/);
+  assert.match(comparisonCss,/padding: var\(--component-pad\)/);
   assert(!/line-clamp|text-overflow|overflow:\s*hidden|box-shadow|linear-gradient|position:\s*absolute/.test(comparisonCss));
   const activityRule=comparisonCss.match(/\.book-comparison-activity \{([^}]+)\}/)?.[1];
   assert(activityRule&&!/(?:min-|max-)?height:/.test(activityRule));
   assert.match(comparisonCss,/\.book-comparison-arrow \{[^}]*width: 24px; height: 28px; line-height: 0; margin: 2mm auto/);
-  assert.match(comparisonCss,/--comparison-ai: #1AA7B8/);
-  assert.match(comparisonCss,/--comparison-check: #F5B335/);
+  assert.match(comparisonCss,/--comparison-ai: var\(--ai\)/);
+  assert.match(comparisonCss,/--comparison-check: var\(--human\)/);
   assert.match(css,/#phase-6 \.chapter-block:has\(\.book-workflow-comparison\) \{ break-inside: auto; \}/);
-  assert.match(css,/\.book-comparison-pair > thead \{ display: table-header-group; \}/);
+  assert.match(css,/\.book-comparison-start \{ break-inside: avoid; \}/);
+  assert.match(css,/\.book-comparison-start:has\(\.book-comparison-long\) \{ break-inside: auto; \}/);
+  assert.match(css,/\.book-comparison-pair > thead, \.book-comparison-sequence > thead, \.book-comparison-summary-table > thead \{ display: table-header-group; \}/);
+  assert.match(css,/\.book-comparison-pair, \.book-comparison-sequence, \.book-comparison-summary \{ break-inside: avoid; \}/);
+  assert.match(css,/\.book-comparison-summary\.book-comparison-long \.book-comparison-summary-table > tbody > tr \{ break-inside: auto; \}/);
+  assert.match(comparisonCss,/\.book-comparison-context-row th \{[^}]*font-size: var\(--small-label-size\)/);
   assert.match(css,/@media screen and \(max-width: 380px\)/);
   assert.match(css,/content: attr\(data-label\)/);
+});
+
+test('workbook CSS uses one semantic palette and component grammar across print surfaces', () => {
+  const css=readFileSync(new URL('../skills/ai-use-case-workshop/assets/workbook.css',import.meta.url),'utf8');
+  for(const token of [
+    '--ink: #173033','--muted: #5D6D6F','--rule: #A7B8BA','--current: #F2F5F5',
+    '--ai: #1AA7B8','--human: #F5B335','--success: #236B53','--success-soft: #E6F2ED',
+    '--component-border: 1px solid var(--rule)','--component-radius: 1.5mm',
+    '--component-pad: 4.25mm','--small-label-size: 9.5pt',
+  ]) assert(css.includes(token),`missing ${token}`);
+  assert(!/#F3E9D8|#F8F0E4|#3A241C|#6F5A4E|#C56A3C|#9B4625|#BCA48E/i.test(css));
+  assert.match(css,/\.visual-cover \{[^}]*border-left: 3mm solid var\(--success\)/);
+  assert.match(css,/\.phase-index \.state-confirmed \.index-number \{[^}]*background: var\(--success\)/);
+  assert.match(css,/\.candidate-ai \{[^}]*background: var\(--ai\); color: var\(--ai-ink\)/);
+  assert.match(css,/\.candidate-human \{[^}]*background: var\(--human\); color: var\(--human-ink\)/);
+  assert.match(css,/\.flow-node \{[^}]*padding: var\(--component-pad\);[^}]*border-radius: var\(--component-radius\)/);
+  assert.match(css,/\.book-comparison-activity \{[^}]*padding: var\(--component-pad\);[^}]*border-radius: var\(--component-radius\)/);
+  assert.match(css,/\.component-status\.status-proposed \{[^}]*background: var\(--ai-soft\)/);
+  assert.match(css,/\.component-status\.status-needs-confirmation \{[^}]*background: var\(--human-soft\)/);
+  assert.match(css,/--comparison-ink: var\(--cw-ink, var\(--ink\)\)/);
+  assert.match(css,/@media print[\s\S]*--comparison-ink: var\(--ink\); --comparison-muted: var\(--muted\); --comparison-line: var\(--rule\); --comparison-neutral: var\(--current\)/);
 });

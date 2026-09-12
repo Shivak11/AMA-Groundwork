@@ -23,7 +23,7 @@ test('persistent MCP saves, approves and resumes comparisons without new questio
     return result;
   };
   try {
-    assert.equal(client.getServerVersion().version,'0.8.0');
+    assert.equal(client.getServerVersion().version,'0.8.1');
     await call('start_workshop');await call('start_workshop',{group});
     for(let phase=1;phase<=5;phase++) {
       await call('save_workshop_phase',{phase,answers:deferredAnswers[phase-1]});
