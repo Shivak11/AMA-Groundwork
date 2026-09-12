@@ -123,7 +123,7 @@ test('theme fallbacks cannot override an explicit host light or dark preference'
   const explicit = css.slice(css.indexOf(':root.dark:not([data-theme="light"])'));
   assert.match(explicit, /:root\[data-theme="dark"\] \.inline-workbook/);
   assert.match(explicit, /:root:not\(\[data-theme="light"\]\) \.inline-workbook\.dark/);
-  assert.match(explicit, /--cw-surface-fallback: #282a26/);
+  assert.match(explicit, /--cw-surface-fallback: #1E292A/);
   assert.match(css, /--cw-surface: var\(--color-background-primary, var\(--cw-surface-fallback\)\)/);
   for (const token of ['success', 'info', 'warning']) {
     assert(css.includes(`--color-text-${token}`));
@@ -137,9 +137,9 @@ test('semantic fallback text remains readable on its light and dark status surfa
     const channels = hex.match(/\w\w/g).map(value => parseInt(value,16)/255).map(value => value <= .04045 ? value/12.92 : ((value+.055)/1.055)**2.4);
     return channels[0]*.2126 + channels[1]*.7152 + channels[2]*.0722;
   }
-  for (const [text, background] of [['43664d','eef5ee'], ['275f81','edf5fa'], ['7c571f','fff5df'], ['a8cdb0','223329'], ['afcfe8','1f303b'], ['dfc18d','393021']]) {
+  for (const [text, background] of [['236B53','E6F2ED'], ['0B6974','E2F5F7'], ['795300','FFF3D3'], ['8FD1B6','203B32'], ['79D6DF','17363A'], ['F5C762','3C321C']]) {
     const values = [luminance(text), luminance(background)].sort((a,b) => b-a);
     assert((values[0]+.05)/(values[1]+.05) >= 4.5, `${text} on ${background}`);
-    assert(css.includes(`#${text}`) && css.includes(`#${background}`));
+    assert(css.toUpperCase().includes(`#${text}`) && css.toUpperCase().includes(`#${background}`));
   }
 });

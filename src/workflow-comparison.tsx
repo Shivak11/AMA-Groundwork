@@ -39,7 +39,7 @@ export function WorkflowComparison({comparison}:{comparison:Comparison}) {
     {c.humanCheck && <div className="wfc-human-check"><h4>Human check</h4><p>{c.humanCheck}</p></div>}
     {c.output && <div className="wfc-output"><h4>What someone receives</h4><p>{c.output}</p></div>}
     {c.components.length>0 && <section className="wfc-components"><h4>Proposed components for this use case</h4><ul>{c.components.map((component,index)=><li key={index}>
-      <p className="wfc-component-name">{component.kind}<span>{component.status}</span></p>
+      <p className="wfc-component-name"><span className="wfc-component-kind">{component.kind}</span><span>{component.status}</span></p>
       <p>{component.purpose}</p>
     </li>)}</ul></section>}
   </section>;

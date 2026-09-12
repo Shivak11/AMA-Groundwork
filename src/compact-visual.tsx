@@ -67,8 +67,8 @@ function Candidates({ record, answers: a }: { record: WorkshopRecord; answers: A
       <h3><Extract value={candidate.title} /> <span className="cv-reference">({candidate.id})</span></h3>
       {record.interaction?.candidateDispositions?.[candidate.id] === 'Reconsider' && <p className="cv-pending">Needs reconsideration.</p>}
       <div className="cv-option-pair">
-        <div><span className="cv-label cv-ai-label">With AI</span><p><Extract value={candidate.aiWork} /></p></div>
-        <div><span className="cv-label">Without AI</span><p><Extract value={candidate.nonAiAlternative} /></p></div>
+        <div className="cv-option-card cv-option-ai"><span className="cv-label cv-ai-label">With AI</span><p><Extract value={candidate.aiWork} /></p></div>
+        <div className="cv-option-card cv-option-current"><span className="cv-label">Without AI</span><p><Extract value={candidate.nonAiAlternative} /></p></div>
       </div>
       <p className="cv-human-check"><span className="cv-label">Human check</span><Extract value={candidate.humanCheck} /></p>
       <UseCaseFlow steps={candidate.workflow} title={`Proposed workflow: ${candidate.title}`} />

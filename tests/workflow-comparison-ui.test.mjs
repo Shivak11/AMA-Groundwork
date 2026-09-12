@@ -118,22 +118,22 @@ test('full long text and unsupported actor labels render as text, while componen
 
 test('responsive CSS keeps paired columns, full text and a consistent inset without overflow workarounds',()=>{
   const all=readFileSync(new URL('../src/compact-visual.css',import.meta.url),'utf8');
+  const shell=readFileSync(new URL('../src/inline-view.css',import.meta.url),'utf8');
   assert.doesNotThrow(()=>transformSync(all,{loader:'css'}));
   const css=all.slice(all.indexOf('.wfc-comparison {'),all.lastIndexOf('@container compact-visual'));
   assert.match(css,/container: workflow-comparison \/ inline-size/);
   assert.match(css,/table-layout: fixed/);assert.match(css,/width: 50%/);
   assert.match(css,/@container workflow-comparison \(max-width: 420px\)/);
   assert.match(css,/grid-template-columns: minmax\(0,1fr\)/);
-  assert.match(css,/padding: 16px/);assert.match(css,/white-space: pre-wrap/);assert.match(css,/overflow-wrap: anywhere/);
+  assert.match(css,/padding: var\(--cw-content-card-padding\)/);assert.match(css,/white-space: pre-wrap/);assert.match(css,/overflow-wrap: anywhere/);
   const visibleCss=css.replace(/(?:\.wfc-matrix caption|\.wfc-arrow)\s*\{[^}]*\}/g,'');
   assert(!/line-clamp|text-overflow|overflow:\s*hidden|overflow-x|(?:^|[;{])\s*height:\s*\d|repeat\(6/.test(visibleCss));
   assert.match(css,/font: inherit/);assert.match(css,/background: transparent/);
-  assert.match(css,/:root:not\(\[data-theme="light"\]\):not\(\[data-theme="dark"\]\):not\(\.light\)/);
-  assert.match(css,/:root\[data-theme="dark"\] \.wfc-comparison/);
-  for(const color of ['#1AA7B8','#35B7C6','#F5B335','#EFB849'])assert(css.includes(color));
+  assert(!/:root(?:\.|\[)|@media \(prefers-color-scheme/.test(css),'Content semantics must not define a second theme layer.');
+  for(const color of ['#1AA7B8','#102D32','#F5B335','#352409'])assert(shell.includes(color));
   assert(!/color-text-success|color-background-success|color-background-warning/.test(css));
   assert.match(css,/\.wfc-matrix caption.*clip-path: inset\(50%\)/);
-  assert.match(css,/\.wfc-activity \{ padding: 16px/);
+  assert.match(css,/\.wfc-activity \{ padding: var\(--cw-content-card-padding\)/);
   assert.match(css,/\.wfc-action \{ font-size: 14px/);
   assert.match(css,/\.wfc-arrow \{[^}]*margin: 6px auto/);
 });
@@ -159,5 +159,5 @@ test('the fixed AI and human-check colours keep readable contrast in both themes
     const [r,g,b]=hex.match(/\w\w/g).map(value=>parseInt(value,16)/255).map(value=>value<=.04045?value/12.92:((value+.055)/1.055)**2.4);
     return .2126*r+.7152*g+.0722*b;
   };
-  for(const [ink,fill] of [['102c30','1AA7B8'],['102c30','35B7C6'],['35250b','F5B335'],['35250b','EFB849']])assert((luminance(fill)+.05)/(luminance(ink)+.05)>=4.5,`${ink} on ${fill}`);
+  for(const [ink,fill] of [['102D32','1AA7B8'],['352409','F5B335']])assert((luminance(fill)+.05)/(luminance(ink)+.05)>=4.5,`${ink} on ${fill}`);
 });

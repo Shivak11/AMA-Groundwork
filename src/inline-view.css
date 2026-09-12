@@ -1,11 +1,11 @@
 html, body { margin: 0; padding: 0; background: transparent; }
 .inline-workbook {
-  --cw-surface-fallback: #fff; --cw-soft-fallback: #f4f4f0;
-  --cw-ink-fallback: #30332e; --cw-muted-fallback: #697067; --cw-line-fallback: #dcded7;
-  --cw-focus-fallback: #43664d; --cw-review-fallback: #7c571f;
-  --cw-approved-fallback: #43664d; --cw-approved-soft-fallback: #eef5ee;
-  --cw-active-fallback: #275f81; --cw-active-soft-fallback: #edf5fa;
-  --cw-review-soft-fallback: #fff5df;
+  --cw-surface-fallback: #FFFFFF; --cw-soft-fallback: #F2F5F5;
+  --cw-ink-fallback: #173033; --cw-muted-fallback: #5D6D6F; --cw-line-fallback: #A7B8BA;
+  --cw-focus-fallback: #0B6974; --cw-review-fallback: #795300;
+  --cw-approved-fallback: #236B53; --cw-approved-soft-fallback: #E6F2ED;
+  --cw-active-fallback: #0B6974; --cw-active-soft-fallback: #E2F5F7;
+  --cw-review-soft-fallback: #FFF3D3;
   --cw-surface: var(--color-background-primary, var(--cw-surface-fallback));
   --cw-soft: var(--color-background-secondary, var(--cw-soft-fallback));
   --cw-ink: var(--color-text-primary, var(--cw-ink-fallback));
@@ -18,6 +18,21 @@ html, body { margin: 0; padding: 0; background: transparent; }
   --cw-active: var(--color-text-info, var(--cw-active-fallback));
   --cw-active-soft: var(--color-background-info, var(--cw-active-soft-fallback));
   --cw-review-soft: var(--color-background-warning, var(--cw-review-soft-fallback));
+
+  /* Host colours describe the shell and progress. These fixed roles describe workbook content. */
+  --cw-content-card-radius: 4px;
+  --cw-content-card-padding: 16px;
+  --cw-content-current-bg: var(--cw-soft);
+  --cw-content-current-ink: var(--cw-ink);
+  --cw-content-current-border: var(--cw-line);
+  --cw-content-ai-bg: #1AA7B8;
+  --cw-content-ai-ink: #102D32;
+  --cw-content-human-bg: #F5B335;
+  --cw-content-human-ink: #352409;
+  --cw-content-functional-bg: #173033;
+  --cw-content-functional-ink: #FFFFFF;
+  --cw-content-success: #236B53;
+  --cw-content-success-bg: #E6F2ED;
 
   color: var(--cw-ink); background: transparent; width: 100%; min-width: 0;
   font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
@@ -70,12 +85,12 @@ html, body { margin: 0; padding: 0; background: transparent; }
 .cw-use-case-flow figcaption { color: var(--cw-muted); font-size: 12px; margin-bottom: 10px; }
 .cw-use-case-flow > ol { list-style: none; padding: 0; margin: 0; }
 .cw-use-case-flow li { margin: 0; padding: 0; }
-.cw-flow-node { display: grid; grid-template-columns: 22px minmax(0,1fr); gap: 10px; padding: 12px 14px; border: 1px solid var(--cw-line); border-radius: 8px; background: var(--cw-soft); }
-.cw-flow-node strong { color: var(--cw-muted); font-size: 12px; font-weight: 550; }
+.cw-flow-node { display: grid; grid-template-columns: 22px minmax(0,1fr); gap: 10px; padding: var(--cw-content-card-padding); border: 1px solid var(--cw-content-current-border); border-radius: var(--cw-content-card-radius); color: var(--cw-content-current-ink); background: var(--cw-content-current-bg); }
+.cw-flow-node strong { display: block; color: var(--cw-muted); font-size: 12px; font-weight: 550; line-height: 1.35; margin: 0 0 5px; }
 .cw-flow-node p { font-size: 14px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; margin-top: 3px !important; }
 .cw-flow-number { font-size: 12px; color: var(--cw-muted); }
-.cw-use-case-flow [data-actor="AI"] .cw-flow-node { border-color: var(--cw-active); background: var(--cw-active-soft); }
-.cw-use-case-flow [data-actor="AI"] strong { color: var(--cw-active); }
+.cw-use-case-flow [data-actor="AI"] .cw-flow-node { color: var(--cw-content-ai-ink); border-color: var(--cw-content-ai-ink); background: var(--cw-content-ai-bg); }
+.cw-use-case-flow [data-actor="AI"] :where(strong,.cw-flow-number) { color: var(--cw-content-ai-ink); }
 .cw-flow-arrow { display: block; width: 20px; height: 26px; margin-left: 15px; color: var(--cw-muted); }
 .cw-saved-chapter { border-top: 1px solid var(--cw-line); }
 .cw-saved-chapter > summary { font-weight: 550; }
@@ -98,30 +113,30 @@ html, body { margin: 0; padding: 0; background: transparent; }
 /* The host's explicit theme wins. OS dark is only a fallback before a host theme arrives. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]):not([data-theme="dark"]):not(.light) .inline-workbook {
-    --cw-surface-fallback: #282a26; --cw-soft-fallback: #32352f;
-    --cw-ink-fallback: #eeeae2; --cw-muted-fallback: #b8bcb1; --cw-line-fallback: #4a4f44;
-    --cw-focus-fallback: #bdcdb0; --cw-review-fallback: #dfc18d;
-    --cw-approved-fallback: #a8cdb0; --cw-approved-soft-fallback: #223329;
-    --cw-active-fallback: #afcfe8; --cw-active-soft-fallback: #1f303b;
-    --cw-review-soft-fallback: #393021;
+    --cw-surface-fallback: #1E292A; --cw-soft-fallback: #263536;
+    --cw-ink-fallback: #F2F5F5; --cw-muted-fallback: #B7C2C3; --cw-line-fallback: #52686A;
+    --cw-focus-fallback: #67D0DB; --cw-review-fallback: #F5C762;
+    --cw-approved-fallback: #8FD1B6; --cw-approved-soft-fallback: #203B32;
+    --cw-active-fallback: #79D6DF; --cw-active-soft-fallback: #17363A;
+    --cw-review-soft-fallback: #3C321C;
   }
 }
 :root.dark:not([data-theme="light"]) .inline-workbook,
 :root[data-theme="dark"] .inline-workbook,
 :root:not([data-theme="light"]) .inline-workbook.dark {
-  --cw-surface-fallback: #282a26; --cw-soft-fallback: #32352f;
-  --cw-ink-fallback: #eeeae2; --cw-muted-fallback: #b8bcb1; --cw-line-fallback: #4a4f44;
-  --cw-focus-fallback: #bdcdb0; --cw-review-fallback: #dfc18d;
-  --cw-approved-fallback: #a8cdb0; --cw-approved-soft-fallback: #223329;
-  --cw-active-fallback: #afcfe8; --cw-active-soft-fallback: #1f303b;
-  --cw-review-soft-fallback: #393021;
+  --cw-surface-fallback: #1E292A; --cw-soft-fallback: #263536;
+  --cw-ink-fallback: #F2F5F5; --cw-muted-fallback: #B7C2C3; --cw-line-fallback: #52686A;
+  --cw-focus-fallback: #67D0DB; --cw-review-fallback: #F5C762;
+  --cw-approved-fallback: #8FD1B6; --cw-approved-soft-fallback: #203B32;
+  --cw-active-fallback: #79D6DF; --cw-active-soft-fallback: #17363A;
+  --cw-review-soft-fallback: #3C321C;
 }
 
 @media (max-width: 480px) {
   .cw-progress { margin: 16px 0 20px; }
   .cw-progress > ol { gap: 6px; }
   .cw-progress li { flex-direction: column; align-items: flex-start; gap: 3px; font-size: 10px; }
-  .cw-progress li > span:last-child { white-space: nowrap; }
+  .cw-progress li > span:last-child { white-space: normal; overflow-wrap: anywhere; }
   .cw-header h1 { font-size: 19px; }
   .cw-book-toolbar { gap: 8px; }
   .cw-book-toolbar h2 { font-size: 18px; }
