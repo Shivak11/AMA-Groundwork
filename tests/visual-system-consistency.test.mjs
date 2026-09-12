@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {existsSync,readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
 import {buildSync,transformSync} from 'esbuild';
 import {createElement} from 'react';
@@ -15,6 +15,7 @@ const workspaceSource=readFileSync(new URL('../remote/workspace.mjs',import.meta
 const localPdfSource=readFileSync(new URL('../src/render-workbook.mjs',import.meta.url),'utf8');
 const remotePdfSource=readFileSync(new URL('../remote/render-pdf.mjs',import.meta.url),'utf8');
 const plugin=JSON.parse(readFileSync(new URL('../.codex-plugin/plugin.json',import.meta.url),'utf8'));
+const packageManifest=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8'));
 
 function load(path) {
   const compiled=buildSync({entryPoints:[new URL(path,import.meta.url).pathname],bundle:true,platform:'node',format:'cjs',jsx:'automatic',write:false,external:['react','react/jsx-runtime'],loader:{'.css':'empty'}}).outputFiles[0].text;
@@ -93,4 +94,6 @@ test('the connector, saved workspace, PDF and plugin expose one visual system',(
     assert.match(renderer,/printBackground:\s*true/);
   }
   assert.equal(plugin.interface.brandColor,'#173033');
+  assert.equal(plugin.version,packageManifest.version);
+  assert.equal(existsSync(new URL('../src/widget.css',import.meta.url)),false,'The retired widget stylesheet must not remain available to a later build.');
 });

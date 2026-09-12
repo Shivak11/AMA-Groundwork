@@ -1,6 +1,6 @@
 # Cloudflare connector
 
-Version 0.7.0 retains private D1 storage, immutable history and persistent recovery. New workbooks capture their date automatically, confirm a grounded use case, show its workflow and proposed implementation, and open the finished workbook with Download PDF prominent. Existing workbooks remain readable. No schema migration or retention change is needed. See RELEASE-0.7.0.md in the repository root for verification.
+Version 0.8.1 retains private D1 storage, immutable history and persistent recovery. New workbooks capture their date automatically, confirm a grounded use case, show the current and proposed workflows and proposed implementation, and open the finished workbook with Download PDF prominent. The connector, saved reader and PDF use the same visual system. Existing workbooks remain readable. No schema migration or retention change is needed. See RELEASE-0.8.1.md in the repository root for verification.
 
 The authorised endpoint remains https://ai-use-case-workshop.shiva-research11.workers.dev/mcp. The dedicated database is ai-use-case-workshop-sessions, bound as WORKSHOP_DB. The committed configuration starts disabled and unconfigured; deployment and actual-host proof belong in the release record. Other Workers and databases are outside this change.
 
@@ -20,7 +20,7 @@ Run `node scripts/verify-persistent-remote.mjs` after deploying the exact review
 
 For this candidate's screen-by-screen exercise, run `node scripts/verify-visual-journey.mjs`. It uses the actual local MCP tools and returned widget with a fictional hiring group, confirms all six phases and writes the review HTML plus PDF checkpoints to `output/visual-review/`. Run `node scripts/verify-widget-recovery.mjs` for adversarial local view-state checks.
 
-The older `e2e-review.mjs` runner contains historical Prefab assumptions and is not the acceptance runner for 0.2.0. Local tests do not establish a public deployment, natural conversation quality, installation, actual host downloads or compatibility in ChatGPT and Claude.
+The older `e2e-review.mjs` runner contains historical Prefab assumptions and is not the acceptance runner for 0.8.1. Local tests do not establish a public deployment, natural conversation quality, installation, actual host downloads or compatibility in ChatGPT and Claude.
 
 ## Client installation after deployment — historical instructions to recheck
 

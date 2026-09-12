@@ -1,6 +1,6 @@
 # AI Use-Case Workshop
 
-Version 0.7.0 adds grounded use-case requirements and a proposed implementation, full wrapping text, named decision choices and automatic date capture. The completed workbook opens with Download PDF prominent and retains all identified cases even when implementation is deferred. It includes the original and agreed underlying problem, workflow diagrams and the technical proposal. See USABILITY-REVISION-PLAN.md and RELEASE-0.7.0.md for scope and proof.
+Version 0.8.1 uses one visual system across the connector, saved reader and PDF. It adds grounded use-case requirements and a proposed implementation, full wrapping text, named decision choices and automatic date capture. The completed workbook opens with Download PDF prominent and retains all identified cases even when implementation is deferred. It includes the original and agreed underlying problem, current and proposed workflow diagrams, and the technical proposal. See USABILITY-REVISION-PLAN.md and RELEASE-0.8.1.md for scope and proof.
 
 Version 0.6.0 adds private persistent workbook storage on Cloudflare D1. Workbooks and revision history have no automatic expiry; explicit group deletion is required. A short private reference resumes editing in another chat, and a separate stable reading link supports later feedback and downloads. It retains conversational questions, read-only visual cards, step-first hierarchy and ordinary-chat fallback. See PERSISTENT-RECOVERY-PLAN.md for the current contract. Source, deployed runtime and actual-host evidence remain separate.
 
