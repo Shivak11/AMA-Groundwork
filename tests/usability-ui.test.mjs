@@ -37,7 +37,7 @@ test('a complete current workbook opens on initial load with an immediate PDF co
   assert(overview.includes(record.group.problem));
   assert(overview.includes(record.phases[2].answers.underlyingProblem));
   for(const candidate of record.phases[3].answers.candidates) assert(overview.includes(candidate.title));
-  assert.equal((overview.match(/class="cw-use-case-flow"/g)??[]).length,record.phases[3].answers.candidates.length);
+  assert.equal((overview.match(/data-comparison-candidate=/g)??[]).length,record.phases[3].answers.candidates.length);
   for(const candidate of record.phases[3].answers.candidates)for(const step of candidate.workflow)assert(overview.includes(step.action));
 });
 

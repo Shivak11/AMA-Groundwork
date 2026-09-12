@@ -1,3 +1,5 @@
+import { buildWorkflowComparisons } from './workflow-comparison.mjs';
+
 export const bookStepTitles = [
   'What should improve?', 'What prevents progress?', 'What actually happens?',
   'Where could AI help?', 'Which should we pursue first?', 'What do we recommend?',
@@ -172,10 +174,39 @@ function renderPriorities(record, a) {
     field('The recurring effort and cost to account for', a.costs, 'cost-record')];
 }
 
+const comparisonArrow = '<span class="book-comparison-arrow" aria-hidden="true"><svg viewBox="0 0 24 28" focusable="false"><path d="M12 3v21M6 18l6 6 6-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
+
+function comparisonActivities(activities, side, continueAfter = false) {
+  return `<ol class="book-comparison-activities">${activities.map((activity, index) => `<li><div class="book-comparison-activity${side === 'proposed' && activity.actor === 'AI' ? ' book-comparison-ai' : ''}"><h4>${escapeBookText(activity.actor)}</h4>${answer(activity.action)}</div>${index < activities.length - 1 || continueAfter ? comparisonArrow : ''}</li>`).join('')}</ol>`;
+}
+
+function comparisonPair(stage, title, index, nextStages) {
+  const current = stage.current.length ? comparisonActivities(stage.current, 'current', nextStages.some(next => next.current.length)) : '<p class="book-comparison-empty">This is an added step in the proposal.</p>';
+  const proposed = stage.proposed.length ? comparisonActivities(stage.proposed, 'proposed', nextStages.some(next => next.proposed.length)) : '<p class="book-comparison-empty">This current step is not included in the proposal.</p>';
+  return `<table class="book-comparison-pair${bookHasLongAnswer(stage) ? ' book-comparison-long' : ''}" aria-label="${escapeBookText(`${title}: comparison stage ${index + 1}`)}"><thead><tr><th scope="col">Current work</th><th scope="col">Proposed work</th></tr></thead><tbody><tr><td data-label="Current work">${current}</td><td data-label="Proposed work">${proposed}</td></tr></tbody></table>`;
+}
+
+export function renderBookWorkflowComparisons(record) {
+  const priorityNeedsReview = phaseOf(record, 5)?.status === 'needs_review';
+  return buildWorkflowComparisons(record).flatMap(comparison => {
+    const wrapper = (content, extra = '') => `<section class="book-workflow-comparison ${extra}" data-book-visual="workflow-comparison" data-comparison-mode="${comparison.mode}" data-candidate="${escapeBookText(comparison.candidateId)}">${content}</section>`;
+    const heading = `<h3 class="book-comparison-title">${escapeBookText(comparison.title)} <span class="case-reference">(${escapeBookText(comparison.candidateId)})</span></h3><p class="book-comparison-scope">This comparison covers the current tasks linked to this use case.</p><p class="book-comparison-priority">${comparison.priority ? `Recorded priority: ${escapeBookText(comparison.priority)}.${priorityNeedsReview ? ' This priority needs review.' : ''}` : 'No priority is confirmed in this workbook.'}</p>${comparison.review ? '<p class="review-note">This comparison needs review alongside the recorded work and recommendation.</p>' : ''}`;
+    let steps;
+    if (comparison.mode === 'aligned') {
+      steps = comparison.stages.map((stage, index) => wrapper(`${index === 0 ? heading : ''}${comparisonPair(stage, comparison.title, index, comparison.stages.slice(index + 1))}`, index === 0 ? 'book-comparison-start' : ''));
+    } else {
+      const sequence = (activities, side) => activities.length ? activities.map((activity, index) => `<div class="book-comparison-sequence" data-sequence="${side}"><h4>${side === 'current' ? 'Current work' : 'Proposed work'} · Step ${index + 1}</h4>${comparisonActivities([activity], side, index < activities.length - 1)}</div>`) : [`<div class="book-comparison-sequence" data-sequence="${side}"><h4>${side === 'current' ? 'Current work' : 'Proposed work'}</h4><p>${side === 'current' ? 'No related current task is recorded in this workbook.' : 'No proposed sequence is recorded in this workbook.'}</p></div>`];
+      const sequences = [...sequence(comparison.current, 'current'), ...sequence(comparison.proposed, 'proposed')];
+      steps = sequences.map((content, index) => wrapper(`${index === 0 ? `${heading}<p class="book-comparison-unmapped">The sequences are shown separately because no exact stage mapping is confirmed.</p>` : ''}${content}`, index === 0 ? 'book-comparison-start' : ''));
+    }
+    const check = wrapper(`<div class="book-comparison-human"><h4>What a person must check or decide</h4>${answer(comparison.humanCheck)}</div>${comparison.output ? field('What someone receives', comparison.output, 'book-comparison-output') : ''}`);
+    const components = comparison.components.map((component, index) => wrapper(`${index === 0 ? `<h4 class="book-comparison-components-title">Proposed components for ${escapeBookText(comparison.title)}</h4>` : ''}<section class="book-comparison-component"><h4>${escapeBookText(component.kind)} <span class="component-status">${escapeBookText(component.status)}</span></h4>${answer(component.purpose)}</section>`));
+    return [...steps, check, ...components];
+  });
+}
+
 function renderTest(record, a) {
   const candidates = answersOf(record, 4).candidates ?? [];
-  const priorities = answersOf(record, 5).choices ?? [];
-  const priorityNeedsReview = phaseOf(record, 5)?.status === 'needs_review';
   return [
     `<div class="test-plan" data-book-visual="test-plan"><section class="test-decision"><h3>${escapeBookText(a.decision || 'The group’s recommendation')}</h3>${answer(a.recommendation)}</section></div>`,
     ...(a.candidateId && a.decision !== 'Do not pilot yet' ? [field('The use case we would test', candidateTitle(record, a.candidateId), 'test-candidate')] : []),
@@ -184,7 +215,8 @@ function renderTest(record, a) {
     ...(a.test ? [`${connector}<div class="test-action"><h3>The next test or evidence-gathering step</h3>${answer(a.test)}</div>`] : []),
     ...(a.peopleChange ? [`<div class="test-people"><h3>What changes in people’s work</h3>${answer(a.peopleChange)}</div>`] : []),
     ...(a.stopRule ? [`<div class="test-stop"><h3>When we would stop or revise</h3>${answer(a.stopRule)}</div>`] : []),
-    `<section class="final-use-cases"><h3>All identified use cases</h3>${candidates.length ? `<ul>${candidates.map(candidate => {const choice = priorities.find(item => item.candidateId === candidate.id); return `<li><h4>${escapeBookText(candidate.title)} <span class="case-reference">(${escapeBookText(candidate.id)})</span></h4><p>${choice ? `Recorded priority: ${escapeBookText(choice.decision)}.${priorityNeedsReview ? ' This priority needs review.' : ''}` : 'No priority is confirmed in this workbook.'}</p></li>`;}).join('')}</ul>` : '<p>No group-confirmed use cases are recorded in this workbook.</p>'}<p class="final-reading-note">The use cases remain documented here, including any the group has deferred or decided not to pursue.</p></section>`,
+    `<section class="final-use-cases"><h3>All identified use cases</h3>${candidates.length ? '<p>The comparisons retain every identified use case, including those deferred or not pursued.</p>' : '<p>No group-confirmed use cases are recorded in this workbook.</p>'}</section>`,
+    ...renderBookWorkflowComparisons(record),
   ];
 }
 

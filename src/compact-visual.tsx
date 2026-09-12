@@ -1,5 +1,6 @@
 import type { Answers, PhaseId, Priority, WorkshopRecord } from './inline-types';
 import { UseCaseFlow } from './use-case-flow';
+import { WorkflowComparisons } from './workflow-comparison';
 
 type Props = { record: WorkshopRecord; phaseId: PhaseId };
 
@@ -103,11 +104,9 @@ function Priorities({ record, answers: a }: { record: WorkshopRecord; answers: A
 }
 
 function NextCheck({ record, answers: a }: { record: WorkshopRecord; answers: Answers }) {
-  const candidates = record.phases.find(phase => phase.id === 4)?.answers.candidates ?? [];
-  const choices = record.phases.find(phase => phase.id === 5)?.answers.choices ?? [];
   const noPilot = a.decision === 'Do not pilot yet';
   return <>
-    {candidates.length ? <div className="cv-final-cases">{candidates.map(candidate=><section className="cv-candidate" key={candidate.id} data-candidate-id={candidate.id}><h3>{candidate.title} <span className="cv-reference">({candidate.id})</span></h3><p><Extract value={candidate.aiWork} /></p>{choices.find(choice=>choice.candidateId===candidate.id) && <p className="cv-case-priority">Recorded priority: {choices.find(choice=>choice.candidateId===candidate.id)?.decision}</p>}<UseCaseFlow steps={candidate.workflow} title={`Proposed workflow: ${candidate.title}`} /></section>)}</div> : <Empty>No use cases are recorded yet.</Empty>}
+    <WorkflowComparisons record={record} />
     {a.recommendation && <p className="cv-bottom"><span className="cv-label">Group recommendation</span><Extract value={a.recommendation} /></p>}
     {a.decision && <p className={`cv-implementation-decision${noPilot ? ' cv-no-pilot' : ''}`}><span className="cv-label">Implementation recommendation</span>{noPilot ? 'Do not begin an implementation test yet.' : 'A bounded implementation test is proposed.'}</p>}
     {(a.owner || a.test) && <dl className="cv-next-check">

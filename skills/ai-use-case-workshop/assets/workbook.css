@@ -248,6 +248,41 @@ h4 { margin: 0 0 2mm; font-size: 10pt; font-weight: 600; line-height: 1.35; over
 .final-use-cases h4 { font-size: 11pt; }
 .final-reading-note { margin-top: 4mm; color: var(--muted); }
 
+.book-workflow-comparison {
+  --comparison-ink: var(--cw-ink, var(--ink));
+  --comparison-muted: var(--cw-muted, var(--muted));
+  --comparison-line: var(--cw-line, var(--rule));
+  --comparison-neutral: var(--cw-soft, #F1F2F2);
+  --comparison-ai: #1AA7B8;
+  --comparison-ai-ink: #102D32;
+  --comparison-check: #F5B335;
+  --comparison-check-ink: #352409;
+  color: var(--comparison-ink);
+  font-family: inherit;
+  margin: 0 0 4mm;
+  min-width: 0;
+}
+.book-comparison-start { margin-top: 6mm; border-top: 1px solid var(--comparison-line); padding-top: 4mm; }
+.book-comparison-title { font-size: 13pt; margin-bottom: 2mm; }
+.book-comparison-scope, .book-comparison-priority, .book-comparison-unmapped { margin-bottom: 3mm; }
+.book-comparison-scope, .book-comparison-priority { color: var(--comparison-muted); }
+.book-comparison-pair { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 2mm 0; margin: 0; }
+.book-comparison-pair th { width: 50%; text-align: left; padding: 0 4.25mm 2mm; font-size: inherit; }
+.book-comparison-pair td { vertical-align: top; padding: 0; }
+.book-comparison-activities { list-style: none; margin: 0; padding: 0; }
+.book-comparison-activity { padding: 4.25mm; min-width: 0; background: var(--comparison-neutral); border: 1px solid var(--comparison-line); }
+.book-comparison-arrow { display: block; width: 24px; height: 28px; line-height: 0; margin: 2mm auto; color: var(--comparison-ink); break-inside: avoid; }
+.book-comparison-arrow > svg { display: block; width: 100%; height: 100%; }
+.book-comparison-activity h4, .book-comparison-sequence > h4, .book-comparison-human > h4 { font-family: inherit; font-size: inherit; line-height: 1.45; margin: 0 0 2mm; }
+.book-comparison-ai { background: var(--comparison-ai); color: var(--comparison-ai-ink); }
+.book-comparison-empty { padding: 4.25mm; background: var(--comparison-neutral); border: 1px solid var(--comparison-line); }
+.book-comparison-human { padding: 4.25mm; background: var(--comparison-check); color: var(--comparison-check-ink); border: 1px solid var(--comparison-line); }
+.book-comparison-output { margin-top: 4mm; }
+.book-comparison-component { border-top: 1px solid var(--comparison-line); padding: 4.25mm 0; }
+.book-comparison-component > h4, .book-comparison-components-title { font-size: inherit; margin-bottom: 2mm; }
+.book-comparison-output h3 { font-size: inherit; margin-bottom: 2mm; }
+.book-workflow-comparison :is(p, h3, h4, td, th, li, span) { overflow-wrap: anywhere; word-break: normal; }
+
 @page { size: A4 portrait; margin: 14mm 16mm 22mm; }
 
 @media print {
@@ -268,6 +303,14 @@ h4 { margin: 0 0 2mm; font-size: 10pt; font-weight: 600; line-height: 1.35; over
   .chapter-layout > thead > tr { break-inside: avoid; }
   .chapter-layout > tbody > .chapter-block { break-inside: avoid; }
   .long-content .chapter-layout > tbody > .chapter-block { break-inside: auto; }
+  /* Each comparison stage is its own chapter row. A long stage may split;
+     adjacent use cases are never kept together as one page-sized unit. */
+  #phase-6 .chapter-block:has(.book-workflow-comparison) { break-inside: auto; }
+  .book-comparison-pair, .book-comparison-sequence { break-inside: avoid; }
+  .book-comparison-long, .book-comparison-long tr, .book-comparison-sequence:has(.answer) { break-inside: auto; }
+  .book-comparison-pair > thead { display: table-header-group; }
+  .book-workflow-comparison { --comparison-ink: #3A241C; --comparison-muted: #6F5A4E; --comparison-line: #BCA48E; --comparison-neutral: #F1F2F2; }
+  .book-workflow-comparison, .book-workflow-comparison h4, .book-workflow-comparison .component-status { font-size: 10.5pt; }
   .chapter .chapter-header { padding: 0 0 4mm; margin-bottom: 5mm; }
   #phase-3 .workflow-selection li { font-size: 10.5pt; padding: 2.5mm; }
   #phase-3 .case-replay { margin: 4mm 0; padding: 3mm 0; }
@@ -309,6 +352,13 @@ h4 { margin: 0 0 2mm; font-size: 10pt; font-weight: 600; line-height: 1.35; over
   .details dt:first-child { margin-top: 0; }
   .details dd { margin-top: 1mm; }
   .book-footer { display: none; }
+}
+
+@media screen and (max-width: 380px) {
+  .book-comparison-pair, .book-comparison-pair tbody, .book-comparison-pair tr, .book-comparison-pair td { display: block; width: 100%; }
+  .book-comparison-pair thead { display: none; }
+  .book-comparison-pair td + td { margin-top: 12px; }
+  .book-comparison-pair td::before { content: attr(data-label); display: block; padding: 16px 16px 0; font-weight: 600; }
 }
 
 @media screen and (max-width: 640px) {

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { InlineProps, Phase, WorkshopRecord } from './inline-types';
 import { CompactVisual } from './compact-visual';
 import { UseCaseFlow } from './use-case-flow';
+import { WorkflowComparisons } from './workflow-comparison';
 import type { Candidate } from './inline-types';
 
 const titles = ['Goal and success measure', 'Information and decisions', 'Workflow and remaining delays', 'AI and non-AI options', 'Priorities and reasons', 'Your AI use cases'];
@@ -31,8 +32,10 @@ const labels: Record<string, string> = {
   owner:'Proposed owner', evidence:'Evidence needed', test:'Next check', stopRule:'When to stop', peopleChange:'Changes for people', recommendation:'Recommendation',
   inputs:'What it reads', output:'What someone receives', trigger:'When it runs', knowledge:'Company guidance it consults', format:'Repeated instructions and format', access:'Who may access and share it',
   workflow:'Proposed workflow', action:'Action', implementation:'Proposed implementation', approach:'Approach', components:'Suggested components', kind:'Component', purpose:'What it is for', basis:'Why it is proposed', status:'What is confirmed', checks:'Checks before use',
+  workflowComparisons:'Current and proposed work',
 };
 function RecordValue({ value, record, field }: { value: unknown; record: WorkshopRecord; field?: string }) {
+  if(field==='workflowComparisons')return <WorkflowComparisons record={record} />;
   if(field==='workflow'&&Array.isArray(value))return <UseCaseFlow steps={value as Candidate['workflow']} />;
   if ((field === 'candidateId' || field === 'id') && typeof value === 'string') {
     const name = record.phases[3].answers.candidates?.find(item => item.id === value)?.title ?? record.phases[2].answers.tasks?.find(item => item.id === value)?.work;

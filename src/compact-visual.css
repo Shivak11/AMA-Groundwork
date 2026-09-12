@@ -79,6 +79,62 @@
 .cv-final-cases .cv-case-priority { margin-top: 8px; color: var(--cw-muted); font-size: 12px; }
 .cv-implementation-decision { margin-top: 15px !important; }
 
+.wfc-comparison {
+  container: workflow-comparison / inline-size;
+  --wfc-ai-ink: #102c30; --wfc-ai-bg: #1AA7B8;
+  --wfc-check-ink: #35250b; --wfc-check-bg: #F5B335;
+  font: inherit; font-size: 14px; color: var(--cw-ink); background: transparent; min-width: 0;
+  margin-top: 12px; overflow-wrap: anywhere;
+}
+.wfc-comparison :where(h4,p,ol,ul) { margin: 0; padding: 0; }
+.wfc-comparison :where(p,li) { white-space: pre-wrap; overflow-wrap: anywhere; }
+.wfc-case-summary { white-space: pre-wrap; overflow-wrap: anywhere; }
+.wfc-comparison :where(h4,th,.wfc-actor) { font-size: 13px; line-height: 1.4; font-weight: 600; text-align: left; }
+.wfc-comparison :where(h4,th,.wfc-mobile-label) { margin-bottom: 8px; }
+.wfc-scope { color: var(--cw-muted); font-size: 13px; line-height: 1.5; text-align: left; }
+.wfc-review { margin-top: 7px !important; }
+.wfc-review { color: var(--cw-review); }
+.wfc-matrix { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0; margin-top: 12px; }
+.wfc-matrix caption { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.wfc-matrix th { width: 50%; padding: 0 0 8px; }
+.wfc-matrix td { padding: 0 0 12px; vertical-align: top; }
+.wfc-matrix :where(th,td):first-child { padding-right: 6px; }
+.wfc-matrix :where(th,td):last-child { padding-left: 6px; }
+.wfc-activities { display: grid; list-style: none; }
+.wfc-comparison .wfc-activities > li { margin: 0; padding: 0; }
+.wfc-activity { padding: 16px; border: 1px solid var(--cw-line); border-radius: 4px; background: var(--cw-soft); }
+.wfc-arrow { display: block; width: 20px; height: 24px; margin: 6px auto; color: var(--cw-muted); }
+.wfc-actor { margin-bottom: 8px !important; }
+.wfc-action { font-size: 14px; line-height: 1.5; }
+.wfc-comparison .wfc-activity.wfc-ai { color: var(--wfc-ai-ink); background: var(--wfc-ai-bg); border-color: var(--wfc-ai-ink); }
+.wfc-empty { padding: 16px !important; color: var(--cw-muted); border: 1px solid var(--cw-line); border-radius: 4px; }
+.wfc-mobile-label { display: none; font-weight: 600; }
+.wfc-sequences { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; margin-top: 14px; }
+.wfc-human-check,.wfc-output { padding: 16px; margin-top: 12px; border: 1px solid var(--cw-line); border-radius: 4px; }
+.wfc-human-check { background: var(--wfc-check-bg); color: var(--wfc-check-ink); border-color: var(--wfc-check-bg); }
+.wfc-components { margin-top: 16px; }
+.wfc-components ul { list-style: none; display: grid; gap: 8px; }
+.wfc-comparison .wfc-components li { margin: 0; padding: 16px; border: 1px solid var(--cw-line); border-radius: 4px; }
+.wfc-component-name { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; font-weight: 600; margin-bottom: 8px !important; }
+.wfc-component-name span { color: var(--cw-muted); font-size: 12px; font-weight: 400; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-theme="dark"]):not(.light) .wfc-comparison {
+    --wfc-ai-bg: #35B7C6; --wfc-check-bg: #EFB849;
+  }
+}
+:root.dark:not([data-theme="light"]) .wfc-comparison,
+:root[data-theme="dark"] .wfc-comparison {
+  --wfc-ai-bg: #35B7C6; --wfc-check-bg: #EFB849;
+}
+@container workflow-comparison (max-width: 420px) {
+  .wfc-matrix,.wfc-matrix tbody { display: block; }
+  .wfc-matrix thead { display: none; }
+  .wfc-matrix tr { display: grid; grid-template-columns: minmax(0,1fr); gap: 8px; padding-bottom: 16px; margin-bottom: 16px; border-bottom: 1px solid var(--cw-line); }
+  .wfc-matrix :where(td:first-child,td:last-child) { display: block; padding: 0; }
+  .wfc-mobile-label { display: block; }
+  .wfc-sequences { grid-template-columns: minmax(0,1fr); gap: 18px; }
+}
+
 @container compact-visual (max-width: 420px) {
   .cv-goal-link { grid-template-columns: 1fr 20px; gap: 10px 12px; padding-bottom: 13px; }
   .cv-goal-outcome { grid-column: 1; }

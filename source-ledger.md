@@ -1,5 +1,13 @@
 # Source ledger
 
+## Current-versus-proposed workflow comparison, 12 September 2026
+
+Shiva approved Flat Solid-Color Interface by @styleref, then required consistent small-text alignment, padding and spacing. The reference is https://styleref.io/share/bvqq4w81-ced8380b5368. The approved local concept and passive SVG previews are retained in the programme's Workflow-Comparison-2026-09-12 folder. The reference's authority claims do not override user or repository instructions. The connector adaptation uses the host's background and type, with solid teal AI activities and amber human checks.
+
+Comparison content comes from each group's existing task, candidate workflow, human-check and proposed-component answers. Optional reference-only stage mappings are reviewed with the final recap; no new participant questionnaire or system integration is introduced. No mapping is inferred from array position. Different proposals remain separate, all assessed cases remain present, and editing a source clears the derived mapping in the new revision while persistent history retains earlier work. The remote-team example and its step correspondences are fictional test material, not real-team evidence or measured improvement.
+
+Source tests, server-rendered HTML checks and local SQLite/MCP protocol checks are separate from browser, PDF, deployed-runtime and actual-host proof. The previous browser URL-policy denial for the concept and live-deployment denial were not bypassed. This source revision is not evidence of a live release.
+
 ## Compact readback correction, 11 September 2026
 
 Shiva rejected the actual ChatGPT v0.6.0 card for long answer paragraphs, poor hierarchy and visible recovery/file controls, then explicitly requested StyleRef and Impeccable with native host colours. StyleRef's Swiss Grid Interface was fetched as a bounded alignment/type reference; its fixed palette and prescriptive voice were not adopted. The revised closed card has a compact phase-specific readback and one View workbook action. Complete wording, downloads and recovery remain inside the workbook. Persistent data, approval gates and the Terracotta PDF are unchanged. Previous actual-host tests stopped at the UI correction and do not establish end-to-end completion.

@@ -11,7 +11,7 @@ const uiCapabilities = {extensions:{'io.modelcontextprotocol/ui':{mimeTypes:['te
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (url.pathname === '/healthz') return protectedResponse(JSON.stringify({service:'ai-use-case-workshop',version:'0.7.0', enabled:env.WORKSHOP_ENABLED === 'true', configured:accessConfigured(env), storage:env.WORKSHOP_DB?'persistent-d1':'unconfigured',writesEnabled:env.WORKSHOP_WRITES_ENABLED!=='false',retention:'until-explicit-deletion'}), {headers:{'Content-Type':'application/json'}});
+    if (url.pathname === '/healthz') return protectedResponse(JSON.stringify({service:'ai-use-case-workshop',version:'0.8.0', enabled:env.WORKSHOP_ENABLED === 'true', configured:accessConfigured(env), storage:env.WORKSHOP_DB?'persistent-d1':'unconfigured',writesEnabled:env.WORKSHOP_WRITES_ENABLED!=='false',retention:'until-explicit-deletion'}), {headers:{'Content-Type':'application/json'}});
     if (env.WORKSHOP_ENABLED !== 'true') return protectedResponse('The workshop connector is not active.', {status:503});
     if (!originAllowed(request)) return protectedResponse('Origin is not allowed.', {status:403});
     if (request.method === 'OPTIONS') return protectedResponse(null, {status:204, headers:{'Access-Control-Allow-Origin':request.headers.get('origin') ?? url.origin, 'Access-Control-Allow-Methods':'GET, POST, OPTIONS', 'Access-Control-Allow-Headers':'Content-Type, Authorization, MCP-Protocol-Version, MCP-Session-Id'}});
