@@ -25,6 +25,14 @@ Source baseline: d6868f9, containing locally verified 0.7.0. Live remains 0.6.1.
 - Preserve the two-column current/proposed comparison, full wrapping, flexible activity height and existing semantic colours. Do not reduce the type size or remove participant wording to fit a page.
 - Add focused source and CSS checks for continuation context, summary grouping and the long-content escape. Re-render the current mapped workbook locally, rasterise the comparison pages and confirm that no component-only remainder page, clipping or overlap remains. This local render is not evidence of a deployed runtime.
 
+## Bounded Claude tool-discovery correction, 12 September 2026
+
+- Keep the same 15 tool names, input contracts, persistence rules and visible question flow. Do not add another participant-facing form or combine read and write behaviour.
+- Remove the repeated participant and host policy from each tool description. The same policy remains in the MCP server instructions and every returned hosting guide. Give each tool a short, distinct description containing the words a host is likely to search for.
+- Begin the save description with the action after a participant reply: save the agreed answer before asking the next workshop question. Retain the typed answer fields and current write annotations.
+- Add a structured after-reply instruction to each question turn. Answer turns name `save_workshop_phase`, the current phase and current field; approval turns name `confirm_workshop_phase`. The host checks the returned receipt before advancing.
+- Verify tool count and annotations are unchanged, repeated description text is absent, individual definitions remain within a conservative discovery budget, and the first activated turn explicitly names its next tool. A new actual Claude chat is still required; source checks cannot prove Claude's deferred tool search.
+
 ## Ownership
 
 Root: PLAN, src/workshop.mjs, src/conversation.mjs, src/workflow-comparison.mjs, src/inline-types.ts, package manifests/version references, host guidance, shared design contract, integration tests and release evidence.
