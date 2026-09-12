@@ -13,6 +13,6 @@
     "category": "Productivity",
     "capabilities": ["Interactive"],
     "defaultPrompt": ["Help our group identify useful AI use cases.", "Continue from our workshop checkpoint."],
-    "brandColor": "#0B6670"
+    "brandColor": "#173033"
   }
 }

@@ -33,15 +33,16 @@ The first page after the cover connects the original problem, the group's confir
 | Token | Value | Use |
 | --- | --- | --- |
 | Page | `#FFFFFF` | Cover and interior pages. |
-| Quiet surface | `#F1F2F2` | Current and person-led activity cards. |
-| Ink | `#202627` | Headings and body text. |
-| Muted | `#5E6667` | Secondary descriptions and dates. |
-| Functional accent | `#0B6670` | Links, focus indicators and important rules. |
+| Quiet surface | `#F2F5F5` | Current and person-led activity cards. |
+| Ink | `#173033` | Headings, body text, links and focus indicators. |
+| Muted | `#5D6D6F` | Secondary descriptions and dates. |
 | AI fill | `#1AA7B8` | AI activity cards only. |
 | AI ink | `#102D32` | Text on AI activity cards. |
 | Human-check fill | `#F5B335` | Human checks and decisions only. |
 | Human-check ink | `#352409` | Text on human-check cards. |
-| Rule | `#CDD2D2` | Dividers; do not rely on a divider alone to identify meaning. |
+| Confirmed | `#236B53` | Confirmed state and selected priority. |
+| Confirmed surface | `#E6F2ED` | Quiet confirmed-state background. |
+| Rule | `#A7B8BA` | Dividers; do not rely on a divider alone to identify meaning. |
 
 Use the dark teal functional accent for small text on white. Bright teal and amber are card backgrounds with their specified dark inks. Controls use visible focus and accessible text contrast.
 

@@ -58,7 +58,7 @@ export async function renderWorkbookPdf(record, options = {}) {
       outline: true,
       displayHeaderFooter: true,
       headerTemplate: '<span></span>',
-      footerTemplate: '<div style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Arial,sans-serif;font-size:9px;color:#5E6667;width:100%;margin:0 16mm;display:flex;align-items:baseline;justify-content:space-between;border-top:1px solid #CDD2D2;padding-top:10px"><span>Prepared by Dr. Shiva Kakkar</span><a href="https://www.shivakakkar.com/" style="color:#0B6670;text-decoration:underline">Click here to access the author’s profile</a><span><span class="pageNumber"></span> / <span class="totalPages"></span></span></div>',
+      footerTemplate: '<div style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Arial,sans-serif;font-size:9px;color:#5D6D6F;width:100%;margin:0 16mm;display:flex;align-items:baseline;justify-content:space-between;border-top:1px solid #A7B8BA;padding-top:10px"><span>Prepared by Dr. Shiva Kakkar</span><a href="https://www.shivakakkar.com/" style="color:#173033;text-decoration:underline">Click here to access the author’s profile</a><span><span class="pageNumber"></span> / <span class="totalPages"></span></span></div>',
       timeout: Math.max(1, deadline - Date.now()),
     }), 'PDF generation');
     return Buffer.from(pdf);
