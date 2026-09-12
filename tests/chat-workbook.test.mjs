@@ -122,7 +122,10 @@ test('a host without native questions completes all six phases through text fall
         const data=dataOf(result);record=data.record;
         assert.equal(data.questionTurn.owner,'chat');assert.equal(data.questionTurn.fallbackInput,'plain_chat');
         assert.equal(data.mode,'text');assert.equal(record.phases[phase-1].status,'draft');
-        if(data.phase.question)assert(result.content[0].text.includes(data.phase.question));
+        if(data.phase.question) {
+          const fallback=JSON.parse(result.content.find(item=>item.type==='text'&&item.text.trim().startsWith('{')).text);
+          assert.equal(fallback.questionTurn.question,data.phase.question,'Text-only hosts retain the full next question in the model payload.');
+        }
         assert.deepEqual(jsonCheckpoint(result),record);
       }
       assert.deepEqual(record.phases[phase-1].answers,answers[phase-1]);
@@ -146,7 +149,7 @@ test('unknown baseline remains valid while an omitted guardrail blocks approval'
     const {guardrail,...withoutGuardrail}=answers[0];const record=savePhase(createRecord(group),1,{...withoutGuardrail,baseline:'Unknown'});
     const result=await s.call('workshop_next',{record});assert.equal(dataOf(result).phase.questionField,'guardrail');
     const rejected=await s.call('confirm_workshop_phase',{record,phase:1,approved:true,confirmation:'Our group approves this summary.'});
-    assert.equal(rejected.isError,true);assert.match(rejected.content[0].text,/guardrail/);assert.equal(renders,0);
+    assert.equal(rejected.isError,true);assert.match(rejected.content.filter(item=>item.type==='text').map(item=>item.text).join('\n'),/guardrail/);assert.equal(renders,0);
     const saved=await s.call('save_workshop_phase',{record,phase:1,answers:{guardrail}});
     assert.equal(dataOf(saved).record.phases[0].answers.baseline,'Unknown');
     const approved=await s.call('confirm_workshop_phase',{record:saved.structuredContent.record,phase:1,approved:true,confirmation:'Our group approves this saved summary.'});
@@ -154,18 +157,20 @@ test('unknown baseline remains valid while an omitted guardrail blocks approval'
   } finally {await s.close();}
 });
 
-test('choosing no pilot skips the pilot candidate question and still permits an explicit complete recommendation',async()=>{
+test('a new-experience no-pilot answer asks only for the group recommendation and retains all use cases',async()=>{
   const s=await session();
   try {
     const record=completed(5);
     const first=await s.call('save_workshop_phase',{record,phase:6,answers:{decision:'Do not pilot yet'}});const firstData=dataOf(first);
-    assert.equal(firstData.record.phases[5].answers.candidateId,null);assert.equal(firstData.phase.questionField,'owner');
-    const recommendation={...answers[5],decision:'Do not pilot yet',candidateId:null,recommendation:'Measure the approval wait and agree the manual checklist before considering an AI pilot.'};
+    assert.equal(firstData.record.phases[5].answers.candidateId,null);assert.equal(firstData.phase.questionField,'recommendation');
+    const recommendation={recommendation:'Measure the approval wait and agree the manual checklist before considering an AI pilot.'};
     const saved=await s.call('save_workshop_phase',{record:firstData.record,phase:6,answers:recommendation});const data=dataOf(saved);
     assert.equal(data.phase.question,null);assert.equal(data.nextQuestion.kind,'approval');
     const approved=await s.call('confirm_workshop_phase',{record:data.record,phase:6,approved:true,confirmation:'Our group approves the no-pilot recommendation.'});
     const final=dataOf(approved);assert(final.record.phases.every(phase=>phase.status==='confirmed'));
     assert.equal(final.record.phases[5].answers.candidateId,null);assert.equal(final.nextQuestion.kind,'complete');
+    assert.deepEqual(final.record.phases[3].answers.candidates,record.phases[3].answers.candidates);
+    for(const field of ['owner','test','evidence','stopRule'])assert.equal(final.record.phases[5].answers[field],undefined);
   } finally {await s.close();}
 });
 

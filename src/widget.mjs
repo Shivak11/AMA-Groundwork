@@ -8,7 +8,7 @@ import workbookCss from '../skills/ai-use-case-workshop/assets/workbook.css';
 import workbookFont from '../skills/ai-use-case-workshop/assets/fonts/DMSerifDisplay-Regular.ttf';
 import { decodePdfFile } from './pdf-file.mjs';
 
-const app = new App({name:'AI Use-Case Workshop',version:'0.6.1'}, {availableDisplayModes:['inline','fullscreen']}, {autoResize:true});
+const app = new App({name:'AI Use-Case Workshop',version:'0.7.0'}, {availableDisplayModes:['inline','fullscreen']}, {autoResize:true});
 const root = createRoot(document.getElementById('workshop-root'));
 let current=null, metadata={}, capabilities={}, host={}, bookHtml;
 let connected=false, pending=false, generation=0;
@@ -24,29 +24,40 @@ function receive(result) {
   if (!result || result.isError) throw new Error(errorText(result)||'This workbook could not be loaded. Continue in the conversation.');
   const persisted=result.structuredContent?.record?.key;
   const record=validateRecord(persisted?result._meta?.workbook:result.structuredContent?.record);
+  const changedSnapshot=!current||record.revision!==current.record.revision;
   if(persisted && record.revision!==result.structuredContent.record.revision) throw new Error('This reply does not match the saved version. The existing view is retained.');
   if(current) {
     if(persisted ? persisted!==current.reference?.key : !sameGroup(record,current.record)) throw new Error('This reply belongs to a different workbook. The existing snapshot is retained.');
     if(record.revision<current.record.revision) return;
     if(record.revision===current.record.revision && JSON.stringify(record)!==JSON.stringify(current.record)) throw new Error('A conflicting reply was ignored. Use the latest saved record in the conversation.');
   }
-  current={...result.structuredContent,record,reference:persisted?result.structuredContent.record:undefined}; metadata=result._meta??{};
+  const latestKnown=Math.max(record.revision,result.structuredContent.currentRevision??record.revision,current?.currentRevision??current?.record.revision??0);
+  const historical=Boolean(result.structuredContent.view?.historical||latestKnown>record.revision||(!changedSnapshot&&current?.view?.historical));
+  current={...result.structuredContent,record,currentRevision:latestKnown,view:{...result.structuredContent.view,historical},reference:persisted?result.structuredContent.record:undefined}; metadata=result._meta??{};
   try {bookHtml=renderWorkbookHtml(record,{css:workbookCss,font:workbookFont});}
   catch {bookHtml=undefined;}
-  generation++;pending=false;
-  notice=current.export?.status==='failed'?'Your answers are saved, but the PDF was not generated. Ask in the conversation to retry the PDF.':'';
-  noticeError=current.export?.status==='failed';
+  if(changedSnapshot) {generation++;pending=false;}
+  // Repeated host notifications for identical saved work do not cancel a
+  // download already retrieving that exact snapshot.
+  if(!pending) {
+    notice=current.export?.status==='failed'?'Your answers are saved, but the PDF was not generated. Ask in the conversation to retry the PDF.':'';
+    noticeError=current.export?.status==='failed';
+  }
 }
 async function requestFiles() {
   if(!connected||pending)return;
-  if(!supports('message')) {showNotice('Ask in the conversation: “Please give us the latest workbook PDF and JSON backup.”');return;}
+  if(!supports('message') && !(current?.workspace?.url && supports('openLinks'))) {showNotice('Ask in the conversation: “Please give us our workbook PDF.”');return;}
   const token=generation;pending=true;render();
   try {
-    const referenceText=current?.reference?` Use this private continuation reference to load the latest saved workbook: ${JSON.stringify(current.reference)}.`:' Use the latest record in this conversation.';
-    const response=await app.sendMessage({role:'user',content:[{type:'text',text:`Please give us the latest saved workbook PDF and JSON backup as normal file links.${referenceText} This is a file request; do not restart the workshop questions.`}]},{timeout:15000});
+    if(current?.workspace?.url && supports('openLinks')) {
+      const response=await app.openLink({url:current.workspace.url});
+      if(token===generation)showNotice(response?.isError?'The workbook link did not open. Ask for the PDF in the conversation.':'The workbook link is ready to open in your browser.',Boolean(response?.isError));
+      return;
+    }
+    const response=await app.sendMessage({role:'user',content:[{type:'text',text:'Please give us our existing workbook PDF. Do not restart the exercise.'}]},{timeout:15000});
     if(token!==generation)return;
-    showNotice(response?.isError?'The file request was not accepted. Ask for the latest PDF and JSON in the conversation.':'The file request is ready in the conversation. Send it if your chat app asks you to.',Boolean(response?.isError));
-  } catch {if(token===generation)showNotice('The file request could not be prepared. Ask for the latest PDF and JSON in the conversation.',true);}
+    showNotice(response?.isError?'The file request was not accepted. Ask for the PDF in the conversation.':'The file request is ready in the conversation. Send it if your chat app asks you to.',Boolean(response?.isError));
+  } catch {if(token===generation)showNotice('The file request could not be prepared. Ask for the PDF in the conversation.',true);}
   finally {if(token===generation){pending=false;render();}}
 }
 async function download(kind) {
@@ -58,7 +69,7 @@ async function download(kind) {
   try {
     let file={name:`workshop-revision-${current.record.revision}.json`,text:JSON.stringify(current.record,null,2)};
     if(isPdf) {
-      showNotice('Preparing this snapshot’s PDF. Your answers are unchanged.');
+      showNotice('Preparing your workbook PDF.');
       const result=await app.callServerTool({name:'download_workbook_file',arguments:{record:current.reference??current.record}},{timeout:60000});
       if(token!==generation)return;
       if(result.isError)throw new Error(errorText(result)||'The PDF could not be prepared.');
@@ -82,6 +93,7 @@ function render() {
     bookHtml,hasPdf:Boolean(record?.phases.some(phase=>phase.status!=='draft')),exportFailed:current?.export?.status==='failed',
     notice,noticeError,busy:pending,connected,onDownload:download,onRequestFiles:requestFiles,
     workspaceUrl:current?.workspace?.url,continuation:current?.reference,latestRevision:current?.currentRevision,
+    isHistorical:Boolean(current?.view?.historical || (current?.currentRevision !== undefined && current.currentRevision > record.revision)),
     onOpenWorkspace:async()=>{if(current?.workspace?.url)await app.openLink({url:current.workspace.url});},
   }));
 }

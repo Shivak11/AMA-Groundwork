@@ -8,3 +8,58 @@ export const answers=[
   {choices:[{candidateId:'c1',decision:'Later',reason:'We have not established whether scattered feedback materially delays this journey.',evidenceGap:'Time spent assembling feedback and completeness of the existing form.'},{candidateId:'c2',decision:'First',reason:'A small comparison can test whether missing evidence is caught before drafting, without automating a hiring decision.',evidenceGap:'Missed omissions, false flags, human checking time and cost compared with the manual checklist.'},{candidateId:'c3',decision:'Later',reason:'Making drafting instant would still leave the pay-approval wait.',evidenceGap:'Actual drafting effort after approved inputs are ready.'}],challenge:'Meera argued that the shared checklist might perform just as well. The group retained the test only if it compares AI-assisted checking with that checklist.',costs:'Software and token costs are unknown. Count preparation, human checking, false-flag investigation and keeping the checklist current. No cash savings are claimed.'},
   {decision:'Test a use case',candidateId:'c2',owner:'Proposed owner: recruitment operations lead, subject to agreement.',evidence:'The case suggests a possible readiness problem but does not establish its frequency or effect on elapsed hiring time.',peopleChange:'The coordinator checks evidence before drafting. Compensation approval, candidate selection and release authority remain with people.',test:'Compare manual and AI-assisted checking on 10 fictional pre-draft snapshots. Exclude approvals that arrived later. Use a separate answer key of known omissions and record missed omissions, false flags, review time and cost.',stopRule:'Stop if an output claims that a missing approval exists, exposes applicant information, or cannot be checked against a source. Reconsider AI if the manual checklist performs as well with less effort.',recommendation:'Run the small readiness-check comparison before considering a pilot. A retrospective test cannot prove shorter live hiring time. Name approvers and make status visible regardless of the AI result.'},
 ];
+
+answers[2].underlyingProblem='The team starts preparing offers before required feedback and pay approvals are complete. The resulting rework delays release; the group has not established that writing speed is the main constraint.';
+
+const groundedHiringDetails = {
+  c1: {
+    inputs:'Interview feedback submitted by the panel, the vacancy requirements and the source of each note.',
+    output:'A brief that groups the recorded feedback and lists missing notes, with links to the original records.',
+    trigger:'The recruitment coordinator requests a brief after the panel submits feedback.',
+    knowledge:'The agreed feedback categories and vacancy requirements. No wider company document search is required for this first version.',
+    format:'Use the same feedback categories each time, retain source links and do not rank or select candidates.',
+    access:'Only the authorised recruitment coordinator and panel may view the submitted feedback. Applicant information must remain in the approved workspace.',
+    implementation:{
+      approach:'Begin with an authorised upload of fictional panel notes and a reusable briefing instruction. Consider automatic access only if assembling permitted notes remains a material task.',
+      components:[
+        {kind:'Skill',purpose:'Apply the agreed feedback categories and source-link rules to each brief.',basis:'The group wants a repeated feedback format without candidate ranking.',status:'Proposed'},
+        {kind:'Human review',purpose:'Let the panel verify the brief before it informs a selection decision.',basis:'The panel retains responsibility for feedback accuracy and selection.',status:'Proposed'},
+      ],
+      checks:'Confirm permitted sources and compare the brief with the panel notes. Count missed statements, invented statements and checking effort. Do not assume it shortens elapsed hiring time.',
+    },
+    workflow:[{actor:'Person',action:'Provide permitted panel notes and vacancy requirements.'},{actor:'AI',action:'Organise the recorded feedback and identify missing notes.'},{actor:'Person',action:'Verify each point against the original feedback.'},{actor:'Person',action:'Use the verified brief when making the hiring decision.'}],
+  },
+  c2: {
+    inputs:'The approved offer-readiness checklist and the records that exist before drafting, including recorded pay approval.',
+    output:'A source-linked list of required evidence that is present, missing or unclear. A flag never counts as an approval.',
+    trigger:'The coordinator requests a readiness check before preparing an offer.',
+    knowledge:'The current approved checklist and the rules identifying who can approve pay and release an offer.',
+    format:'Check each requirement in order. Show present, missing or unclear with its evidence; never infer missing approval.',
+    access:'The authorised recruitment coordinator provides only the records they are allowed to use. Approval authority is unchanged.',
+    implementation:{
+      approach:'Start with uploaded fictional records and the approved checklist. Test against the same manual checklist before connecting a live recruitment system.',
+      components:[
+        {kind:'Skill',purpose:'Repeat the evidence check in the approved checklist format.',basis:'Every offer needs the same readiness requirements checked before drafting.',status:'Proposed'},
+        {kind:'Human review',purpose:'Require the recruiter to verify each flag and the actual approval records.',basis:'AI cannot infer or grant compensation or offer-release approval.',status:'Proposed'},
+        {kind:'Connector',purpose:'Read permitted pre-draft records from the recruitment workspace if automatic access is useful.',basis:'Records may be held in an existing recruitment workspace; its integration and permissions have not been confirmed.',status:'Needs confirmation'},
+      ],
+      checks:'Compare missed omissions, false flags, checking time and cost against the manual checklist. Verify the current checklist owner, permitted sources and any proposed integration before using live records.',
+    },
+    workflow:[{actor:'Person',action:'Provide the current checklist and permitted pre-draft records.'},{actor:'AI',action:'Compare each required item with its source evidence.'},{actor:'AI',action:'List missing or unclear items without inferring approval.'},{actor:'Person',action:'Verify the flags and obtain any missing approval.'},{actor:'Person',action:'Decide whether the offer is ready to draft.'}],
+  },
+  c3: {
+    inputs:'Approved offer terms and the organisation’s current offer-letter template.',
+    output:'An offer-letter draft containing only the approved terms, with any missing field clearly marked.',
+    trigger:'The coordinator requests the draft after confirming that all required terms are approved.',
+    knowledge:'The supplied current offer template; no search across other documents is needed for this limited task.',
+    format:'Follow the approved template and do not introduce terms, promises or inferred values.',
+    access:'Only authorised recruitment staff may supply the approved terms, review the draft and release the letter.',
+    implementation:{
+      approach:'First assess whether the existing document template can populate approved fields without AI. If drafting still needs assistance, use a reusable instruction with the approved template.',
+      components:[{kind:'Skill',purpose:'Produce a draft in the approved format using supplied approved fields.',basis:'The group wants a consistent offer letter without new or inferred terms.',status:'Proposed'},{kind:'Human review',purpose:'Check every term before an authorised recruiter releases the letter.',basis:'People retain the authority to verify and release offers.',status:'Proposed'}],
+      checks:'Compare drafting and review effort with the ordinary document template. Check every output for altered terms and missing fields; do not claim a reduction in approval waiting time.',
+    },
+    workflow:[{actor:'Person',action:'Confirm approval and provide the approved terms.'},{actor:'AI',action:'Draft the letter using the current template.'},{actor:'Person',action:'Check every term against its approval record.'},{actor:'Person',action:'Release the verified offer letter.'}],
+  },
+};
+for(const candidate of answers[3].candidates) Object.assign(candidate,groundedHiringDetails[candidate.id]);

@@ -4,7 +4,7 @@ import {z} from 'zod';
 import {Client} from '@modelcontextprotocol/sdk/client/index.js';
 import {InMemoryTransport} from '@modelcontextprotocol/sdk/inMemory.js';
 import {createWorkshopServer} from '../src/server.mjs';
-import {answerSchemas,recordSchema,createRecord,savePhase,confirmPhase} from '../src/workshop.mjs';
+import {phaseAnswerSchema,recordSchema,createRecord,savePhase,confirmPhase} from '../src/workshop.mjs';
 import {group,answers} from '../examples/remote-team.mjs';
 
 const approval='Our group explicitly approves this complete saved fictional summary.';
@@ -40,7 +40,7 @@ function payload(result,{error=false}={}) {
   assert.equal(parsed.length,1,'One ordinary JSON TextContent must contain the complete canonical record and exact phase schema.');
   const data=parsed[0];
   assert.equal(data.record.phases.length,6);
-  assert.deepEqual(data.phase.answerSchema,z.toJSONSchema(answerSchemas[data.phase.id-1]));
+  assert.deepEqual(data.phase.answerSchema,z.toJSONSchema(phaseAnswerSchema(data.record,data.phase.id)));
   assert.equal(data.bookPreview.status,'client-rendered');
   assert.equal(typeof data.view.display,'boolean');
   return data;
@@ -341,7 +341,7 @@ test('no-pilot selection clears the candidate and later corrections retain depen
   const s=await session();
   try {
     let data=payload(await s.call('save_workshop_phase',{record:completed(5),phase:6,answers:{decision:'Do not pilot yet'},mode:'text'}));
-    assert.equal(data.record.phases[5].answers.candidateId,null);assert.equal(data.nextQuestion.field,'owner');
+    assert.equal(data.record.phases[5].answers.candidateId,null);assert.equal(data.nextQuestion.field,'recommendation');
     const noPilot={...answers[5],decision:'Do not pilot yet',candidateId:null,recommendation:'Agree the checkpoint and measure a baseline with a simple form before considering any AI test.'};
     data=payload(await s.call('save_workshop_phase',{record:data.record,phase:6,answers:noPilot,mode:'text'}));
     assert.equal(data.completeness.complete,true);assert.equal(data.nextQuestion.kind,'approval');

@@ -8,15 +8,15 @@ import {group,answers,approval} from '../examples/persistent-remote-team.mjs';
 
 const endpoint=new URL(process.argv[2]??'https://ai-use-case-workshop.shiva-research11.workers.dev/mcp');
 const pdfRequired=!process.argv.includes('--skip-pdf');
-const out=new URL(`../output/persistent-${endpoint.hostname==='127.0.0.1'?'local-http':'remote'}-v061/`,import.meta.url);
+const out=new URL(`../output/persistent-${endpoint.hostname==='127.0.0.1'?'local-http':'remote'}-v070/`,import.meta.url);
 await mkdir(out,{recursive:true});
 const results=[],refs=[];let client,transport;
 const sourceHead=execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
 const connect=async visual=>{
-  client=new Client({name:'fictional-workbook-release-check',version:'0.6.1'},{capabilities:visual?{extensions:{'io.modelcontextprotocol/ui':{mimeTypes:['text/html;profile=mcp-app']}}}:{}});
+  client=new Client({name:'fictional-workbook-release-check',version:'0.7.0'},{capabilities:visual?{extensions:{'io.modelcontextprotocol/ui':{mimeTypes:['text/html;profile=mcp-app']}}}:{}});
   transport=new StreamableHTTPClientTransport(endpoint);
   await client.connect(transport);
-  assert.equal(client.getServerVersion().version,'0.6.1');
+  assert.equal(client.getServerVersion().version,'0.7.0');
 };
 const call=async(name,args={})=>{
   const result=await client.callTool({name,arguments:args},undefined,{timeout:60000});
@@ -54,9 +54,11 @@ try {
   assert.equal(widget.contents[0].text,expected);
   let result=await call('start_workshop');
   assert.equal(result.structuredContent.pending,true);
-  result=await call('start_workshop',{record:result.structuredContent.record,group,mode:'text'});
+  const {date,...undated}=group;
+  result=await call('start_workshop',{record:result.structuredContent.record,group:undated,mode:'text'});
+  assert.match(result._meta.workbook.group.date,/^\d{4}-\d{2}-\d{2}$/);
   for(let phase=1;phase<=6;phase++) {
-    result=await call('save_workshop_phase',{record:result.structuredContent.record,phase,answers:answers[phase-1]});
+    result=await call('save_workshop_phase',{record:result.structuredContent.record,phase,answers:phase===6?{recommendation:answers[5].recommendation}:answers[phase-1]});
     result=await call('confirm_workshop_phase',{record:result.structuredContent.record,phase,approved:true,confirmation:approval,requestId:`live-approved-${phase}`});
     assert.equal(result._meta.workbook.phases[phase-1].status,'confirmed');
     await saveFiles(result,`phase-${phase}`);
@@ -76,7 +78,7 @@ try {
   const denied=await client.callTool({name:'save_workshop_phase',arguments:{record:{key:readKey,revision:result.structuredContent.record.revision},phase:1,answers:{outcome:'Unauthorised change'}}});assert.equal(denied.isError,true);
   const direct=await fetch(new URL('/api/download?kind=json',endpoint),{headers:{Authorization:`Bearer ${readKey}`}});
   assert.equal(direct.status,200);assert.deepEqual(await direct.json(),result._meta.workbook);
-  results.push({checks:['version-0.6.1','15-current-tools','exact-widget-bundle','six-saved-approvals','fresh-client-reference-resume','persistent-text-preference','item-correction-retains-siblings','dependent-reapproval','read-only-link','read-key-write-rejected','direct-JSON-download'],widgetBytes:Buffer.byteLength(expected),widgetSha256:createHash('sha256').update(expected).digest('hex')});
+  results.push({checks:['version-0.7.0','automatic-date','recommendation-only-completion','15-current-tools','exact-widget-bundle','six-saved-approvals','fresh-client-reference-resume','persistent-text-preference','item-correction-retains-siblings','dependent-reapproval','read-only-link','read-key-write-rejected','direct-JSON-download'],widgetBytes:Buffer.byteLength(expected),widgetSha256:createHash('sha256').update(expected).digest('hex')});
 }catch(error){failure=error;}
 finally {
   // Only the fictional sessions created by this run are deleted. There is no

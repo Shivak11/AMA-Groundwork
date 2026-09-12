@@ -43,12 +43,12 @@ function richRecord(accentPerThousand) {
   content[2].tasks=Array.from({length:6},(_,index)=>({...content[2].tasks[index%5],id:`t${index+1}`}));
   content[3].candidates=Array.from({length:5},(_,index)=>({...content[3].candidates[index%2],id:`c${index+1}`,title:`Fictional candidate ${index+1}`,taskIds:[`t${index+1}`,`t${index+2}`]}));
   content[4].choices=Array.from({length:5},(_,index)=>({...content[4].choices[index%2],candidateId:`c${index+1}`,decision:index===0?'First':'Later'}));
-  const literal=new Set(['id','candidateId','decision']);
+  const literal=new Set(['id','candidateId','decision','kind','status']);
   function fill(value,key='') {
     if(Array.isArray(value))return key==='taskIds'?value:value.map(item=>fill(item,key));
     if(value&&typeof value==='object')return Object.fromEntries(Object.entries(value).map(([name,item])=>[name,fill(item,name)]));
-    if(typeof value!=='string'||literal.has(key))return value;
-    const limit=key==='title'?120:1200;
+    if(typeof value!=='string'||literal.has(key)||(key==='actor'&&['Person','AI','System'].includes(value)))return value;
+    const limit=key==='title'?120:600;
     const prefix=`Fictional size-test wording for ${key}: ${value} `;
     const base=prefix.slice(0,Math.min(prefix.length,limit-1)),remaining=limit-base.length;
     const accented=Math.floor(remaining*accentPerThousand/1000);
@@ -108,7 +108,14 @@ test('a valid near-limit six-step record produces final encoded tool results bel
   for(let phase=1;phase<=6;phase++)for(const tool of ['workshop_next','show_workbook']) {
     const result=await f.call(tool,{record:saved.reference,phase});const data=dataOf(result);
     sizes.push({tool,phase,bytes:encodedBytes(result)});
-    assert.deepEqual(data.phase.answers,record.phases[phase-1].answers,'Current-step wording must be complete in the model result.');
+    if(data.phase.answerAccess) {
+      const reconstructed={};
+      for(const {field,items} of data.phase.answerAccess.fields) {
+        if(items===null) reconstructed[field]=dataOf(await f.call('workshop_next',{record:saved.reference,phase,field})).phase.answers[field];
+        else {reconstructed[field]=[];for(let itemIndex=0;itemIndex<items;itemIndex++)reconstructed[field].push(...dataOf(await f.call('workshop_next',{record:saved.reference,phase,field,itemIndex})).phase.answers[field]);}
+      }
+      assert.deepEqual(reconstructed,record.phases[phase-1].answers,'Every oversized answer must remain available in explicit windows.');
+    } else assert.deepEqual(data.phase.answers,record.phases[phase-1].answers,'Current-step wording must be complete in the model result.');
     assert.equal(data.record.key,saved.reference.key);assert.equal(data.currentRevision,record.revision);
     assert.equal(new URL(data.workspace.url).hash,`#${await readKeyFor(saved.reference.key)}`);
     if(!result._meta?.workbook)assert.equal(data.view.display,false,'An omitted inline record must not leave a blank visual enabled.');

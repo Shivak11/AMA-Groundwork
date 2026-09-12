@@ -49,6 +49,23 @@ export function renderBookCover(record) {
   </section>`;
 }
 
+export function renderBookOverview(record) {
+  const diagnosisPhase = phaseOf(record, 3);
+  const diagnosis = answersOf(record, 3).underlyingProblem;
+  const candidatePhase = phaseOf(record, 4);
+  const candidates = answersOf(record, 4).candidates ?? [];
+  const diagnosisLabel = diagnosisPhase?.status === 'confirmed' && diagnosis ? 'The underlying problem confirmed by the group' : 'The underlying problem';
+  const diagnosisState = diagnosis && diagnosisPhase.status === 'needs_review' ? '<p class="review-note">This diagnosis needs review because an earlier answer changed.</p>' : '';
+  const items = candidates.map(candidate => `<section class="overview-use-case"><h3>${escapeBookText(candidate.title)} <span class="case-reference">(${escapeBookText(candidate.id)})</span></h3>${answer(candidate.aiWork)}</section>`);
+  const blocks = [
+    field('The original problem', record.group.problem, 'overview-original'),
+    `${field(diagnosisLabel, diagnosis || 'Not recorded in this workbook.', 'overview-diagnosis')}${diagnosisState}`,
+    `<section class="overview-candidates"><h3>The identified use cases and how AI could help</h3>${candidatePhase?.status === 'needs_review' ? '<p class="review-note">These use cases need review because an earlier answer changed.</p>' : ''}${items.length ? items[0] : '<p>No group-confirmed use cases are recorded in this workbook yet.</p>'}</section>`,
+    ...items.slice(1),
+  ];
+  return `<article class="chapter workbook-overview${bookHasLongAnswer([record.group.problem, diagnosis, candidates]) ? ' long-content' : ''}" id="workbook-overview" aria-labelledby="overview-title"><table class="chapter-layout" role="presentation"><thead><tr class="chapter-title-row"><td><h2 class="chapter-header" id="overview-title">Our problem and use cases</h2></td></tr></thead><tbody>${blocks.map(block => `<tr class="chapter-block"><td>${block}</td></tr>`).join('')}</tbody></table><footer class="chapter-footer"><span>Prepared by Dr. Shiva Kakkar</span><a href="${bookProfileUrl}">Click here to access the author’s profile</a></footer></article>`;
+}
+
 function renderGoal(a) {
   return [
     `<div class="goal-diagram" data-book-visual="goal" aria-label="The outcome, its success measure and safeguards">${node('The outcome we want', a.outcome, 'goal-outcome')}</div>`,
@@ -84,23 +101,60 @@ function renderJourney(record, a) {
     ${(a.workflows ?? []).includes(a.chosenWorkflow) ? '' : field('The workflow we chose', a.chosenWorkflow, 'chosen-workflow-field')}
     ${field('The difficult case we replayed', a.recentCase, 'case-replay')}`,
     `<section class="task-journey" data-book-visual="task-journey"><h3>The work in its recorded order</h3><ol class="work-journey">${tasks}</ol></section>`,
-    `<section class="zero-comparison" data-book-visual="zero-second"><h3>The zero-second test</h3>${selectedTask ? `<div class="zero-selected"><h4>The task the group selected</h4>${answer(selectedTask.work)}</div>` : selected ? `<p class="review-note">The selected task ${escapeBookText(selected)} is no longer in this work map. Review the selection.</p>` : ''}<div class="zero-remaining"><h4>What would remain if the work took zero seconds</h4>${answer(a.zeroSecond)}</div><div class="zero-redesign"><h4>What the workflow may need instead</h4>${answer(a.redesign)}</div></section>`];
+    `<section class="zero-comparison" data-book-visual="zero-second"><h3>The zero-second test</h3>${selectedTask ? `<div class="zero-selected"><h4>The task the group selected</h4>${answer(selectedTask.work)}</div>` : selected ? `<p class="review-note">The selected task ${escapeBookText(selected)} is no longer in this work map. Review the selection.</p>` : ''}<div class="zero-remaining"><h4>What would remain if the work took zero seconds</h4>${answer(a.zeroSecond)}</div><div class="zero-redesign"><h4>What the workflow may need instead</h4>${answer(a.redesign)}</div></section>`,
+    ...(a.underlyingProblem ? [field(phaseOf(record, 3).status === 'confirmed' ? 'The underlying problem confirmed by the group' : 'The underlying problem to review', a.underlyingProblem, 'underlying-problem')] : []),
+  ];
+}
+
+const flowArrow = '<svg class="flow-arrow" viewBox="0 0 20 28" aria-hidden="true" focusable="false"><path d="M10 2v22M4 18l6 6 6-6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+function renderFlow(steps, label, mode) {
+  return `<figure class="use-case-flow" data-book-visual="use-case-workflow" data-flow="${mode}" aria-label="${escapeBookText(label)}"><figcaption>${escapeBookText(label)}</figcaption><ol>${steps.map((step, index) => `<li><div class="flow-node${step.actor === 'AI' ? ' flow-ai' : step.actor === 'Person' ? ' flow-person' : ''}"><span class="flow-order" aria-hidden="true">${index + 1}</span><div><h4>${escapeBookText(step.actor)}${step.reference ? ` <span class="case-reference">(${escapeBookText(step.reference)})</span>` : ''}</h4>${answer(step.action)}</div></div>${index < steps.length - 1 ? flowArrow : ''}</li>`).join('')}</ol></figure>`;
+}
+
+const componentExplanations = {
+  Skill: 'Reusable instructions and an output format for a repeated task.',
+  Connector: 'A permitted connection for reading or passing information between tools.',
+  RAG: 'Retrieval-augmented generation: find relevant guidance and provide it to the AI before it answers.',
+  Workflow: 'An agreed sequence of steps with defined inputs, outputs and responsibilities.',
+  Agent: 'AI that chooses its next action within agreed instructions, tools and permissions.',
+  'Human review': 'A person checks the output and retains the decisions assigned to them.',
+  Other: 'A proposed component described by the group.',
+};
+
+function implementationParts(candidate, explained) {
+  const proposal = candidate.implementation;
+  if (!proposal) return [`<section class="implementation-proposal"><h3>Proposed implementation for ${escapeBookText(candidate.title)}</h3><p>No implementation proposal is recorded in this workbook.</p></section>`];
+  const parts = (proposal.components ?? []).map(component => {
+    const definition = explained.has(component.kind) ? '' : `<p class="component-definition">${escapeBookText(componentExplanations[component.kind] ?? componentExplanations.Other)}</p>`;
+    explained.add(component.kind);
+    return `<section class="implementation-component"><h4>${escapeBookText(component.kind)} <span class="component-status">${escapeBookText(component.status)}</span></h4>${definition}${field('What it would do', component.purpose)}${field('Why the requirement calls for it', component.basis)}</section>`;
+  });
+  return [
+    `<section class="implementation-proposal" data-book-visual="implementation-proposal"><h3>Proposed implementation for ${escapeBookText(candidate.title)}</h3><p class="proposal-boundary">This is a proposed approach, not a verified or deployed integration.</p>${answer(proposal.approach)}${parts[0] ?? ''}</section>`,
+    ...parts.slice(1),
+    field('What still needs checking before implementation', proposal.checks, 'implementation-checks'),
+  ];
 }
 
 function renderCandidates(record, a) {
   const tasks = answersOf(record, 3).tasks ?? [];
   const dispositions = record.interaction?.candidateDispositions ?? {};
-  return (a.candidates ?? []).map((candidate, candidateIndex) => {
-    const attached = (candidate.taskIds ?? []).map(id => {
-      const index = tasks.findIndex(task => task.id === id);
-      return index < 0 ? `<li class="answer">Task ${escapeBookText(id)} has no confirmed link in the current work map. This link needs review.</li>` : `<li><span class="task-reference">Task ${index + 1}</span>${answer(tasks[index].work)}</li>`;
-    });
+  const explained = new Set();
+  return (a.candidates ?? []).flatMap((candidate, candidateIndex) => {
+    const attached = tasks.filter(task => (candidate.taskIds ?? []).includes(task.id)).map(task => ({actor: task.actor, action: task.work, reference: task.id}));
+    const missing = (candidate.taskIds ?? []).filter(id => !tasks.some(task => task.id === id));
+    const requirementFields = [['What it reads', 'inputs'], ['What someone receives', 'output'], ['When it runs', 'trigger'], ['Company guidance it consults', 'knowledge'], ['Repeated instructions and output format', 'format'], ['Who may access or share it', 'access']];
     const long = bookHasLongAnswer(candidate) || (candidate.taskIds ?? []).some(id => bookHasLongAnswer(tasks.find(task => task.id === id)));
-    return `<div class="candidate-atlas${candidateIndex ? ' candidate-atlas-continuation' : ''}" data-book-visual="candidate-work-map"><section class="candidate-map${long ? ' long-candidate' : ''}"><h3 class="candidate-title answer">${escapeBookText(candidate.title)}</h3>${dispositions[candidate.id] ? `<p class="recorded-choice">Group choice: ${escapeBookText(dispositions[candidate.id])}</p>` : ''}
-      <div class="candidate-route"><div class="candidate-input"><h4>The recorded work</h4>${attached.length ? `<ul>${attached.join('')}</ul>` : '<p>No task link recorded.</p>'}</div><div class="candidate-ai"><h4>What AI would do</h4>${answer(candidate.aiWork)}</div><div class="candidate-human"><h4>What a person must check or decide</h4>${answer(candidate.humanCheck)}</div></div>
+    const result = [`<div class="candidate-atlas${candidateIndex ? ' candidate-atlas-continuation' : ''}" data-book-visual="candidate-work-map"><section class="candidate-map${long ? ' long-candidate' : ''}"><h3 class="candidate-title answer">${escapeBookText(candidate.title)} <span class="case-reference">(${escapeBookText(candidate.id)})</span></h3>${dispositions[candidate.id] ? `<p class="recorded-choice">Group choice: ${escapeBookText(dispositions[candidate.id])}</p>` : ''}
+      <div class="candidate-route candidate-purpose"><div class="candidate-ai"><h4>What AI would do</h4>${answer(candidate.aiWork)}</div><div class="candidate-human"><h4>What a person must check or decide</h4>${answer(candidate.humanCheck)}</div></div>
       <div class="candidate-comparator"><h4>What we could do without AI</h4>${answer(candidate.nonAiAlternative)}</div>
       <div class="candidate-case"><div><h4>How this could improve the outcome</h4>${answer(candidate.value)}</div><div><h4>What we are assuming</h4>${answer(candidate.assumption)}</div></div>
-    </section></div>`;
+    </section></div>`,
+    `<section class="candidate-workflows"><h3>Workflow for ${escapeBookText(candidate.title)}</h3>${field('The named current workflow', answersOf(record, 3).chosenWorkflow)}${missing.length ? `<p class="review-note">The current work map has no confirmed link for ${missing.map(escapeBookText).join(', ')}. These task links need review.</p>` : ''}${attached.length ? renderFlow(attached, 'Related tasks in their recorded order', 'current') : '<p>No confirmed task sequence is linked to this use case.</p>'}</section>`,
+    `<section class="candidate-proposed-workflow"><h3>Proposed sequence for ${escapeBookText(candidate.title)}</h3>${candidate.workflow?.length ? renderFlow(candidate.workflow, 'The proposed sequence', 'proposed') : '<p>No proposed sequence is recorded in this workbook.</p>'}</section>`,
+    `<section class="candidate-requirements"><h3>Requirements for ${escapeBookText(candidate.title)}</h3><p class="requirements-boundary">These are the group’s recorded requirements. An explicit unknown remains unresolved.</p><dl>${requirementFields.map(([label, key]) => `<div><dt>${label}</dt><dd>${answer(candidate[key])}</dd></div>`).join('')}</dl>${field('The group’s success measure', answersOf(record, 1).kpi)}</section>`,
+    ...implementationParts(candidate, explained)];
+    return result;
   });
 }
 
@@ -119,14 +173,18 @@ function renderPriorities(record, a) {
 }
 
 function renderTest(record, a) {
+  const candidates = answersOf(record, 4).candidates ?? [];
+  const priorities = answersOf(record, 5).choices ?? [];
+  const priorityNeedsReview = phaseOf(record, 5)?.status === 'needs_review';
   return [
-    `<div class="test-plan" data-book-visual="test-plan"><section class="test-decision"><h3>${escapeBookText(recorded(a.decision))}</h3>${answer(a.recommendation)}</section></div>`,
-    ...(a.candidateId ? [field('The use case we would test', candidateTitle(record, a.candidateId), 'test-candidate')] : []),
-    `<div class="test-accountability"><h3>The proposed accountable owner</h3>${answer(a.owner)}</div>`,
-    `<div class="test-evidence"><h3>The evidence and permission we need</h3>${answer(a.evidence)}</div>`,
-    `${connector}<div class="test-action"><h3>The next test or evidence-gathering step</h3>${answer(a.test)}</div>`,
-    `<div class="test-people"><h3>What changes in people’s work</h3>${answer(a.peopleChange)}</div>`,
-    `<div class="test-stop"><h3>When we would stop or revise</h3>${answer(a.stopRule)}</div>`,
+    `<div class="test-plan" data-book-visual="test-plan"><section class="test-decision"><h3>${escapeBookText(a.decision || 'The group’s recommendation')}</h3>${answer(a.recommendation)}</section></div>`,
+    ...(a.candidateId && a.decision !== 'Do not pilot yet' ? [field('The use case we would test', candidateTitle(record, a.candidateId), 'test-candidate')] : []),
+    ...(a.owner ? [`<div class="test-accountability"><h3>The proposed accountable owner</h3>${answer(a.owner)}</div>`] : []),
+    ...(a.evidence ? [`<div class="test-evidence"><h3>The evidence and permission we need</h3>${answer(a.evidence)}</div>`] : []),
+    ...(a.test ? [`${connector}<div class="test-action"><h3>The next test or evidence-gathering step</h3>${answer(a.test)}</div>`] : []),
+    ...(a.peopleChange ? [`<div class="test-people"><h3>What changes in people’s work</h3>${answer(a.peopleChange)}</div>`] : []),
+    ...(a.stopRule ? [`<div class="test-stop"><h3>When we would stop or revise</h3>${answer(a.stopRule)}</div>`] : []),
+    `<section class="final-use-cases"><h3>All identified use cases</h3>${candidates.length ? `<ul>${candidates.map(candidate => {const choice = priorities.find(item => item.candidateId === candidate.id); return `<li><h4>${escapeBookText(candidate.title)} <span class="case-reference">(${escapeBookText(candidate.id)})</span></h4><p>${choice ? `Recorded priority: ${escapeBookText(choice.decision)}.${priorityNeedsReview ? ' This priority needs review.' : ''}` : 'No priority is confirmed in this workbook.'}</p></li>`;}).join('')}</ul>` : '<p>No group-confirmed use cases are recorded in this workbook.</p>'}<p class="final-reading-note">The use cases remain documented here, including any the group has deferred or decided not to pursue.</p></section>`,
   ];
 }
 

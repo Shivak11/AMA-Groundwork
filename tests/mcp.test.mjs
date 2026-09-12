@@ -176,7 +176,8 @@ test('the read-only shortlist remains readable without UI support',async()=>{
     const result=await c.client.callTool({name:'show_shortlist',arguments:{record:r,mode:'text'}});
     assert(!result.isError);assert.equal(result.structuredContent.mode,'text');
     for(const candidate of answers[3].candidates) assert(result.content[0].text.includes(candidate.title));
-    assert.match(result.content[0].text,/First, Later or Do not pursue/);
+    assert.deepEqual(result.structuredContent.phase.answerSchema.properties.choices.items.properties.decision.enum,['First','Later','Do not pursue']);
+    assert.match(result.structuredContent.nextQuestion.hint,/First, Later or Do not pursue/);
     assert.equal(result.structuredContent.nextQuestion.field,'choices');
     assert.equal(result.structuredContent.questionTurn.owner,'chat');
   } finally {await c.close();}

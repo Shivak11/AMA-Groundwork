@@ -26,28 +26,61 @@ export const groupSchema = obj({
   name: short, members: z.array(short).min(1).max(12), problem: z.string().trim().min(1).max(400),
   context: z.string().trim().max(400).default(''), date: z.iso.date(),
 });
+export const groupInputSchema = groupSchema.extend({date:z.iso.date().optional()});
+export function datedGroup(group, now = new Date()) {
+  return groupSchema.parse({...group,date:group.date ?? now.toISOString().slice(0,10)});
+}
+const implementationSchema = obj({approach:text,components:z.array(obj({
+  kind:z.enum(['Skill','Connector','RAG','Workflow','Agent','Human review','Other']),
+  purpose:text,basis:text,status:z.enum(['Proposed','Needs confirmation']),
+})).min(1).max(6),checks:text});
+export const candidateSchema = obj({id,title:short,taskIds:z.array(id).max(6),aiWork:text,value:text,
+  humanCheck:text,nonAiAlternative:text,assumption:text,
+  inputs:text.optional(),output:text.optional(),trigger:text.optional(),knowledge:text.optional(),
+  format:text.optional(),access:text.optional(),implementation:implementationSchema.optional(),
+  workflow:z.array(obj({actor:z.enum(['Person','AI','System']),action:text})).min(2).max(8).optional(),
+});
 export const answerSchemas = [
   obj({ outcome: text, kpi: text, baseline: text, guardrail: text, hypothesis: text }),
   obj({ blockers: z.array(obj({ information: text, holder: text, barrier: text, unlock: text })).min(1).max(5), firstGap: text }),
   obj({ workflows: z.array(text).min(1).max(3), chosenWorkflow: text, recentCase: text,
-    tasks: z.array(obj({ id, actor: text, work: text, friction: text })).min(2).max(6), zeroSecond: text, redesign: text }),
-  obj({ candidates: z.array(obj({ id, title: short, taskIds: z.array(id).max(6), aiWork: text, value: text,
-    humanCheck: text, nonAiAlternative: text, assumption: text })).min(1).max(5) }),
+    tasks: z.array(obj({ id, actor: text, work: text, friction: text })).min(2).max(6), zeroSecond: text, redesign: text, underlyingProblem:text.optional() }),
+  obj({ candidates: z.array(candidateSchema).min(1).max(5) }),
   obj({ choices: z.array(obj({ candidateId: id, decision: z.enum(['First', 'Later', 'Do not pursue']), reason: text, evidenceGap: text })).min(1).max(5), challenge: text, costs: text }),
   obj({ decision: z.enum(['Test a use case', 'Do not pilot yet']), candidateId: id.nullable(), owner: text,
     evidence: text, peopleChange: text, test: text, stopRule: text, recommendation: text }),
 ];
+export function phaseAnswerSchema(record, phaseId) {
+  const schema=answerSchemas[phaseId-1];
+  if(record.experienceVersion!==2) return schema;
+  if(phaseId===3) return schema.required({underlyingProblem:true});
+  if(phaseId===4) return schema.extend({candidates:z.array(candidateSchema.required({inputs:true,output:true,trigger:true,knowledge:true,format:true,access:true,implementation:true,workflow:true})).min(1).max(5)});
+  return phaseId===6 ? schema.partial().required({recommendation:true}) : schema;
+}
+export function groundingIssues(record, phaseId) {
+  if(record.experienceVersion!==2) return [];
+  const answers=record.phases[phaseId-1].answers,issues=[];
+  if(phaseId===3&&!answers.underlyingProblem) issues.push({field:'underlyingProblem',message:'Confirm the underlying problem with the group before approving this step.'});
+  if(phaseId===4) for(const candidate of answers.candidates??[]) {
+    for(const key of ['inputs','output','trigger','knowledge','format','access','implementation','workflow']) {
+      if(candidate[key]===undefined) issues.push({field:'candidates',candidateId:candidate.id,detail:key,message:`For ${candidate.title}, record ${key} from the discussion or an explicitly acknowledged unknown before approval.`});
+    }
+  }
+  return issues;
+}
 const phaseSchema = obj({ id: z.number().int().min(1).max(6), status: z.enum(['draft','confirmed','needs_review']),
   answers: z.record(z.string(), z.unknown()), approvalNote: text.optional(), approvedAt: z.iso.datetime().optional() });
-export const recordSchema = obj({ schemaVersion: z.literal(1), group: groupSchema, revision: z.number().int().min(0),
+export const recordSchema = obj({ schemaVersion: z.literal(1), experienceVersion:z.literal(2).optional(), group: groupSchema, revision: z.number().int().min(0),
   phases: z.array(phaseSchema).length(6), interaction: interactionSchema.optional() }).superRefine((record, ctx) => {
   record.phases.forEach((phase, i) => {
     if (phase.id !== i + 1) ctx.addIssue({ code: 'custom', path:['phases',i,'id'], message:'Phases must be ordered 1 to 6.' });
-    const schema = phase.status === 'draft' ? answerSchemas[i].partial() : answerSchemas[i];
+    const completeSchema=phaseAnswerSchema(record,i+1);
+    const schema = phase.status === 'draft' ? answerSchemas[i].partial() : completeSchema;
     const checked = schema.safeParse(phase.answers);
     if (!checked.success) for (const issue of checked.error.issues) ctx.addIssue({ ...issue, path:['phases',i,'answers',...issue.path] });
     if (phase.status === 'confirmed' && (!phase.approvalNote || !phase.approvedAt)) ctx.addIssue({ code:'custom', path:['phases',i], message:'A confirmed phase needs the group approval and timestamp.' });
     if (phase.status === 'confirmed' && record.phases.slice(0,i).some(p => p.status !== 'confirmed')) ctx.addIssue({ code:'custom', path:['phases',i], message:'Later phases cannot be confirmed before earlier phases.' });
+    if(phase.status==='confirmed') for(const issue of groundingIssues(record,i+1)) ctx.addIssue({code:'custom',path:['phases',i,'answers',issue.field],message:issue.message});
   });
   const undo = record.interaction?.undo;
   if (undo) {
@@ -57,7 +90,8 @@ export const recordSchema = obj({ schemaVersion: z.literal(1), group: groupSchem
         ctx.addIssue({code:'custom',path:['interaction','undo','states',i],message:'Undo must retain valid ordered approvals.'});
       }
     });
-    const schema = undo.states[undo.phaseId-1].status === 'draft' ? answerSchemas[undo.phaseId-1].partial() : answerSchemas[undo.phaseId-1];
+    const completeSchema=phaseAnswerSchema(record,undo.phaseId);
+    const schema = undo.states[undo.phaseId-1].status === 'draft' ? answerSchemas[undo.phaseId-1].partial() : completeSchema;
     const checked = schema.safeParse(undo.answers);
     if (!checked.success) for (const issue of checked.error.issues) ctx.addIssue({...issue,path:['interaction','undo','answers',...issue.path]});
   }
@@ -67,9 +101,9 @@ export const phases = [
   { id:1, title:'What should improve?', format:'Complete the outcome statement', question:'Complete this together: We want ___ to improve for ___, without making ___ worse.', instructions:'Ask for the recent problem behind the sentence. Name one useful measure, a baseline or Unknown, and the change the group expects. Let the group answer before suggesting wording.' },
   { id:2, title:'What prevents progress?', format:'Sort the barriers', question:'Which information or decision is missing, inaccessible, disputed or waiting for someone with authority?', instructions:'Use the current problem. Ask the group to identify who holds the information and one practical unlock. Distinguish data access from incentives, trust and authority; do not assume a connector resolves them.' },
   { id:3, title:'What actually happens?', format:'Replay a difficult case', question:'Choose a recent troublesome case. What happened first, and who had to do what next?', instructions:'Consider up to three workflows before choosing one. Reconstruct 2–6 actual steps including waiting and rework. Then ask: if the slowest task took zero seconds, what would still prevent the outcome? Record whether the workflow itself should change.' },
-  { id:4, title:'Where could AI help?', format:'Keep, change or reject candidate cards', question:'Which step would you change first? Say what AI would do and what a person would still check.', instructions:'Ask for the group idea first, then offer up to five candidates grounded in its replay, including new work if justified. Invite keep/change/reject. Each candidate needs a non-AI alternative, a human check and an explicit assumption. Keep tasks linked by ID.' },
-  { id:5, title:'Which should we pursue first?', format:'Compare and challenge the shortlist', question:'Which candidate deserves the first test, and what is the strongest reason against choosing it?', instructions:'Compare evidence, access, checking effort and recurring costs. Invite a different member to challenge the first choice. Assign First, Later or Do not pursue with a reason and missing proof. No numerical AI grade. Choosing none first is legitimate.' },
-  { id:6, title:'What do we recommend?', format:'Make the group recommendation', question:'What would you recommend to the decision-maker, and what evidence would make you stop or change it?', instructions:'Name a proposed accountable owner, what changes for people, a small test and a stop rule. Do not appoint someone by implication or treat capacity as cash savings. No pilot yet is acceptable. Confirm the completed book with the group.' },
+  { id:4, title:'Where could AI help?', format:'Review the proposed use cases', question:'Where could AI help with this work, and what should a person still check?', instructions:'Ask for the group idea first. Name each use case clearly and link it to the recorded tasks. Reuse known answers and ask only for missing information: inputs, useful output, when it runs, reference material, repeatable rules, access and human checks. Explain these as everyday work questions. Propose the smallest justified technical approach in the workbook, explaining any skill, connector/MCP, RAG, workflow or agent in plain language. Tie each component to a specific answer, mark unverified access and capability as needing confirmation, and never invent an integration. Show the proposed workflow and get the group to correct it. Keep a non-AI alternative and assumptions for every case.' },
+  { id:5, title:'Which use cases are worth pursuing?', format:'Compare the use cases', question:'Which use case is most useful for your group, and what would you need to check before using it?', instructions:'Compare evidence, access, checking effort and recurring costs. Assign First, Later or Do not pursue with reasons and missing evidence. Ask one self-contained decision at a time, using full use-case names rather than IDs. Do not offer Both first. Choosing none first is legitimate; retain every identified use case and why it was deferred or rejected.' },
+  { id:6, title:'Your use cases and recommendation', format:'Review the completed workbook', question:'Does this summary describe the use cases your group identified and your recommendation?', instructions:'Draft a short recap from the approved answers, naming the identified use cases and the recommendation. Reuse the priority discussion; ask only if a material recommendation is missing. Do not add a pilot questionnaire or offer to build anything. Ask the group to approve the recap. On approval, open the completed workbook with Download PDF prominent, and say they can keep it for reflection and future implementation. Choosing not to pilot must never remove identified use cases.' },
 ].map((phase,i) => ({ ...phase, requiredFields:Object.keys(answerSchemas[i].shape) }));
 
 export function validateRecord(input) {
@@ -81,7 +115,9 @@ export function validateRecord(input) {
 }
 export function currentPhase(record) { return record.phases.find(p => p.status !== 'confirmed')?.id ?? null; }
 export function phaseGuide(record, requested) {
-  const phase = phases[(requested ?? currentPhase(record) ?? 6)-1];
+  const base = phases[(requested ?? currentPhase(record) ?? 6)-1];
+  const schema=phaseAnswerSchema(record,base.id);
+  const phase={...base,requiredFields:Object.keys(schema.shape).filter(key=>!schema.shape[key].isOptional())};
   if (phase?.id === 3 && record.interaction?.zeroTaskId && !record.phases[2].answers.zeroSecond) {
     const task = record.phases[2].answers.tasks?.find(item=>item.id===record.interaction.zeroTaskId);
     if (task) return {...phase,question:`If “${task.work}” took zero seconds, what would still prevent your outcome?`};
@@ -89,7 +125,7 @@ export function phaseGuide(record, requested) {
   return phase;
 }
 export function createRecord(group) {
-  return { schemaVersion:1, group:groupSchema.parse(group), revision:0,
+  return { schemaVersion:1, experienceVersion:2, group:datedGroup(group), revision:0,
     phases: phases.map(p => ({id:p.id, status:'draft', answers:{}})) };
 }
 function assertEditable(record, phaseId) {
@@ -190,10 +226,11 @@ export function sameValue(left, right) {
 
 export function phaseReadiness(record, phaseId = currentPhase(record) ?? 6) {
   const answers = record.phases[phaseId-1].answers;
-  const schema = answerSchemas[phaseId-1];
+  const schema = phaseAnswerSchema(record,phaseId);
   const parsed = schema.safeParse(answers);
-  const missingFields = Object.keys(schema.shape).filter(key => answers[key] === undefined);
+  const missingFields = Object.keys(schema.shape).filter(key => answers[key] === undefined&&!schema.shape[key].isOptional());
   const issues = parsed.success ? [] : parsed.error.issues.map(issue => ({field:String(issue.path[0] ?? ''),message:issue.message}));
+  issues.push(...groundingIssues(record,phaseId));
   try { validateReferences(record, phaseId); }
   catch (error) {
     const field = phaseId === 3 ? (/chosen workflow/i.test(error.message) ? 'chosenWorkflow' : 'tasks')
@@ -261,7 +298,7 @@ export function confirmPhase(input, phaseId, confirmation, now = new Date().toIS
   if (refuses) throw new Error('This response does not approve the summary. Save the correction and ask the group again.');
   if (phaseId === 4 && Object.values(record.interaction?.candidateDispositions ?? {}).includes('Reconsider')) throw new Error('Resolve the candidates marked Reconsider: revise the candidates in chat or explicitly choose Keep before approval.');
   if (phaseId === 5 && Object.keys(record.interaction?.priorities ?? {}).length) throw new Error('Save and review the pending visual priorities with their reasons and evidence gaps before approving the shortlist.');
-  record.phases[phaseId-1].answers = answerSchemas[phaseId-1].parse(record.phases[phaseId-1].answers);
+  record.phases[phaseId-1].answers = phaseAnswerSchema(record,phaseId).parse(record.phases[phaseId-1].answers);
   validateReferences(record, phaseId);
   Object.assign(record.phases[phaseId-1], {status:'confirmed', approvalNote:approval, approvedAt:now});
   record.revision += 1;
@@ -270,13 +307,19 @@ export function confirmPhase(input, phaseId, confirmation, now = new Date().toIS
 }
 export function readableSummary(record, phaseId = currentPhase(record) ?? 6) {
   const p = record.phases[phaseId-1];
-  const lines = [`${record.group.name} — ${phases[phaseId-1].title}`, `Phase ${phaseId} of 6; ${p.status.replace('_',' ')}. Record revision ${record.revision}.`];
-  const label = key => ({aiWork:'What AI would do',taskIds:'Workflow steps',humanCheck:'Human check',nonAiAlternative:'Non-AI alternative',evidenceGap:'Missing evidence',candidateId:'Candidate',firstGap:'First gap',zeroSecond:'If the task took no time',peopleChange:'Changes for people',stopRule:'Stop rule'}[key] ?? key.replace(/([A-Z])/g,' $1').replace(/^./,c=>c.toUpperCase()));
+  const lines = [`Step ${phaseId} of 6: ${phases[phaseId-1].title}`];
+  if(phaseId===6) {
+    lines.push('AI use cases identified:');
+    for(const candidate of record.phases[3].answers.candidates??[]) lines.push(`- ${candidate.title}: ${candidate.aiWork}`);
+  }
+  const label = key => ({aiWork:'What AI would do',taskIds:'Workflow tasks',humanCheck:'What a person checks',nonAiAlternative:'Without AI',evidenceGap:'What still needs checking',candidateId:'Use case',firstGap:'What to address first',zeroSecond:'If the task took no time',peopleChange:'Changes for people',stopRule:'When to reconsider',underlyingProblem:'The problem we identified',implementation:'Proposed technical approach',kpi:'Success measure / KPI',candidates:'AI use cases'}[key] ?? key.replace(/([A-Z])/g,' $1').replace(/^./,c=>c.toUpperCase()));
+  const name=(key,value)=>key==='candidateId' ? record.phases[3].answers.candidates?.find(c=>c.id===value)?.title??value : key==='taskIds' ? record.phases[2].answers.tasks?.find(t=>t.id===value)?.work??value : value;
   const display = (object, indent='') => Object.entries(object).forEach(([key,value])=>{
     if (Array.isArray(value)) {
       lines.push(`${indent}${label(key)}:`);
-      value.forEach((item,i)=>{ if (typeof item==='object') {lines.push(`${indent}${i+1}.`);display(item,indent+'  ');} else lines.push(`${indent}- ${item}`); });
-    } else lines.push(`${indent}${label(key)}: ${value ?? 'None'}`);
+      value.forEach((item,i)=>{ if (typeof item==='object'&&item!==null) {lines.push(`${indent}${i+1}.`);display(item,indent+'  ');} else lines.push(`${indent}- ${name(key,item)}`); });
+    } else if(value&&typeof value==='object') {lines.push(`${indent}${label(key)}:`);display(value,indent+'  ');}
+    else if(key!=='id') lines.push(`${indent}${label(key)}: ${name(key,value) ?? 'None'}`);
   });
   display(p.answers);
   if (!Object.keys(p.answers).length) lines.push('No answers recorded for this phase yet.');

@@ -1,6 +1,6 @@
 # Cloudflare connector
 
-Version 0.6.1 keeps private D1 storage, immutable revision history and short-reference recovery, while making the closed inline card a compact visual with one View workbook action. Workbooks do not automatically expire. Cloudflare Browser Run generates PDFs from saved snapshots. The Terracotta workbook and native-question/plain-chat behaviour are retained.
+Version 0.7.0 retains private D1 storage, immutable history and persistent recovery. New workbooks capture their date automatically, confirm a grounded use case, show its workflow and proposed implementation, and open the finished workbook with Download PDF prominent. Existing workbooks remain readable. No schema migration or retention change is needed. See RELEASE-0.7.0.md in the repository root for verification.
 
 The authorised endpoint remains https://ai-use-case-workshop.shiva-research11.workers.dev/mcp. The dedicated database is ai-use-case-workshop-sessions, bound as WORKSHOP_DB. The committed configuration starts disabled and unconfigured; deployment and actual-host proof belong in the release record. Other Workers and databases are outside this change.
 

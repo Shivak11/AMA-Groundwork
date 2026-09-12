@@ -4,7 +4,7 @@ Approved by Shiva on 12 September 2026 after the consolidated feedback and the a
 
 ## Scope and release
 
-Base: d7b70aa1becbee8052728ff8d0c659e44bd4738d (live 0.6.1). Isolated branch: workshop-usability-20260912. Replace the current experience at the existing Cloudflare endpoint after verification, as explicitly requested. Do not change authentication, access authority, retention, database infrastructure or participant records. No automatic expiry. Retain the existing persistent reader and compatibility with saved workbooks. Previous Worker version df35410f-bf22-40c9-a50e-a84d509daa7a is the rollback target; verify current state before release. Source, tests, PDF rendering, deployment and real-host journeys are separate proof.
+Base: d7b70aa1becbee8052728ff8d0c659e44bd4738d (live 0.6.1). Isolated branch: workshop-usability-20260912. Replace the current experience at the existing Cloudflare endpoint after verification, as explicitly requested. Do not change authentication, access authority, retention, database infrastructure or participant records. No automatic expiry. Retain the existing persistent reader and compatibility with saved workbooks. Previous Worker version df35410f-bf22-40c9-a50e-a84d509daa7a was verified current before release, but it cannot read new experience-version-2 fields. After any new record exists, do not roll back directly to that version. Contain failures with the compatible new reader and WORKSHOP_WRITES_ENABLED=false, then apply a forward correction. Source, tests, PDF rendering, deployment and real-host journeys are separate proof.
 
 ## Participant contract
 
@@ -25,7 +25,7 @@ Keep schemaVersion 1 and support old saved records. Add optional `experienceVers
 - Candidate in phase 4 retains id, title, taskIds, aiWork, value, humanCheck, nonAiAlternative, assumption. Add optional `inputs`, `output`, `trigger`, `knowledge`, `format`, `access` strings. These answer respectively what it reads, what someone receives, when it runs, which company guidance it consults (or none), repeated instructions/format, and who may access/share it. Unknowns are allowed and must remain explicit.
 - Candidate optional `implementation`: `{ approach: string, components: [{ kind: 'Skill'|'Connector'|'RAG'|'Workflow'|'Agent'|'Human review'|'Other', purpose: string, basis: string, status: 'Proposed'|'Needs confirmation' }], checks: string }`. Components are recommendations grounded in group answers, not claims of working integrations or mandatory technologies. A component's basis states which requirement warrants it. At least one useful component; at most six. Ask behavioural questions, never ask the participant to choose a framework or vendor.
 - Candidate optional `workflow`: array of 2–8 `{ actor: 'Person'|'AI'|'System', action: string }` steps representing the proposed sequence, confirmed with the candidate. The existing taskIds resolve to named current-workflow steps for comparison. Do not insert automatic sending or autonomous authority unless the recorded group agreement supports it.
-- Existing phase 6 pilot enums are accepted for saved-record compatibility. Participant-facing labels and the final display separate the identified cases from whether implementation is recommended now. The completed book includes every documented candidate regardless of candidateId being null.
+- New-experience phase 6 requires only recommendation. Existing phase 6 pilot enums and other fields remain accepted for saved-record compatibility and explicit participant additions. Participant-facing labels and the final display separate the identified cases from whether implementation is recommended now. The completed book includes every documented candidate regardless of candidateId being null.
 
 ## Workbook contract
 
@@ -55,4 +55,4 @@ All agents share this worktree. Do not revert or stage someone else's work. Use 
 
 ## Evidence log
 
-Pending implementation. No changes to live behaviour have been made for this revision.
+Implementation completed locally. The complete test suite, typecheck, self-contained build, controlled-host layout/interaction checks and local PDF checks have passed. Source commit, deployed version, exact live widget, actual Cloudflare PDFs and actual-host journeys are recorded separately in RELEASE-0.7.0.md. No production mutation is implied by local proof.

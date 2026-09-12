@@ -1,6 +1,6 @@
 # AI Use-Case Workshop
 
-Version 0.6.1 simplifies the inline readback using StyleRef's Swiss Grid structure adapted to host colours. One View workbook action replaces the closed card's file/recovery controls. Complete saved wording and files remain in the expansion. Persistent storage and the PDF content are unchanged.
+Version 0.7.0 adds grounded use-case requirements and a proposed implementation, full wrapping text, named decision choices and automatic date capture. The completed workbook opens with Download PDF prominent and retains all identified cases even when implementation is deferred. It includes the original and agreed underlying problem, workflow diagrams and the technical proposal. See USABILITY-REVISION-PLAN.md and RELEASE-0.7.0.md for scope and proof.
 
 Version 0.6.0 adds private persistent workbook storage on Cloudflare D1. Workbooks and revision history have no automatic expiry; explicit group deletion is required. A short private reference resumes editing in another chat, and a separate stable reading link supports later feedback and downloads. It retains conversational questions, read-only visual cards, step-first hierarchy and ordinary-chat fallback. See PERSISTENT-RECOVERY-PLAN.md for the current contract. Source, deployed runtime and actual-host evidence remain separate.
 
@@ -13,7 +13,7 @@ Version 0.6.0 adds private persistent workbook storage on Cloudflare D1. Workboo
 | 3 | Examine recorded tasks and select one for the zero-second thought experiment. Discuss sequence changes in chat. | Workflow and what would still constrain it. |
 | 4 | Compare AI with the simpler alternative; Keep or Reconsider. | Task, AI work, human check and alternative. |
 | 5 | Move candidates between First, Later and Do not pursue. | Priorities, reasons, unknowns, challenge and recurring effort. |
-| 6 | Refine a bounded comparison or no-pilot recommendation. | Owner, evidence, test, human responsibility and stop rule. |
+| 6 | Approve the recap and group recommendation. No additional pilot questionnaire. | All identified cases, recommendation and reading/download access. |
 
 Group details, answers and corrections come through conversation. The server returns the next missing question and skips saved fields. Groups approve their own step summaries without an instructor release. Views contain no answer forms or approval controls. Proposed use cases, unknown baselines and unaccepted responsibilities remain explicit.
 
@@ -39,8 +39,8 @@ npm run build:remote
 The last command packages the Cloudflare Worker with a dry run; it does not deploy it. The default Worker remains disabled/unconfigured unless explicitly activated later.
 
 ```sh
-node scripts/verify-chat-workbook.mjs
-node scripts/verify-chat-workbook-remote.mjs
+node scripts/verify-usability-browser.mjs
+node scripts/verify-persistent-remote.mjs
 node scripts/connector-config.mjs
 ```
 
@@ -68,7 +68,7 @@ Inline snapshots inherit host colours and typography. The book preview and PDF u
 
 Routine results remain explicitly non-visual, so a host that reuses a previous visual resource does not show an empty workbook. Normal content carries the short reference and relevant step context; _meta.workbook carries the canonical visual record. Large visuals can fall back to the stable reading link. Manual checkpoint downloads remain available. Changed tool definitions require persistent installation refresh or reinstall; both hosts retained old definitions during the 11 September checks. A transient tool-list update is not proof of installation repair.
 
-The full-record v0.5.2 server remains available only for explicit local compatibility. It is never an automatic fallback when persistent storage fails. The live Worker fails closed without its D1 binding. WORKSHOP_WRITES_ENABLED=false pauses mutations while retaining reads and exports; WORKSHOP_ENABLED=false stops the service. Never roll back to a stateless-only Worker without retaining a persistent reader or exporting the stored records.
+The full-record server remains available only for explicit local compatibility. It is never an automatic fallback when persistent storage fails. The live Worker fails closed without its D1 binding. WORKSHOP_WRITES_ENABLED=false pauses mutations while retaining reads and exports; WORKSHOP_ENABLED=false stops the service. Version 0.6.1 cannot validate new experience-version-2 fields: after new workbooks exist, retain the compatible 0.7 reader during containment and apply a forward correction. Do not roll back to an incompatible or stateless-only Worker.
 
 All steps, corrections, approvals and PDF requests have text equivalents in the same conversation. A separate browser app is not required. The optional stable reader supports later delivery and exports. Cross-client resumption requires the group's private reference; it is not account/name-based recovery. No claim of pinned hot reload or live card replacement is made.
 

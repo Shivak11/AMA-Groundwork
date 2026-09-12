@@ -207,6 +207,47 @@ h4 { margin: 0 0 2mm; font-size: 10pt; font-weight: 600; line-height: 1.35; over
 .test-people { padding: 4mm 0; }
 .test-stop { padding: 4mm; border: 2px solid var(--ink); }
 
+.workbook-overview .overview-original { padding-bottom: 5mm; border-bottom: 1px solid var(--rule); }
+.workbook-overview .overview-diagnosis { padding: 5mm; margin-block: 6mm; background: var(--paper); border-left: 1mm solid var(--functional-clay); }
+.overview-candidates > h3 { margin-bottom: 4mm; }
+.overview-use-case { margin-top: 4mm; padding: 4mm 0; border-top: 1px solid var(--rule); }
+.overview-use-case > h3 { margin-bottom: 2mm; }
+.case-reference { font: 400 10.5pt/1.4 "Avenir Next", Avenir, "Segoe UI", Arial, sans-serif; color: var(--muted); }
+.underlying-problem { padding: 5mm; border-left: 1mm solid var(--functional-clay); background: var(--paper); }
+.candidate-route.candidate-purpose { grid-template-columns: 1fr 1fr; }
+.candidate-purpose .candidate-ai { border-left: 0; }
+.candidate-workflows, .candidate-proposed-workflow, .candidate-requirements, .implementation-proposal { margin-top: 7mm; }
+.candidate-workflows > h3, .candidate-proposed-workflow > h3, .candidate-requirements > h3, .implementation-proposal > h3 { font: 400 18pt/1.2 "DM Serif Display", Georgia, serif; margin-bottom: 4mm; break-after: avoid; }
+.candidate-workflows > .book-field { margin-bottom: 4mm; }
+.use-case-flow { margin: 4mm 0 0; }
+.use-case-flow > figcaption { font-size: 10.5pt; font-weight: 600; margin-bottom: 4mm; break-after: avoid; }
+.use-case-flow > ol { margin: 0; padding: 0; list-style: none; }
+.use-case-flow li { margin: 0; break-inside: avoid; }
+.flow-node { display: grid; grid-template-columns: 8mm minmax(0, 1fr); gap: 4mm; padding: 4mm; border: 1px solid var(--rule); border-radius: 2.5mm; background: var(--white); }
+.flow-node h4 { font-size: 10.5pt; margin-bottom: 1.5mm; }
+.flow-order { color: var(--functional-clay); font: 400 20pt/1.2 "DM Serif Display", Georgia, serif; }
+.flow-ai { border-color: var(--functional-clay); background: var(--paper); }
+.flow-person { border-left: 1mm solid var(--ink); }
+.flow-arrow { display: block; width: 20px; height: 7mm; color: var(--functional-clay); margin-left: 7.5mm; }
+.requirements-boundary, .proposal-boundary { color: var(--muted); margin-bottom: 4mm; }
+.candidate-requirements > dl { margin-top: 4mm; }
+.candidate-requirements > dl > div { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.6fr); gap: 5mm; border-top: 1px solid var(--rule); padding: 3mm 0; }
+.candidate-requirements dt { font-size: 10.5pt; }
+.candidate-requirements > .book-field { padding: 4mm; border-left: 1mm solid var(--functional-clay); background: var(--paper); }
+.implementation-component { padding: 4mm 0; margin-top: 3mm; border-top: 1px solid var(--rule); }
+.implementation-component > h4 { font-size: 12pt; margin-bottom: 2mm; }
+.component-status { display: inline-block; font-size: 10.5pt; font-weight: 400; color: var(--functional-clay); margin-left: 3mm; }
+.component-definition { color: var(--muted); font-size: 10.5pt; margin-bottom: 3mm; }
+.implementation-component .book-field { margin-top: 3mm; }
+.implementation-component .book-field h3 { font-size: 10.5pt; margin-bottom: 1.5mm; }
+.implementation-checks { padding: 4mm; background: var(--paper); border: 1px solid var(--rule); }
+.final-use-cases { margin-top: 6mm; padding-top: 5mm; border-top: 2px solid var(--functional-clay); }
+.final-use-cases > h3 { margin-bottom: 4mm; }
+.final-use-cases > ul { list-style: none; padding: 0; }
+.final-use-cases li { padding: 3mm 0; border-bottom: 1px solid var(--rule); }
+.final-use-cases h4 { font-size: 11pt; }
+.final-reading-note { margin-top: 4mm; color: var(--muted); }
+
 @page { size: A4 portrait; margin: 14mm 16mm 22mm; }
 
 @media print {
@@ -248,6 +289,9 @@ h4 { margin: 0 0 2mm; font-size: 10pt; font-weight: 600; line-height: 1.35; over
   .long-content .journey-number { display: block; padding: 2mm 0; }
   .long-content .journey-number::after { display: none; }
   .long-content .goal-measure { border-right: 1px solid var(--rule); }
+  .long-content .candidate-requirements > dl > div { display: block; }
+  .long-content .candidate-requirements dt { margin-bottom: 2mm; }
+  .long-content .use-case-flow li { break-inside: auto; }
   .cover .problem { margin-top: 7mm; }
   .cover-bottom { margin-top: 9mm; }
   .cover-authorship { margin-top: 7mm; }
@@ -313,4 +357,12 @@ h4 { margin: 0 0 2mm; font-size: 10pt; font-weight: 600; line-height: 1.35; over
   .priority-entry td { border-left: 0; }
   .priority-entry [data-label]::before { content: attr(data-label); display: block; margin-bottom: 5px; color: var(--muted); font-size: 12px; font-weight: 600; }
   .chapter-footer { display: flex; flex-direction: column; gap: 8px; }
+  .candidate-route.candidate-purpose { display: block; }
+  .candidate-requirements > dl > div { display: block; }
+  .candidate-requirements dt { margin-bottom: 6px; }
+  .flow-node { grid-template-columns: 20px minmax(0, 1fr); gap: 10px; padding: 13px; }
+  .flow-node h4 { font-size: 14px; }
+  .flow-order { font-size: 25px; }
+  .flow-arrow { margin-left: 17px; }
+  .component-status { display: block; margin-left: 0; margin-top: 4px; }
 }

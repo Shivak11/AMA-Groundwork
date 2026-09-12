@@ -65,6 +65,22 @@ test('activation snapshot failure leaves the prepared reference pending',async t
   db.sqlite.exec('DROP TRIGGER fail_activation');assert.equal((await store.activate(ref,group)).record.revision,0);
 });
 
+test('automatic workshop date survives activation retry across midnight and later resumption',async t=>{
+  const db=createSqliteD1();t.after(()=>db.close());
+  let now=new Date('2026-09-12T23:59:58Z');
+  const store=createD1SessionStore(db,{now:()=>now}),ref=await store.prepare();
+  const {date,...undated}=group;
+  const started=await store.activate(ref,undated);
+  assert.equal(started.record.group.date,'2026-09-12');
+  now=new Date('2026-09-13T00:00:04Z');
+  const retry=await store.activate(ref,undated);
+  assert.equal(retry.replayed,true);assert.deepEqual(retry.record,started.record);
+  now=new Date('2026-12-15T10:00:00Z');
+  assert.equal((await store.load(ref.key)).record.group.date,'2026-09-12');
+  const explicit=await store.activate(await store.prepare(),{...undated,date});
+  assert.equal(explicit.record.group.date,date);
+});
+
 test('data, snapshots and preference survive restart and a 100-day time advance',async t=>{
   const directory=mkdtempSync(join(tmpdir(),'workshop-store-test-')),filename=join(directory,'test.sqlite');
   t.after(()=>rmSync(directory,{recursive:true,force:true}));

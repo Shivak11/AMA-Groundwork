@@ -3,10 +3,10 @@ import { randomUUID, createHash } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
 import { getUiCapability, RESOURCE_MIME_TYPE } from '@modelcontextprotocol/ext-apps/server';
 import { z } from 'zod';
-import { createRecord, savePhase, confirmPhase, currentPhase, phaseGuide, readableSummary, validateRecord, groupSchema, recordSchema, answerSchemas, phaseReadiness, sameValue } from './workshop.mjs';
+import { createRecord, savePhase, confirmPhase, currentPhase, phaseGuide, readableSummary, validateRecord, groupInputSchema, recordSchema, answerSchemas, phaseAnswerSchema, phaseReadiness, sameValue } from './workshop.mjs';
 import { actionSchema, applyWorkshopAction } from './actions.mjs';
 import { presentationSchema, validatePresentation } from './presentation.mjs';
-import { SERVER_QUESTION_POLICY, questionTurn } from './question-routing.mjs';
+import { SERVER_QUESTION_POLICY, PARTICIPANT_LANGUAGE_POLICY, COMPLETION_POLICY, questionTurn } from './question-routing.mjs';
 import { nextConversationQuestion } from './conversation.mjs';
 import { createPersistentWorkshopServer } from './persistent-server.mjs';
 
@@ -32,7 +32,7 @@ export async function createWorkshopServer(options={}) {
   if(options.sessionStore)return createPersistentWorkshopServer(options);
   const {pdfRenderer,bookRenderer,assetLoader:file,capabilitiesOverride}=options;
   if (typeof pdfRenderer !== 'function' || typeof file !== 'function') throw new Error('Workshop runtime adapters are required.');
-  const server = new McpServer({name:'ai-use-case-workshop',version:'0.5.2'}, {instructions: `${SERVER_QUESTION_POLICY} ${recordCopyGuide}`});
+  const server = new McpServer({name:'ai-use-case-workshop',version:'0.7.0'}, {instructions: `${PARTICIPANT_LANGUAGE_POLICY} ${COMPLETION_POLICY} ${SERVER_QUESTION_POLICY} ${recordCopyGuide}`});
   const method = await file('skills/ai-use-case-workshop/SKILL.md');
   const hostContract = await file('skills/ai-use-case-workshop/references/host-contract.md');
   const teaching = await file('skills/ai-use-case-workshop/references/phases.md');
@@ -48,8 +48,8 @@ export async function createWorkshopServer(options={}) {
     const turn = questionTurn(record,nextQuestion,randomUUID(),purpose,preferred);
     const next = purpose==='files' ? turn.instruction : [turn.instruction,nextQuestion.hint,nextQuestion.question].filter(Boolean).join('\n');
     return {
-      content:[{type:'text',text:[extraText,summary,next,notice].filter(Boolean).join('\n\n')}],
-      structuredContent:{record,phase:{...guide,question:purpose==='files'||nextQuestion.kind!=='answer'?null:nextQuestion.question,questionField:purpose==='files'?null:nextQuestion.field,instructions:guideFor(guide),answerSchema:z.toJSONSchema(answerSchemas[guide.id-1])}, summary, mode:resultMode,next,hostingGuide,completeness:phaseReadiness(record,guide.id),questionTurn:turn,nextQuestion:purpose==='files'?null:nextQuestion,view:{phaseId:phase.id,readOnly:true,recordRevision:record.revision},bookPreview:{status:'client-rendered'}},
+      content:[{type:'text',text:[extraText,summary].filter(Boolean).join('\n\n')}],
+      structuredContent:{record,phase:{...guide,question:purpose==='files'||nextQuestion.kind!=='answer'?null:nextQuestion.question,questionField:purpose==='files'?null:nextQuestion.field,instructions:guideFor(guide),answerSchema:z.toJSONSchema(phaseAnswerSchema(record,guide.id))}, summary, mode:resultMode,next,hostingGuide,completeness:phaseReadiness(record,guide.id),questionTurn:turn,nextQuestion:purpose==='files'?null:nextQuestion,view:{phaseId:phase.id,readOnly:true,recordRevision:record.revision},bookPreview:{status:'client-rendered'}},
       _meta:{artifacts:{checkpoint:{name:`workshop-revision-${record.revision}.json`,mimeType:'application/json',text:JSON.stringify(record,null,2)}}},
     };
   };
@@ -64,7 +64,8 @@ export async function createWorkshopServer(options={}) {
     const result = buildResult(record,requested,preferred,message,purpose);
     const name = `our-ai-use-case-portfolio-r${record.revision}.pdf`;
     result.structuredContent.export={status:'ready',revision:record.revision,name,bytes:pdf.length,downloadTool:'download_workbook_file'};
-    result.content[0].text+='\nThe PDF was generated, but its bytes are delivered separately. The view can download it. For a chat file request call download_workbook_file with this complete record, unpack its gzip resource and attach the PDF using the host file tools. Never invent a URL or claim the participant downloaded it.';
+    result.content[0].text+='\nYour workbook is ready to read and download.';
+    result.structuredContent.export.instruction='For chat delivery call download_workbook_file with the complete record, unpack its gzip resource and attach the PDF using host file tools. Never invent a URL or claim the participant downloaded it.';
     return result;
   };
   const finalise = result => {
@@ -84,7 +85,7 @@ export async function createWorkshopServer(options={}) {
       try {
         const record=validateRecord(args.record??args.checkpoint);
         const result=buildResult(record,args.phase,args.mode,message);
-        if(args.phase) result.structuredContent.phase={...phaseGuide(record,args.phase),answerSchema:z.toJSONSchema(answerSchemas[args.phase-1])};
+        if(args.phase) result.structuredContent.phase={...phaseGuide(record,args.phase),answerSchema:z.toJSONSchema(phaseAnswerSchema(record,args.phase))};
         result.isError=true;
         result.structuredContent.view.display=false;
         return finalise(result);
@@ -103,7 +104,7 @@ export async function createWorkshopServer(options={}) {
   ]) server.registerResource(name,uri,{mimeType:'text/markdown'},async url=>({contents:[{uri:url.href,mimeType:'text/markdown',text:await file(path)}]}));
   server.registerResource('Visual workbook snapshot',widgetUri,{mimeType:RESOURCE_MIME_TYPE},async url=>({contents:[{uri:url.href,mimeType:RESOURCE_MIME_TYPE,text:await file('dist/widget.html'),_meta:{ui:{prefersBorder:false,csp:{connectDomains:[],resourceDomains:[]}}}}]}));
 
-  register('start_workshop','Start a group workbook. Ask for group name, first names or aliases, one problem, and date. Returns phase-specific instructions and a manual JSON backup; no account storage.',z.object({group:groupSchema,mode}),({group,mode})=>buildResult(createRecord(group),1,mode,hostingGuide));
+  register('start_workshop','Start a group workbook. Ask only for missing roll/group number, members and one problem. Date is captured automatically. Do not narrate storage or setup.',z.object({group:groupInputSchema,mode}),({group,mode})=>buildResult(createRecord(group),1,mode));
   register('workshop_next','Continue with the current group record. Returns the same phase instructions, readable summary and answer schema in UI or text mode.',z.object({record:inputRecord,mode}),({record,mode})=>buildResult(validateRecord(record),undefined,mode));
   register('present_workshop_question','Prepare one focused question with 1–4 proposed answers for a scalar field. Present it using the host native question tool when available, or ordinary chat. This tool has no embedded form, does not ask the user itself and does not save or approve anything. Ground suggestions in the group context and include an alternative/Unknown path.',z.object({record:inputRecord,presentation:presentationSchema,mode}),({record,presentation,mode})=>{
     record=validateRecord(record);
@@ -114,7 +115,7 @@ export async function createWorkshopServer(options={}) {
     result.structuredContent.phase={...result.structuredContent.phase,question:question.question,questionField:question.field};
     result.structuredContent.questionTurn=questionTurn(record,result.structuredContent.nextQuestion,randomUUID(),'conversation',mode);
     result.structuredContent.next=`${result.structuredContent.questionTurn.instruction}\n${question.question}`;
-    result.content[0].text=`${result.structuredContent.questionTurn.instruction}\n\n${question.question}\n${question.hint??''}\n${question.choices.map((choice,index)=>`${index+1}. ${choice.label}: ${choice.value??'None'}`).join('\n')}\nThese are suggestions. Allow a different answer or uncertainty. No choice is saved yet.`;
+    result.content[0].text=question.question;
     return result;
   });
   register('save_workshop_phase','Save agreed wording using the complete latest returned record. Omitted top-level answer fields are preserved; supplied arrays replace their whole field, so retain every item unless the group explicitly removes it. Never reconstruct the record or blank earlier answers. Returns complete updated record and JSON backup. Earlier corrections retain later answers but require their review. Does not approve a phase. Call show_workbook after a meaningful saved decision.',z.object({record:inputRecord,phase:phaseNumber,answers:answerPatch.default({}),group:z.object({name:z.string(),members:z.array(z.string()),problem:z.string(),context:z.string(),date:z.string()}).partial().strict().optional(),mode}),({record,phase,answers,group,mode})=>{
@@ -141,7 +142,7 @@ export async function createWorkshopServer(options={}) {
   register('export_workbook','Generate the PDF again and return a manual JSON backup. Includes confirmed and clearly labelled needs-review chapters. Available through text without any UI click.',z.object({record:inputRecord,mode}),({record,mode})=>{
     record=validateRecord(record);
     if(!record.phases.some(p=>p.status!=='draft')) throw new Error('Approve the first phase summary before generating the first workbook PDF. Your JSON draft is available from workshop_next.');
-    return withPdf(record,undefined,mode,'The cumulative PDF has been generated again. Offer it with the JSON backup.','files');
+    return withPdf(record,undefined,mode,'Your workbook is ready.','files');
   },true);
   register('resume_workshop','Manually restore a group-supplied JSON checkpoint. Does not search an account, merge competing revisions or provide automatic cross-client resumption. Confirm the restored position with the group.',z.object({checkpoint:inputRecord,mode}),({checkpoint,mode})=>buildResult(validateRecord(checkpoint),undefined,mode,'This is the position recorded in the supplied backup. Confirm that it is the version the group wants to use.'));
 

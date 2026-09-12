@@ -61,7 +61,11 @@ test('presented options return unchanged record and text fallback before an actu
     const result=await c.call('present_workshop_question',{record,presentation,mode:'text'});
     assert(!result.isError);assert.deepEqual(result.structuredContent.record,record);
     assert.deepEqual(result.structuredContent.presentation,presentation);
-    assert.match(result.content[0].text,/No choice is saved yet/);
+    assert.equal(result.content[0].text,presentation.question);
+    const fallback=JSON.parse(result.content.find(item=>item.type==='text'&&item.text.trim().startsWith('{')).text);
+    assert.deepEqual(fallback.presentation,presentation);
+    assert.equal(fallback.record.revision,record.revision);assert.equal(fallback.record.phases[0].answers.kpi,undefined);
+    assert.equal(fallback.record.phases[0].status,'draft');
     assert.equal(result.structuredContent.mode,'text');
   } finally {await c.close();}
 });

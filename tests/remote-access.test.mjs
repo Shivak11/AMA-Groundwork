@@ -52,7 +52,7 @@ test('all protected responses avoid caches and content sniffing', () => {
 test('a valid multilingual record with undo and a replacement patch fits the remote envelope', async () => {
   const data=structuredClone(answers);
   data[1].blockers=Array.from({length:5},()=>Object.fromEntries(['information','holder','barrier','unlock'].map(key=>[key,'क'.repeat(800)])));
-  data[3].candidates=Array.from({length:5},(_,index)=>({...data[3].candidates[0],id:`c${index+1}`,title:`Candidate ${index+1}`,...Object.fromEntries(['aiWork','value','humanCheck','nonAiAlternative','assumption'].map(key=>[key,'क'.repeat(600)]))}));
+  data[3].candidates=Array.from({length:5},(_,index)=>({...data[3].candidates[0],id:`c${index+1}`,title:`Candidate ${index+1}`,...Object.fromEntries(['aiWork','value','humanCheck','nonAiAlternative','assumption'].map(key=>[key,'क'.repeat(450)]))}));
   let record=createRecord(group);
   for(let phase=1;phase<=3;phase++) record=confirmPhase(savePhase(record,phase,data[phase-1]),phase,'Our group approves this saved summary.');
   record=savePhase(record,4,data[3]);

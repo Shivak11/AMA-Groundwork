@@ -7,7 +7,7 @@ import {z} from 'zod';
 import {Client} from '@modelcontextprotocol/sdk/client/index.js';
 import {InMemoryTransport} from '@modelcontextprotocol/sdk/inMemory.js';
 import {createWorkshopServer} from '../src/server.mjs';
-import {answerSchemas,validateRecord} from '../src/workshop.mjs';
+import {phaseAnswerSchema,validateRecord} from '../src/workshop.mjs';
 import {readKeyFor} from '../src/session-store.mjs';
 import {createD1SessionStore} from '../remote/d1-session-store.mjs';
 import {createSqliteD1} from './support/d1-sqlite.mjs';
@@ -58,7 +58,7 @@ function success(result) {
   assert.deepEqual(ordinary[0],JSON.parse(JSON.stringify(data)));
   assert.equal(data.record.phases,undefined);assert.equal(data.record.group,undefined);
   assert.equal(result._meta?.artifacts?.pdf,undefined);assert.equal(result._meta?.bookHtml,undefined);
-  if(data.phase?.answerSchema)assert.deepEqual(data.phase.answerSchema,z.toJSONSchema(answerSchemas[data.phase.id-1]));
+  if(data.phase?.answerSchema)assert.deepEqual(data.phase.answerSchema,z.toJSONSchema(phaseAnswerSchema(result._meta.workbook,data.phase.id)));
   return data;
 }
 function workbook(result) {
@@ -227,7 +227,7 @@ test('lost-response confirmation replay preserves its timestamp and returns newe
   assert.equal(workbook(lateRetry).phases[0].status,'draft','An old approval retry must not approve corrected wording.');
   assert.equal(success(lateRetry).saveReceipt.appliedRevision,approved.revision);
   assert.equal(success(lateRetry).export.revision,approved.revision);
-  assert.match(textOf(lateRetry),/original approval/i);
+  assert.match(lateRetry.content[0].text,/earlier approved version/i);
   assert.deepEqual((await s.store.resolveFileTicket(ticketFrom(success(lateRetry).export.pdfUrl))).record,approved);
   const conflict=await s.call('confirm_workshop_phase',{...request,confirmation:'Different approval wording for the same request ID.'});
   assert.equal(conflict.isError,true);assert.match(textOf(conflict),/operation|request|different/i);
@@ -286,7 +286,7 @@ test('a no-pilot recommendation can be saved and later changed without inventing
   const s=await session();t.after(()=>s.close());
   let result=await complete(s,{through:5});
   result=await s.call('save_workshop_phase',{record:success(result).record,phase:6,answers:{decision:'Do not pilot yet'}});
-  assert.equal(workbook(result).phases[5].answers.candidateId,null);assert.equal(success(result).phase.questionField,'owner');
+  assert.equal(workbook(result).phases[5].answers.candidateId,null);assert.equal(success(result).phase.questionField,'recommendation');
   result=await s.call('save_workshop_phase',{record:success(result).record,phase:6,answers:noPilotAnswers});
   result=await s.call('confirm_workshop_phase',{record:success(result).record,phase:6,approved:true,confirmation:approval});
   assert(workbook(result).phases.every(phase=>phase.status==='confirmed'));

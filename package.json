@@ -1,6 +1,6 @@
 {
   "name": "ai-use-case-workshop",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "description": "A conversational group workshop with cumulative use-case PDFs and optional MCP Apps views.",
   "type": "module",
   "private": true,

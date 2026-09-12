@@ -3,10 +3,10 @@ import { getUiCapability, RESOURCE_MIME_TYPE } from '@modelcontextprotocol/ext-a
 import { randomUUID, createHash } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
 import { z } from 'zod';
-import { validateRecord, savePhase, confirmPhase, currentPhase, phaseGuide, readableSummary, groupSchema, recordSchema, answerSchemas, phaseReadiness, sameValue } from './workshop.mjs';
+import { validateRecord, savePhase, confirmPhase, currentPhase, phaseGuide, groupSchema, groupInputSchema, recordSchema, answerSchemas, phaseAnswerSchema, phaseReadiness, sameValue } from './workshop.mjs';
 import { actionSchema, applyWorkshopAction } from './actions.mjs';
 import { presentationSchema, validatePresentation } from './presentation.mjs';
-import { SERVER_QUESTION_POLICY, questionTurn } from './question-routing.mjs';
+import { SERVER_QUESTION_POLICY, PARTICIPANT_LANGUAGE_POLICY, COMPLETION_POLICY, questionTurn } from './question-routing.mjs';
 import { nextConversationQuestion } from './conversation.mjs';
 import { referenceSchema, readKeyFor, canonicalJson, hashValue, SessionError } from './session-store.mjs';
 
@@ -22,7 +22,7 @@ const uiUri='ui://workshop/checkpoint.html';
 const uiMeta={ui:{resourceUri:uiUri},'ui/resourceUri':uiUri};
 const retention='The workbook and revision history are stored privately on Cloudflare without automatic expiry, until your group explicitly deletes them. Keep the private continuation reference for editing in another chat. The separate reading link can be shared with reviewers; anyone with it can read and download the workbook. Use first names or aliases and concise summaries, not confidential transcripts.';
 const hostGuide=`${SERVER_QUESTION_POLICY} Keep the latest short record reference; never reconstruct the full workbook or approval history. The server owns saved answers. On a stale write, read the returned context and retry only the intended change. Use workshop_next with phase for an earlier correction. Reuse the group's wording and label Unknown honestly. Suggestions are not evidence or approval. For arrays prefer arrayEdits to change one item; do not remove siblings unless the group asks. Technical schemas are private facilitation context; never ask participants for JSON. Keep questions brief. Do not infer employee motives, contact employees, browse or operate other systems without a separate request. When the participant prefers ordinary chat, call set_workshop_preference with mode:text once. The read-only visual never asks a question or saves an answer. Never claim a file was downloaded merely because a link was generated.`;
-const phaseSchemaFor=id=>z.toJSONSchema(answerSchemas[id-1]);
+const phaseSchemaFor=(record,id)=>z.toJSONSchema(phaseAnswerSchema(record,id));
 
 function patchArrays(record,phase,answers,edits=[]) {
   const prior=record.phases[phase-1].answers;
@@ -61,7 +61,7 @@ export async function createPersistentWorkshopServer({sessionStore:store,pdfRend
   if(!store||typeof pdfRenderer!=='function'||typeof file!=='function')throw new Error('Persistent workshop adapters are required.');
   const origin=new URL(baseUrl);
   if(origin.protocol!=='https:'||origin.username||origin.password||origin.search||origin.hash||origin.pathname!=='/')throw new Error('A fixed HTTPS workshop origin is required.');
-  const server=new McpServer({name:'ai-use-case-workshop',version:'0.6.1'},{instructions:`${hostGuide} ${retention}`});
+  const server=new McpServer({name:'ai-use-case-workshop',version:'0.7.0'},{instructions:`${PARTICIPANT_LANGUAGE_POLICY} ${COMPLETION_POLICY} ${hostGuide} Internal access policy, explain only when relevant or requested: ${retention}`});
   const teaching=await file('skills/ai-use-case-workshop/references/phases.md');
   const capability=()=>getUiCapability(capabilitiesOverride??server.server.getClientCapabilities())?.mimeTypes?.includes(RESOURCE_MIME_TYPE);
   const ensureWrite=()=>{if(!writesEnabled)throw Object.assign(new Error('Saving is temporarily paused.'),{safeMessage:'Saving is temporarily paused. Your saved workbook, history and downloads remain available.'});};
@@ -71,11 +71,11 @@ export async function createPersistentWorkshopServer({sessionStore:store,pdfRend
       delete result._meta.workbook;
       result.structuredContent.view.display=false;
       const context=result.structuredContent.context??{};
-      result.structuredContent.context={taskIds:context.tasks?.map(item=>item.id),candidateIds:context.candidates?.map(item=>item.id),choices:context.choices?.map(({candidateId,decision})=>({candidateId,decision}))};
+      result.structuredContent.context={tasks:context.tasks?.map(({id,work})=>({id,work})),candidates:context.candidates?.map(({id,title})=>({id,title})),choices:context.choices?.map(({candidateId,decision})=>({candidateId,decision}))};
       delete result.structuredContent.phase.instructions;
-      result.structuredContent.hostingGuide='The selected phase answers are complete. Cross-phase context is reduced to stable IDs to keep this result deliverable. Use workshop_next with the relevant phase to read its complete wording before comparing or correcting it. Keep all saved wording. Follow questionTurn; the visual never asks questions.';
+      result.structuredContent.hostingGuide='The selected phase answers are complete. Cross-phase context contains names and IDs only. Use workshop_next with the relevant phase to read complete wording before comparing or correcting it. Keep all saved wording and use names in participant prose. Follow questionTurn; the visual never asks questions.';
       result.content=result.content.filter(item=>item.type!=='text'||!item.text.startsWith('{'));
-      result.content.push({type:'text',text:`This workbook is too detailed for a reliable inline snapshot. Open its saved reading link: ${result.structuredContent.workspace.url}`},{type:'text',text:JSON.stringify(result.structuredContent)});
+      result.content.push({type:'text',text:`[Open workbook](${result.structuredContent.workspace.url})`},{type:'text',text:JSON.stringify(result.structuredContent)});
     }
     if(new TextEncoder().encode(JSON.stringify(result)).length>140000&&result.structuredContent?.phase?.answers){
       const phase=result.structuredContent.phase;
@@ -85,7 +85,7 @@ export async function createPersistentWorkshopServer({sessionStore:store,pdfRend
       result.structuredContent.questionTurn={...result.structuredContent.questionTurn,hostAction:'read_saved_context',question:null,instruction:phase.answerAccess.instruction};
       result.structuredContent.next=phase.answerAccess.instruction;
       result.structuredContent.nextQuestion=null;
-      result.content=[{type:'text',text:phase.answerAccess.instruction},{type:'text',text:JSON.stringify(result.structuredContent)}];
+      result.content=[{type:'text',text:'Your workbook is saved.'},{type:'text',text:JSON.stringify(result.structuredContent)}];
     }
     return result;
   };
@@ -98,16 +98,18 @@ export async function createPersistentWorkshopServer({sessionStore:store,pdfRend
     const preference=await preferred(ref.key,mode);
     const nextQuestion=nextConversationQuestion(record);
     const turn=questionTurn(record,nextQuestion,randomUUID(),purpose,preference);
-    const summary=`Step ${phaseId}: ${guide.title} Saved revision ${record.revision}; ${record.phases[phaseId-1].status.replace('_',' ')}. Use phase.answers for the complete wording when presenting this step for approval.`;
+    const summary=`Step ${phaseId} of 6: ${guide.title}`;
+    const complete=currentPhase(record)===null;
+    const closing=complete?`Your workbook documents ${(record.phases[3].answers.candidates??[]).map(c=>c.title).join('; ')}. ${record.phases[5].answers.recommendation} You can keep it for reflection and return when you decide to implement.`:'';
     const readingKey=await readKeyFor(ref.key);
     const workspaceUrl=`${origin.origin}/workbook#${readingKey}`;
     const next=purpose==='files'?turn.instruction:[turn.instruction,nextQuestion.hint,nextQuestion.question].filter(Boolean).join('\n');
-    return {content:[{type:'text',text:[message,summary,next].filter(Boolean).join('\n\n')}],structuredContent:{
+    return {content:[{type:'text',text:[message,complete?closing:summary].filter(Boolean).join('\n\n')}],structuredContent:{
       record:ref,currentRevision:loaded.currentRevision??record.revision,group:record.group,
-      phase:{...guide,question:purpose==='files'||nextQuestion.kind!=='answer'?null:nextQuestion.question,questionField:purpose==='files'?null:nextQuestion.field,status:record.phases[phaseId-1].status,answers:record.phases[phaseId-1].answers,answerSchema:phaseSchemaFor(phaseId),instructions:teaching.split(/## Phase \d: /)[phaseId]?.split('\n## ')[0]??guide.instructions},
-      context:{goal:record.phases[0].answers,tasks:phaseId>=4?record.phases[2].answers.tasks?.map(({id,actor,work})=>({id,actor,work})):undefined,candidates:phaseId===5?record.phases[3].answers.candidates:phaseId===6?record.phases[3].answers.candidates?.map(({id,title,taskIds})=>({id,title,taskIds})):undefined,choices:phaseId===6?record.phases[4].answers.choices:undefined},
+      phase:{...guide,question:purpose==='files'||nextQuestion.kind!=='answer'?null:nextQuestion.question,questionField:purpose==='files'?null:nextQuestion.field,status:record.phases[phaseId-1].status,answers:record.phases[phaseId-1].answers,answerSchema:phaseSchemaFor(record,phaseId),instructions:teaching.split(/## Phase \d: /)[phaseId]?.split('\n## ')[0]??guide.instructions},
+      context:{goal:record.phases[0].answers,underlyingProblem:record.phases[2].answers.underlyingProblem,underlyingProblemConfirmed:record.phases[2].status==='confirmed',tasks:phaseId>=4?record.phases[2].answers.tasks?.map(({id,actor,work})=>({id,actor,work})):undefined,candidates:phaseId>=5?record.phases[3].answers.candidates:undefined,choices:phaseId===6?record.phases[4].answers.choices:undefined},
       progress:record.phases.map(p=>({id:p.id,status:p.status})),summary,mode:preference==='text'||!capability()?'text':'ui-available',next,hostingGuide:hostGuide,completeness:phaseReadiness(record,phaseId),questionTurn:turn,nextQuestion:purpose==='files'?null:nextQuestion,
-      view:{phaseId,readOnly:true,recordRevision:record.revision},workspace:{url:workspaceUrl,retention:'Until explicit deletion',access:'Anyone with this link can read and download; it cannot edit.'},
+      view:{phaseId,readOnly:true,recordRevision:record.revision,historical:(loaded.currentRevision??record.revision)>record.revision},workspace:{url:workspaceUrl,retention:'Until explicit deletion',access:'Anyone with this link can read and download; it cannot edit.'},
     },_meta:{workbook:record}};
   };
   const load=ref=>store.load(ref.key);
@@ -126,10 +128,10 @@ export async function createPersistentWorkshopServer({sessionStore:store,pdfRend
       const bytes=await renderPdf(snapshot.record);
       const pdf=await store.createFileTicket(loaded.reference.key,revision,'pdf');
       result.structuredContent.export={...urls,status:'ready',pdfUrl:`${origin.origin}/files/${pdf.ticket}`,name:`our-ai-use-case-portfolio-r${revision}.pdf`,bytes:bytes.length};
-      result.content[0].text+=`\n\n[Download the PDF for revision ${revision}](${result.structuredContent.export.pdfUrl})\n[Download its saved record](${urls.jsonUrl})\n[Open the permanently saved workbook](${result.structuredContent.workspace.url})\nThese file links last 15 minutes; the saved workbook does not expire. Request fresh links whenever needed.`;
+      result.content[0].text+=`\n\n[Download PDF](${result.structuredContent.export.pdfUrl}) · [Open workbook](${result.structuredContent.workspace.url})`;
     }catch {
       result.structuredContent.export={...urls,status:'failed',message:'The PDF or temporary file links could not be prepared. Saved answers and approvals are retained.',retryTool:'export_workbook'};
-      result.content[0].text+=`\n\nThe saved answers and approvals are retained. File preparation failed; retry export_workbook without approving again, or [open the saved workbook](${result.structuredContent.workspace.url}) for direct downloads.`;
+      result.content[0].text+=`\n\nYour answers are saved. The PDF is not ready yet. [Open workbook](${result.structuredContent.workspace.url}) to read it or try downloading again.`;
     }
     return result;
   };
@@ -152,30 +154,31 @@ export async function createPersistentWorkshopServer({sessionStore:store,pdfRend
       // errors are safe to show; adapter errors use a deliberately small code set.
       const known=error instanceof SessionError;
       const validation=error instanceof z.ZodError;
-      const message=known?`${error.message} (${error.code}) Load the saved workbook and retry only the intended change.`:validation?'The answer does not match this step. Repair the tool arguments using the saved wording and answer schema. Do not ask the group for JSON.':error?.safeMessage??'The request did not complete. Your saved workbook is retained. Load the current step and retry.';
+      const detail=known?`${error.message} (${error.code}) Load current context and retry only the intended change.`:validation?'Repair tool arguments using the saved wording and answer schema. Do not ask the group for JSON.':error?.safeMessage??'Load the current step and retry.';
+      const message=known&&error.code==='NOT_FOUND'?'This workbook could not be opened. Please use its saved link.':'This change could not be saved. Your earlier answers are still available.';
       try {
         reference.parse(args.record);
         const result=await build(await load(args.record),args.phase,args.mode,message);
-        result.isError=true;result.structuredContent.error={code:known?error.code:'INVALID_REQUEST',message};result.structuredContent.view.display=false;
+        result.isError=true;result.structuredContent.error={code:known?error.code:'INVALID_REQUEST',message:detail};result.structuredContent.view.display=false;
         return finish(result);
       } catch {return {isError:true,content:[{type:'text',text:message}]};}
     }
   };
   const register=(name,description,schema,handler,{visual=false,write=false,destructive=false,idempotent=true}={})=>server.registerTool(name,{
-    description:`${description} ${hostGuide}`,
+    description:`${description} ${PARTICIPANT_LANGUAGE_POLICY} ${hostGuide}`,
     inputSchema:schema,outputSchema:anyObject,annotations:{readOnlyHint:!write,destructiveHint:destructive,idempotentHint:!destructive&&idempotent,openWorldHint:false},...(visual?{_meta:uiMeta}:{})
   },safe(handler,visual));
   const input={record:reference,mode:modeSchema};
   for(const [name,uri,path] of [['Workshop method','workshop://method','skills/ai-use-case-workshop/SKILL.md'],['Host instructions','workshop://host-contract','skills/ai-use-case-workshop/references/host-contract.md'],['Phase guidance','workshop://phases','skills/ai-use-case-workshop/references/phases.md'],['Workbook design','workshop://design','skills/ai-use-case-workshop/assets/DESIGN.md'],['Method foundations','workshop://foundations','skills/ai-use-case-workshop/references/foundations.md']])server.registerResource(name,uri,{mimeType:'text/markdown'},async url=>({contents:[{uri:url.href,mimeType:'text/markdown',text:await file(path)}]}));
   server.registerResource('Visual workbook snapshot',uiUri,{mimeType:RESOURCE_MIME_TYPE},async url=>({contents:[{uri:url.href,mimeType:RESOURCE_MIME_TYPE,text:await file('dist/widget.html'),_meta:{ui:{prefersBorder:false,csp:{connectDomains:[],resourceDomains:[]}}}}]}));
-  server.registerPrompt('ai_use_case_workshop',{description:'Start a privately saved six-step group workshop.',argsSchema:z.object({problem:z.string().max(400).optional()})},({problem})=>({messages:[{role:'user',content:{type:'text',text:`${retention}\n${hostGuide}\n${problem?`Group-supplied problem: ${JSON.stringify(problem)}`:'Ask for group name, member first names or aliases, date and one problem.'}`}}]}));
+  server.registerPrompt('ai_use_case_workshop',{description:'Start a six-step group workshop.',argsSchema:z.object({problem:z.string().max(400).optional()})},({problem})=>({messages:[{role:'user',content:{type:'text',text:`${PARTICIPANT_LANGUAGE_POLICY}\n${hostGuide}\n${problem?`Group-supplied problem: ${JSON.stringify(problem)}`:'Ask only for the roll/group number, members and one problem. Capture the date automatically.'}`}}]}));
 
-  register('start_workshop',`Start a persistent private group workbook. First call without record to prepare a private reference; no group data is stored yet. Explain storage to the group: ${retention} Then repeat with the returned record and group details. Do not prepare another reference after activation errors.`,z.object({record:reference.optional(),group:groupSchema.optional(),mode:modeSchema}),async args=>{
+  register('start_workshop','Start a group workbook. Ask only for missing roll/group number, members and problem. Date is captured automatically. Internally first call without record, then repeat with the returned reference and group. Keep this setup silent and do not prepare another reference after activation errors.',z.object({record:reference.optional(),group:groupInputSchema.optional(),mode:modeSchema}),async args=>{
     ensureWrite();
-    if(!args.record)return {content:[{type:'text',text:`${retention}\nKeep this private reference. Call start_workshop again with it and the supplied group details; no group data has been stored yet.`}],structuredContent:{record:await store.prepare(),pending:true,retention}};
-    const loaded=await store.activate(args.record,groupSchema.parse(args.group));
+    if(!args.record)return {content:[{type:'text',text:'What is your roll/group number, who is in your group, and what problem would you like to work on?'}],structuredContent:{record:await store.prepare(),pending:true,participantPrompt:'Ask only for missing roll/group number, members and problem; if all are supplied, ask nothing and activate now.',next:'Keep this reference internal. Call start_workshop again with it and the supplied group; omit date to capture it automatically. Do not narrate setup.',retention}};
+    const loaded=await store.activate(args.record,groupInputSchema.parse(args.group));
     if(args.mode&&!loaded.replayed)await store.setPreference(loaded.reference,args.mode);
-    const result=await build(loaded,undefined,loaded.replayed?undefined:args.mode,retention);
+    const result=await build(loaded,undefined,loaded.replayed?undefined:args.mode);
     result.structuredContent.pending=false;return result;
   },{write:true,idempotent:false});
   register('workshop_next','Read the latest saved workbook using only its private reference. Optional phase loads wording for an earlier correction. For a long step, field and itemIndex read one saved field or array item; read every listed item before presenting a complete approval summary. Do not reconstruct the full record.',z.object({...input,phase:phaseNumber.optional(),field:z.string().max(40).optional(),itemIndex:z.number().int().min(0).max(5).optional()}),async args=>{
@@ -200,7 +203,7 @@ export async function createPersistentWorkshopServer({sessionStore:store,pdfRend
     result.structuredContent.presentation=question;result.structuredContent.nextQuestion=next;
     result.structuredContent.questionTurn=questionTurn(loaded.record,next,randomUUID(),'conversation',await preferred(args.record.key,args.mode));
     result.structuredContent.next=`${result.structuredContent.questionTurn.instruction}\n${question.question}`;
-    result.content[0].text=result.structuredContent.next;return result;
+    result.content[0].text=question.question;return result;
   });
   register('save_workshop_phase','Save only agreed changes against the current revision. Unspecified wording is retained. Use arrayEdits for one candidate/task/choice or blocker correction. An explicit remove/replace requires the group to request it. Earlier corrections retain later work for review. Does not approve.',z.object({...input,phase:phaseNumber,answers:answerPatch.default({}),arrayEdits:z.array(arrayEdit).max(12).optional(),group:groupPatch.optional(),requestId}),async args=>{
     let changedFields=[];
@@ -223,7 +226,7 @@ export async function createPersistentWorkshopServer({sessionStore:store,pdfRend
   register('confirm_workshop_phase','Only after explicit group approval of the saved summary: quote the approval and set approved true. Save approval durably before PDF generation. Retries with the same requestId and payload never repeat approval. PDF failure does not lose approval.',z.object({...input,phase:phaseNumber,approved:z.literal(true),confirmation:z.string().trim().min(1).max(1200),requestId}),async args=>{
     const loaded=await operation(args.record,'confirm',args,before=>confirmPhase(before,args.phase,args.confirmation));
     const later=loaded.record.revision>loaded.appliedRevision;
-    const message=later?`The original approval was saved at revision ${loaded.appliedRevision}. The workbook now has revision ${loaded.record.revision}; use the displayed current statuses when continuing. The attached PDF represents the original approval revision.`:`Step ${args.phase} is approved and saved at revision ${loaded.appliedRevision}.`;
+    const message=later?'Your earlier approval is saved. This PDF contains that earlier approved version; the workbook includes your subsequent changes.':`Step ${args.phase} is approved.`;
     const result=await build(loaded,args.phase,args.mode,message);
     result.structuredContent.saveReceipt={status:loaded.replayed?'replayed':'saved',appliedRevision:loaded.appliedRevision,currentRevision:loaded.record.revision};
     return files(loaded,result,loaded.appliedRevision);

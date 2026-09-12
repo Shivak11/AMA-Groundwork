@@ -11,13 +11,14 @@ export const presentationSchema = z.object({
 export function validatePresentation(input, proposed) {
   const record=validateRecord(input), question=presentationSchema.parse(proposed);
   if(currentPhase(record)!==question.phaseId) throw new Error('Present one question for the current unconfirmed step.');
-  const textFields=['outcome','kpi','baseline','guardrail','hypothesis','firstGap','chosenWorkflow','recentCase','zeroSecond','redesign','challenge','costs','owner','evidence','peopleChange','test','stopRule','recommendation'];
+  const textFields=['outcome','kpi','baseline','guardrail','hypothesis','firstGap','chosenWorkflow','recentCase','zeroSecond','redesign','underlyingProblem','challenge','costs','owner','evidence','peopleChange','test','stopRule','recommendation'];
   if(!textFields.includes(question.field)) throw new Error('Use a scalar wording field for these suggestions. For decisions use the returned nextQuestion choices; gather structured candidates in conversation.');
   const schema=answerSchemas[question.phaseId-1].shape[question.field];
   if(!schema || !Object.hasOwn(answerSchemas[question.phaseId-1].shape,question.field)) throw new Error('Choose an answer field from the current step.');
   if(new Set(question.choices.map(choice=>choice.label)).size!==question.choices.length) throw new Error('Give each proposed choice a distinct label.');
   if(new Set(question.choices.map(choice=>JSON.stringify(choice.value))).size!==question.choices.length) throw new Error('Do not repeat the same proposed answer.');
   for(const choice of question.choices) {
+    if(/^(?:[ct]\d+)(?:\s*(?:first|later|then|[,/·→+-])\s*[ct]?\d*)*$/i.test(choice.label)||/\bboth first\b/i.test(choice.label)) throw new Error('Use a descriptive use-case or task name in each option; code-only labels and Both first are not understandable decisions.');
     schema.parse(choice.value);
     // Validate references and phase constraints without adopting the hypothetical
     // record. Presenting a choice never saves or approves it.

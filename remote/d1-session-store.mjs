@@ -1,4 +1,4 @@
-import {createRecord,groupSchema,validateRecord} from '../src/workshop.mjs';
+import {createRecord,groupInputSchema,datedGroup,validateRecord} from '../src/workshop.mjs';
 import {WRITE_KEY,READ_KEY,FILE_TICKET,referenceSchema,SessionError,canonicalJson,hashValue,readKeyFor,base64url} from '../src/session-store.mjs';
 
 const operationIdPattern=/^[A-Za-z0-9_.:-]{1,160}$/;
@@ -67,8 +67,10 @@ export function createD1SessionStore(db,{now=()=>new Date(),randomBytes=size=>cr
     async activate(input,group) {
       const ref=reference(input,true);
       if (ref.revision!==0) throw new SessionError('CONFLICT');
-      const parsed=groupSchema.parse(group),record=validateRecord(createRecord(parsed)),activationHash=await hashValue(canonicalJson(parsed));
       const row=await session(ref.key,true);
+      // Use the prepared session date so a lost activation response retried
+      // after midnight produces the same record and idempotency hash.
+      const parsed=datedGroup(groupInputSchema.parse(group),new Date(row.created_at)),record=validateRecord(createRecord(parsed)),activationHash=await hashValue(canonicalJson(parsed));
       const replay=async saved=>{
         if (saved.activation_hash!==activationHash) throw new SessionError('CONFLICT');
         return {...await load(ref.key),replayed:true,appliedRevision:0};

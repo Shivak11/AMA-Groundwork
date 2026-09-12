@@ -1,6 +1,6 @@
 import {
   bookStepTitles, bookProfileUrl, bookHasLongAnswer, escapeBookText,
-  renderBookCover, renderBookVisualParts, renderBookPriorityRows,
+  renderBookCover, renderBookOverview, renderBookVisualParts, renderBookPriorityRows,
 } from './book-visuals.mjs';
 
 function chapter(record, phase) {
@@ -26,5 +26,5 @@ function chapter(record, phase) {
 
 export function renderWorkbookHtml(record, { css, font }) {
   const chapters = record.phases.filter(phase => phase.status !== 'draft');
-  return `<!doctype html><html lang="en-IN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; font-src data:; base-uri 'none'; form-action 'none'"><title>Our AI Use-Case Portfolio — ${escapeBookText(record.group.name)}</title><style>@font-face{font-family:"DM Serif Display";src:url(data:font/ttf;base64,${font}) format("truetype");font-weight:400;font-style:normal;font-display:block;}\n${css}</style></head><body><main>${renderBookCover(record)}${chapters.map(phase => chapter(record, phase)).join('')}</main></body></html>`;
+  return `<!doctype html><html lang="en-IN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; font-src data:; base-uri 'none'; form-action 'none'"><title>Our AI Use-Case Portfolio — ${escapeBookText(record.group.name)}</title><style>@font-face{font-family:"DM Serif Display";src:url(data:font/ttf;base64,${font}) format("truetype");font-weight:400;font-style:normal;font-display:block;}\n${css}</style></head><body><main>${renderBookCover(record)}${renderBookOverview(record)}${chapters.map(phase => chapter(record, phase)).join('')}</main></body></html>`;
 }

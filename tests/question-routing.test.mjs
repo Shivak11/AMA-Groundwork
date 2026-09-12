@@ -62,7 +62,7 @@ test('next question skips saved fields and asks for approval only after the draf
 });
 
 test('each phase asks its exact next missing field and a completed record asks nothing further',()=>{
-  const fieldOrder=[['outcome','kpi','baseline','guardrail','hypothesis'],['blockers','firstGap'],['workflows','chosenWorkflow','recentCase','tasks','zeroSecond','redesign'],['candidates'],['choices','challenge','costs'],['decision','candidateId','owner','evidence','test','stopRule','peopleChange','recommendation']];
+  const fieldOrder=[['outcome','kpi','baseline','guardrail','hypothesis'],['blockers','firstGap'],['workflows','chosenWorkflow','recentCase','tasks','zeroSecond','redesign','underlyingProblem'],['candidates'],['choices','challenge','costs'],['recommendation']];
   let record=createRecord(group);
   for(let phase=1;phase<=6;phase++) {
     for(const field of fieldOrder[phase-1]) {
@@ -90,9 +90,24 @@ test('proposed choices appear in the host question and full text fallback withou
     assert.deepEqual(data.record,start.structuredContent.record);
     for(const choice of presentation.choices) {
       assert(data.nextQuestion.choices.some(item=>item.label===choice.label&&item.value===choice.value));
-      assert(result.content[0].text.includes(choice.label));assert(result.content[0].text.includes(choice.value));
+      const textFallback=JSON.parse(result.content.find(block=>block.type==='text'&&block.text.trim().startsWith('{')).text);
+      assert(textFallback.nextQuestion.choices.some(item=>item.label===choice.label&&item.value===choice.value));
     }
-    assert.match(result.content[0].text,/own answer|another answer|different answer|uncertain|unknown/i);
-    assert.match(result.content[0].text,/No choice is saved yet/i);
+    assert.equal(result.content[0].text,presentation.question,'The first text is participant prose, without storage or schema narration.');
+    assert.match(data.questionTurn.instruction,/own answer|another answer|different answer|uncertain|unknown/i);
+    assert.equal(data.record.phases[0].answers.kpi,undefined);assert.equal(data.record.phases[0].status,'draft');
   } finally {await s.close();}
+});
+
+test('legacy workbooks retain their original recommendation fields and no-pilot skip',()=>{
+  let record=createRecord(group);delete record.experienceVersion;
+  for(let phase=1;phase<=5;phase++)record=confirmPhase(savePhase(record,phase,answers[phase-1]),phase,'Our group approves the saved wording.');
+  assert.equal(nextConversationQuestion(record).field,'decision');
+  record=savePhase(record,6,{decision:'Do not pilot yet',candidateId:null});
+  assert.equal(record.phases[5].answers.candidateId,null);
+  for(const field of ['owner','evidence','test','stopRule','peopleChange','recommendation']) {
+    assert.equal(nextConversationQuestion(record).field,field);
+    record=savePhase(record,6,{[field]:answers[5][field]});
+  }
+  assert.equal(nextConversationQuestion(record).kind,'approval');
 });

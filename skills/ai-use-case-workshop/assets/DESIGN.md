@@ -2,7 +2,7 @@
 
 The portfolio belongs to the group. Its visual hierarchy makes the group's problem, evidence, disagreements and proposed decisions easy to find. The inline activity and composed book use the same semantic record but different visual treatments.
 
-Inline workbook snapshots inherit host typography, light/dark colours and a transparent outer surface. The PDF retains the Terracotta design below. The closed card contains one compact, phase-specific visual and one View workbook action. Full wording, PDF/record downloads and private access details belong inside that expansion. The host conversation owns questions and approval. Never imitate host attribution or permission controls.
+Inline workbook snapshots inherit host typography, light/dark colours and a transparent outer surface. The PDF retains the Terracotta design below. During the exercise, a card contains one phase-specific visual and one View workbook action. Essential saved wording is readable in full; cards may grow to accommodate it. Private access and technical recovery remain in disclosure. On completed Step 6, the workbook opens inline automatically with Download PDF at the top. The host conversation owns questions and approval. Never imitate host attribution or permission controls.
 
 Each snapshot leads with its step number and specific title, followed by one concise state line. Keep group details inside the book. Distinguish the viewed chapter from the current conversation step; an approved Step 1 view can correctly indicate that Step 2 is current. Use a compact six-part track with short labels and accessible written states; do not repeat Not started, Shown below or Current step under every label. Explicit host theme and semantic tokens override OS preferences. Identify a known older view briefly; version details stay inside the book.
 
@@ -10,15 +10,17 @@ Each snapshot leads with its step number and specific title, followed by one con
 
 Shiva rejected the text-heavy live card on 11 September 2026. StyleRef's [Swiss Grid Interface](https://styleref.io/share/m4oe3xex-9d9958eaf732) informs alignment, one type family and clear hierarchy. The host's colours override that reference's fixed palette, backgrounds and voice. Do not copy a red accent, decorative grid or a rigid twelve-column composition into a narrow chat card. Impeccable's distill guidance supplies progressive disclosure; the participant's actual saved decisions supply every visual.
 
-The closed card is a concise visual readback, not the complete approval summary. Use a relationship for the goal, holder/gap mapping for context, an ordered path for tasks, an AI/manual comparison for options and lanes for priorities. A number or quantitative chart must come from an unambiguous supplied value with its uncertainty intact. Short extracts show an ellipsis when abbreviated; all wording remains available in the expanded workbook and unchanged in storage and the PDF. Never shorten stored records to make a card smaller.
+The card is a visual readback, not a second questionnaire. Use a relationship for the goal, holder/gap mapping for context, an ordered path for tasks, an AI/manual comparison for options and lanes for priorities. A number or quantitative chart must come from an unambiguous supplied value with its uncertainty intact. Shiva's 12 September correction removes deliberate abbreviation of essential visible answers: wrap the complete text and allow the card to grow. Do not use ellipses, line clamps, hidden overflow or fixed heights to force important wording into the earlier compact layout. Stored answers and PDF wording remain unchanged.
 
-No routine storage notice, file-request control, JSON backup, side book illustration, repeated status paragraph, full hypothesis block or extra navigation belongs in the closed card. Errors appear only when relevant. View workbook must remain useful even if host file delivery is unavailable; recovery and downloads have plain labels inside the expansion.
+No routine storage notice, JSON backup, private reference, side book illustration, repeated status paragraph or extra navigation belongs in the ordinary card. Errors appear only when relevant. View workbook remains useful during the exercise even if host file delivery is unavailable. At completion, opening and PDF delivery are primary rather than hidden behind another View workbook action; technical recovery stays in disclosure. A deliberate Close persists through duplicate results, and stale results cannot reopen or replace newer work.
 
 ## Direction
 
 Keep the Terracotta direction selected by Shiva: warm paper, brown serif headings and a functional clay accent. Use the cover's title as the strongest visual element. Interior structure follows the work: a sequence for the difficult case, cards for distinct candidates and a table for their comparison. Do not turn every answer into the same card.
 
 `Our AI Use-Case Portfolio` is the strongest cover text. Preserve the group's full problem as readable body text underneath, with the group name and members identifying the document. Context and date are secondary. Show the six steps and their actual approval state without scoring the group. A later revision must not appear to be an agreed final answer.
+
+The first page after the cover connects the original problem, the group's confirmed underlying problem and the named use cases with what AI could do. For Phase 3 marked needs_review, retain the diagnosis with its review status; do not call it confirmed. Do not infer a missing legacy diagnosis from the goal. Label it “Not recorded in this workbook.” The same overview appears in the inline reader and PDF.
 
 ## Tokens
 
@@ -39,11 +41,17 @@ DM Serif Display regular, locally embedded, carries titles and chapter headings.
 
 ## Layout and hierarchy
 
-The PDF uses A4 portrait with 16 mm side margins. Each completed phase begins a chapter on a new page; long answers continue naturally. Body text is 10.5 pt with 1.45 line spacing. Do not shrink the type or truncate answers to force seven pages. The usual short version is a cover followed by six chapters, but content determines the final page count.
+The PDF uses A4 portrait with 16 mm side margins. The cover is followed by the problem-and-use-case overview and the confirmed chapters of the six-step sequence. Each completed phase begins a chapter on a new page; long answers continue naturally. Body text is 10.5 pt with 1.45 line spacing. Do not shrink the type or truncate answers to force a page count. Content, diagrams and recorded implementation details determine the final length.
 
-Chapter headings include Step 1, Step 2 and so on. No eyebrow, kicker, decorative tag, all-capital label or introductory framework panel is added. Each chapter uses its own visual structure: goal relationships, information/authority map, task journey, candidate work/checks, priority comparison or bounded test. Supporting evidence uses plain sections and full group wording. Do not invent quantitative charts from qualitative answers.
+Chapter headings include Step 1, Step 2 and so on. No eyebrow, kicker, decorative tag, all-capital label or introductory framework panel is added. Each chapter uses its own visual structure: goal relationships, information/authority map, task journey, candidate work/checks, priority comparison or final recommendation. Supporting evidence uses plain sections and full group wording. Do not invent quantitative charts from qualitative answers.
 
-The case replay uses a numbered vertical chronology with the actor, work and friction at the same step. Candidates identify their attached workflow steps. Priorities show the group's decision alongside its reason and missing evidence; colours never imply an AI-assigned quality score. The final recommendation gives the proposed owner and a stop rule equal clarity to the intended benefit.
+The case replay uses a numbered vertical chronology with the actor, work and friction at the same step. Candidates identify their attached workflow steps by name with C/T references secondary. Priorities show the group's decision alongside its reason and missing evidence; colours never imply an AI-assigned quality score. Use intuitive headings and never communicate an unexplained reference as the whole option.
+
+Each use case includes the named current tasks, an accessible proposed workflow, human checks, success measure and practical requirements: inputs, output, trigger, company guidance, repeated format and permitted access. Use bundled HTML/SVG nodes and arrows for the recorded and proposed sequences. Native text remains readable and selectable; arbitrary answers never become diagram code. Do not require Mermaid, tldraw or another installation. Do not add automatic sending or authority the group has not agreed.
+
+The implementation proposal states its approach, each component's purpose and requirement-based reason, its Proposed or Needs confirmation status, and the remaining checks. Explain a meaningful term such as skill, MCP connector, RAG, workflow or agent once when it is needed, not as an introductory glossary or compulsory technology list. Recommendations are not proof of working integrations. Keep accepted requirements, proposed mechanisms and unconfirmed access or evidence distinct.
+
+New-experience Phase 6 requires only the group recommendation. Retain any voluntarily supplied or legacy owner, evidence, test and stop-rule wording, but omit empty pilot sections rather than filling the final page with Not recorded labels. Finish with all identified cases and their recorded priorities even when no candidate is selected for a pilot. The final experience supports reading and reflection; it does not offer to build.
 
 Every page has `Prepared by Dr. Shiva Kakkar` and a working profile link with a visible access signifier. Page numbers are a PDF export feature. The cover includes the same authorship independently of the repeating footer.
 
@@ -55,7 +63,7 @@ Never gate a phase behind a widget. Use the host's native question tool when ava
 
 Render the composed book locally from the canonical record and bundled assets. Keep font and HTML payloads out of routine tool results. The read-only file download may call download_workbook_file for this snapshot, unpack and integrity-check the gzip transport, and hand the PDF to the host download control. It must never write the snapshot back into model context. A rejected download retains the record and offers conversational recovery; do not claim disk receipt merely because the host accepted the request.
 
-Confirmed chapters are included. Chapters marked `needs_review` are included with the visible sentence `This phase needs your review because an earlier answer changed.` Draft chapters are omitted. The cover's progress makes this distinction explicit. A blank value is shown as `Not recorded`; an explicit `Unknown` stays as entered.
+Confirmed chapters are included. Chapters marked `needs_review` are included with the visible sentence `This phase needs your review because an earlier answer changed.` Draft chapters are omitted. The cover's progress makes this distinction explicit. An explicit `Unknown` stays as entered. Label absent legacy diagnosis or proposed details honestly and do not populate them from model inference. Optional final-step fields that were never supplied are omitted.
 
 ## Content
 
@@ -69,4 +77,4 @@ Keep headings in order, native tables with column headers and visible underlined
 
 Escape every group-provided string before HTML insertion. No answers become HTML, CSS, URLs or scripts. Embed fonts locally and block network requests during rendering. Wait for the font before printing, set timeouts and close the browser on failure.
 
-For each release, inspect the rendered cover, timeline, candidates, priorities and final page. Test long answers and unbroken strings. Verify A4 dimensions, selectable text, actual PDF bytes and profile-link annotations on every page. Export and interface tests do not establish usability with real participants or compatibility with an untested chat client.
+For each release, inspect the rendered cover, overview, current and proposed workflows, requirements, implementation proposal, priorities and final page. Test long answers, Unicode and unbroken strings without essential truncation. Verify A4 dimensions, selectable text, actual PDF bytes and profile-link annotations on every page. Verify recommendation-only, no-pilot and legacy endings, automatic completed-book opening, deliberate Close, duplicate and stale results, and prominent PDF delivery. Export and interface tests do not establish usability with real participants or compatibility with an untested chat client.
