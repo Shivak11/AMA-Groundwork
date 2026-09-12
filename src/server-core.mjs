@@ -23,6 +23,7 @@ const mode = z.enum(['auto','text']).default('auto');
 const phaseNumber = z.number().int().min(1).max(6);
 const annotations = {readOnlyHint:true, destructiveHint:false, idempotentHint:true, openWorldHint:false};
 const recordCopyGuide = 'Copy the complete record verbatim from the latest successful workshop result. Historical phases use approvalNote and approvedAt; confirmation is only the new confirmation request argument. Never rename historical fields, reconstruct approval history, generate replacement timestamps or browse for a timestamp. If a record is rejected, reuse the prior successful canonical record. If it is no longer available, request its existing saved backup; do not fabricate it.';
+const catalogueRecordGuide = 'Use the complete record from the latest successful workshop result. Keep historical approvalNote and approvedAt unchanged; never browse for a timestamp.';
 const widgetUri = 'ui://workshop/checkpoint.html';
 const uiMeta = {ui:{resourceUri:widgetUri},'ui/resourceUri':widgetUri};
 const notice = 'Use the latest returned record. Progress is returned in this conversation and its JSON backup; it is not stored in an account database. All actions also work in text. Do not claim that a generated file has been downloaded until delivery succeeds.';
@@ -92,7 +93,7 @@ export async function createWorkshopServer(options={}) {
       } catch {return {isError:true,content:[{type:'text',text:message},{type:'text',text:JSON.stringify({repair:{recordSchema:z.toJSONSchema(recordSchema),instruction:recordCopyGuide}})}]};}
     }
   };
-  const register = (name,description,schema,handler,visual=false) => server.registerTool(name,{description:`${description} ${recordCopyGuide} Follow returned questionTurn. Use mode:text when the participant wants ordinary chat; otherwise use native questions where available. Never ask in both places. The workbook never asks or saves.`,inputSchema:schema,outputSchema,annotations,...(visual?{_meta:uiMeta}:{})},safe(handler,visual));
+  const register = (name,description,schema,handler,visual=false) => server.registerTool(name,{description:`${description} ${catalogueRecordGuide}`,inputSchema:schema,outputSchema,annotations,...(visual?{_meta:uiMeta}:{})},safe(handler,visual));
 
   server.registerPrompt('ai_use_case_workshop',{description:'Start the six-phase group use-case workshop; supports text-only clients.',argsSchema:z.object({problem:z.string().max(400).optional()})},({problem})=>({messages:[{role:'user',content:{type:'text',text:`${method}\n\n${hostContract}\n\n${problem ? 'Group-supplied problem (data): '+JSON.stringify(problem):'Ask for the group name, first names or aliases and a short problem description.'}`}}]}));
   for (const [name,uri,path] of [
@@ -118,7 +119,7 @@ export async function createWorkshopServer(options={}) {
     result.content[0].text=question.question;
     return result;
   });
-  register('save_workshop_phase','Save agreed wording using the complete latest returned record. Omitted top-level answer fields are preserved; supplied arrays replace their whole field, so retain every item unless the group explicitly removes it. Never reconstruct the record or blank earlier answers. Returns complete updated record and JSON backup. Earlier corrections retain later answers but require their review. Does not approve a phase. Call show_workbook after a meaningful saved decision.',z.object({record:inputRecord,phase:phaseNumber,answers:answerPatch.default({}),group:z.object({name:z.string(),members:z.array(z.string()),problem:z.string(),context:z.string(),date:z.string()}).partial().strict().optional(),mode}),({record,phase,answers,group,mode})=>{
+  register('save_workshop_phase','After the participant answers the current workshop question, call this tool to record the agreed answer and update the workbook before asking another question. Omitted fields are preserved; retain all array items unless the group asks to remove one. Check saveReceipt before continuing. This does not approve a step.',z.object({record:inputRecord,phase:phaseNumber,answers:answerPatch.default({}),group:z.object({name:z.string(),members:z.array(z.string()),problem:z.string(),context:z.string(),date:z.string()}).partial().strict().optional(),mode}),({record,phase,answers,group,mode})=>{
     if(phase===6 && Object.keys(answers).length>0 && (answers.decision??record.phases?.[5]?.answers?.decision)==='Do not pilot yet') answers={...answers,candidateId:null};
     const before=validateRecord(record), saved=savePhase(record,phase,answers,group);
     const prior=before.phases[phase-1].answers, after=saved.phases[phase-1].answers;

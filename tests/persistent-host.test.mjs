@@ -139,12 +139,19 @@ test('tool inputs publish short references and safe item patches while outputs k
     else assert.equal(tool._meta?.ui?.resourceUri,undefined,tool.name);
   }
   const save=tools.find(tool=>tool.name==='save_workshop_phase');
+  assert.equal(tools.length,15);
+  for(const tool of tools)assert(tool.description.length<1000,`${tool.name} description should stay concise for deferred discovery.`);
+  assert.match(save.description,/After the participant answers/i);
+  assert.match(save.description,/before asking another question/i);
+  assert(JSON.stringify(save).length<9000,'The complete save tool definition should stay within the deferred-discovery budget.');
   assert.equal(save.inputSchema.properties.arrayEdits.type,'array');
   assert.equal(save.annotations.readOnlyHint,false);
   assert.equal(tools.find(tool=>tool.name==='show_workbook').annotations.readOnlyHint,true);
   const result=await start(s);const data=success(result);
   assert.equal(data.questionTurn.owner,'chat');assert.equal(data.questionTurn.preferredInput,'native_question_tool');
   assert.equal(data.questionTurn.fallbackInput,'plain_chat');assert.equal(data.view.display,false);
+  assert.deepEqual({tool:data.questionTurn.afterReply.tool,phaseId:data.questionTurn.afterReply.phaseId,field:data.questionTurn.afterReply.field},{tool:'save_workshop_phase',phaseId:1,field:'outcome'});
+  assert.match(data.questionTurn.afterReply.instruction,/saveReceipt/);
   assert.equal(data.phase.questionField,'outcome');assert.equal(workbook(result).phases.length,6);
   const url=new URL(data.workspace.url);assert.equal(url.origin,baseUrl);assert(!/w[rs]1_/.test(url.pathname+url.search));
   assert(url.hash.includes(await readKeyFor(data.record.key)));

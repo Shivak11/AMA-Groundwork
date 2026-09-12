@@ -169,7 +169,7 @@ export async function createPersistentWorkshopServer({sessionStore:store,pdfRend
     }
   };
   const register=(name,description,schema,handler,{visual=false,write=false,destructive=false,idempotent=true}={})=>server.registerTool(name,{
-    description:`${description} ${PARTICIPANT_LANGUAGE_POLICY} ${hostGuide}`,
+    description,
     inputSchema:schema,outputSchema:anyObject,annotations:{readOnlyHint:!write,destructiveHint:destructive,idempotentHint:!destructive&&idempotent,openWorldHint:false},...(visual?{_meta:uiMeta}:{})
   },safe(handler,visual));
   const input={record:reference,mode:modeSchema};
@@ -209,7 +209,7 @@ export async function createPersistentWorkshopServer({sessionStore:store,pdfRend
     result.structuredContent.next=`${result.structuredContent.questionTurn.instruction}\n${question.question}`;
     result.content[0].text=question.question;return result;
   });
-  register('save_workshop_phase','Save only agreed changes against the current revision. Unspecified wording is retained. Use arrayEdits for one candidate/task/choice or blocker correction. An explicit remove/replace requires the group to request it. Earlier corrections retain later work for review. Does not approve.',z.object({...input,phase:phaseNumber,answers:answerPatch.default({}),arrayEdits:z.array(arrayEdit).max(12).optional(),group:groupPatch.optional(),requestId}),async args=>{
+  register('save_workshop_phase','After the participant answers the current workshop question, call this tool to record the agreed answer and update the workbook before asking another question. Use the latest short record reference. Unspecified wording is retained. Use arrayEdits for one item correction; remove or replace only when the group asks. Check saveReceipt before continuing. This does not approve a step.',z.object({...input,phase:phaseNumber,answers:answerPatch.default({}),arrayEdits:z.array(arrayEdit).max(12).optional(),group:groupPatch.optional(),requestId}),async args=>{
     let changedFields=[];
     const loaded=await operation(args.record,'save',args,before=>{
       const patch=patchArrays(before,args.phase,args.answers,args.arrayEdits);

@@ -6,6 +6,7 @@ import {createWorkshopServer} from '../src/server.mjs';
 import {createRecord,savePhase,confirmPhase} from '../src/workshop.mjs';
 import {group,answers} from '../examples/hiring.mjs';
 import {nextConversationQuestion} from '../src/conversation.mjs';
+import {questionTurn} from '../src/question-routing.mjs';
 
 // Real MCP routing and state use a labelled PDF stub. This is not host UI proof.
 async function session(ui=true) {
@@ -22,6 +23,10 @@ function assertHostQuestion(result,field,kind='answer',preferredInput='native_qu
   assert.equal(turn.recordRevision,data.record.revision);assert.match(turn.turnId,/^[0-9a-f-]{36}$/);
   assert.equal(turn.field,field);assert.equal(data.nextQuestion.kind,kind);assert.equal(data.nextQuestion.field,field);
   assert.equal(turn.question,data.nextQuestion.question);assert.equal(typeof turn.question,'string');assert(turn.question.trim());
+  assert.equal(turn.afterReply.tool,kind==='approval'?'confirm_workshop_phase':'save_workshop_phase');
+  assert.equal(turn.afterReply.phaseId,turn.phaseId);assert.equal(turn.afterReply.field,kind==='approval'?null:field);
+  assert.match(turn.afterReply.instruction,kind==='approval'?/confirm_workshop_phase/:/save_workshop_phase/);
+  assert.match(turn.afterReply.instruction,/saveReceipt/);
   assert.equal(data.phase.questionField,field);assert.equal(data.phase.question,kind==='answer'?turn.question:null);
   assert(result.content.some(block=>block.type==='text'&&block.text.includes(turn.question)), 'Ordinary chat receives the same complete question.');
   assert(!/wait_for_activity|The embedded activity owns|Return ownership/.test(JSON.stringify(turn)));
@@ -77,6 +82,10 @@ test('each phase asks its exact next missing field and a completed record asks n
   }
   const completed=nextConversationQuestion(record);
   assert.equal(completed.kind,'complete');assert.equal(completed.field,null);assert.equal(completed.question,null);
+  const completedTurn=questionTurn(record,completed,'completed-turn');
+  assert.equal(completedTurn.afterReply,null);assert.equal(completedTurn.hostAction,'offer_workbook');
+  const fileTurn=questionTurn(record,completed,'file-turn','files');
+  assert.equal(fileTurn.afterReply,null);assert.equal(fileTurn.hostAction,'deliver_files');
 });
 
 test('proposed choices appear in the host question and full text fallback without saving an answer',async()=>{

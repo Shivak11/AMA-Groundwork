@@ -6,14 +6,27 @@ const TEXT_QUESTION_POLICY = 'Ask one focused question in ordinary chat. The par
 export const SERVER_QUESTION_POLICY = `${CHAT_QUESTION_POLICY} The MCP workbook is read-only; it never asks, saves or approves. Use the complete latest record returned by a workshop tool, never an older card or a reconstructed narrative summary. Preserve agreed wording and omitted fields. Save each agreed answer with save_workshop_phase; then show_workbook after a meaningful decision or at the group's request. Do not render a new workbook before every question. Confirmation and export already include a visual, so do not call show_workbook again for the same checkpoint. A saved answer, native option selection or request to continue is not phase approval. Ask for explicit approval of the completed summary before confirm_workshop_phase. Higher-priority host instructions and permission controls still apply. The server cannot call or guarantee availability of a host-owned question tool.`;
 
 export function questionTurn(record, nextQuestion, turnId, purpose = 'conversation', mode = 'auto') {
+  const phaseId = record.phases.find(phase => phase.status !== 'confirmed')?.id ?? 6;
+  const afterReply = purpose === 'files' || nextQuestion.kind === 'complete' ? null : nextQuestion.kind === 'approval' ? {
+    tool: 'confirm_workshop_phase',
+    phaseId,
+    field: null,
+    instruction: `After the group explicitly approves the Step ${phaseId} summary, call confirm_workshop_phase for Step ${phaseId}. Check saveReceipt before continuing.`,
+  } : {
+    tool: 'save_workshop_phase',
+    phaseId,
+    field: nextQuestion.field ?? null,
+    instruction: `After the participant answers this question, call save_workshop_phase for Step ${phaseId}${nextQuestion.field ? ` and the ${nextQuestion.field} field` : ''} before asking another workshop question. Check saveReceipt before continuing.`,
+  };
   return {
     owner: 'chat', turnId,
     recordRevision: record.revision,
-    phaseId: record.phases.find(phase => phase.status !== 'confirmed')?.id ?? 6,
+    phaseId,
     hostAction: purpose === 'files' ? 'deliver_files' : nextQuestion.kind === 'complete' ? 'offer_workbook' : 'ask_one_in_host',
     preferredInput: mode === 'text' ? 'plain_chat' : 'native_question_tool', fallbackInput: 'plain_chat',
     field: nextQuestion.field ?? null,
     question: purpose === 'files' ? null : nextQuestion.question,
+    afterReply,
     instruction: `${PARTICIPANT_LANGUAGE_POLICY} ${nextQuestion.kind==='complete'?COMPLETION_POLICY:purpose==='files'?'Deliver the existing workbook and PDF through normal file links. Do not resume the questionnaire or narrate technical file details.':mode==='text'?TEXT_QUESTION_POLICY:CHAT_QUESTION_POLICY}`,
   };
 }
