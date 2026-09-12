@@ -2,7 +2,7 @@
 
 The portfolio belongs to the group. Its visual hierarchy makes the group's problem, evidence, disagreements and proposed decisions easy to find. The inline activity and composed book use the same semantic record but different visual treatments.
 
-Inline workbook snapshots inherit host typography, light/dark colours and a transparent outer surface. The PDF retains the Terracotta design below. During the exercise, a card contains one phase-specific visual and one View workbook action. Essential saved wording is readable in full; cards may grow to accommodate it. Private access and technical recovery remain in disclosure. On completed Step 6, the workbook opens inline automatically with Download PDF at the top. The host conversation owns questions and approval. Never imitate host attribution or permission controls.
+Inline workbook snapshots inherit host typography, light/dark colours and a transparent outer surface. The inline views, saved reader and PDF use one semantic component system: neutral for current or person-led work, teal for AI activity and amber for a human check or decision. During the exercise, a card contains one phase-specific visual and one View workbook action. Essential saved wording is readable in full; cards may grow to accommodate it. Private access and technical recovery remain in disclosure. On completed Step 6, the workbook opens inline automatically with Download PDF at the top. The host conversation owns questions and approval. Never imitate host attribution or permission controls.
 
 Each snapshot leads with its step number and specific title, followed by one concise state line. Keep group details inside the book. Distinguish the viewed chapter from the current conversation step; an approved Step 1 view can correctly indicate that Step 2 is current. Use a compact six-part track with short labels and accessible written states; do not repeat Not started, Shown below or Current step under every label. Explicit host theme and semantic tokens override OS preferences. Identify a known older view briefly; version details stay inside the book.
 
@@ -16,13 +16,13 @@ No routine storage notice, JSON backup, private reference, side book illustratio
 
 ## Direction
 
-The final workflow comparison uses Shiva's approved [Flat Solid-Color Interface](https://styleref.io/share/bvqq4w81-ced8380b5368) by @styleref. Use neutral fills for related current work, teal for AI activity and amber for the retained human check. Actor labels make the meaning independent of colour. Host background and typography remain authoritative; the surrounding PDF keeps its Terracotta cover and chapter treatment. No gradient, shadow, decorative icon or extra questionnaire is added.
+Every active workbook surface uses Shiva's approved [Flat Solid-Color Interface](https://styleref.io/share/bvqq4w81-ced8380b5368) by @styleref. Use neutral fills for current and person-led work, teal for AI activity and amber for a human check or decision. Actor labels make the meaning independent of colour. Host background and typography remain authoritative; the PDF uses a printable equivalent of the same component system. No gradient, shadow, decorative icon or extra questionnaire is added.
 
 Compare each named use case independently. Only an explicit saved reference mapping establishes aligned stages; different-length arrays must never be paired by position. Show added and omitted activities plainly. When mapping is absent or invalid, show separately labelled sequences. The component list belongs to the use case because the current record does not bind components to individual AI steps. Preserve proposed and needs-confirmation states and do not add a connector or retrieval component to complete a layout.
 
 Aligned comparisons use a current/proposed matrix with shared stage boundaries, complete text wrapping and consistent 16px card insets. Role, action and supporting text share the left edge. Use content-driven height and consistent gaps; do not vertically centre small notes independently. Narrow views stack each related pair. Print uses two readable columns with equivalent insets and allows long content to continue over pages. Retain title and column context on continuation instead of shrinking the entire comparison onto one sheet.
 
-Keep the Terracotta direction selected by Shiva: warm paper, brown serif headings and a functional clay accent. Use the cover's title as the strongest visual element. Interior structure follows the work: a sequence for the difficult case, cards for distinct candidates and a table for their comparison. Do not turn every answer into the same card.
+Use white pages, cool neutral supporting surfaces and a dark teal functional accent across the cover, overview and chapters. Use the cover's title as the strongest visual element. Interior structure follows the work: a sequence for the difficult case, cards for distinct candidates and a table for their comparison. Do not turn every answer into the same card.
 
 `Our AI Use-Case Portfolio` is the strongest cover text. Preserve the group's full problem as readable body text underneath, with the group name and members identifying the document. Context and date are secondary. Show the six steps and their actual approval state without scoring the group. A later revision must not appear to be an agreed final answer.
 
@@ -32,18 +32,20 @@ The first page after the cover connects the original problem, the group's confir
 
 | Token | Value | Use |
 | --- | --- | --- |
-| Ground | `#F3E9D8` | Preview background and quiet comparison areas. |
-| Paper | `#F8F0E4` | Cover and meaningful emphasis. |
-| Ink | `#3A241C` | Headings, body text and strong borders. |
-| Muted | `#6F5A4E` | Secondary descriptions and dates. |
-| Clay | `#C56A3C` | Rules and non-text accents. |
-| Functional clay | `#9B4625` | Links, focus indicators and important status text. |
-| White | `#FFFFFF` | Interior pages and editable surfaces. |
-| Rule | `#BCA48E` | Dividers; do not rely on a divider alone to identify an input. |
+| Page | `#FFFFFF` | Cover and interior pages. |
+| Quiet surface | `#F1F2F2` | Current and person-led activity cards. |
+| Ink | `#202627` | Headings and body text. |
+| Muted | `#5E6667` | Secondary descriptions and dates. |
+| Functional accent | `#0B6670` | Links, focus indicators and important rules. |
+| AI fill | `#1AA7B8` | AI activity cards only. |
+| AI ink | `#102D32` | Text on AI activity cards. |
+| Human-check fill | `#F5B335` | Human checks and decisions only. |
+| Human-check ink | `#352409` | Text on human-check cards. |
+| Rule | `#CDD2D2` | Dividers; do not rely on a divider alone to identify meaning. |
 
-Functional clay has 6.37:1 contrast on white and 5.63:1 on paper. Clay is unsuitable for small text or white button text. Controls use ink or functional clay borders with visible focus.
+Use the dark teal functional accent for small text on white. Bright teal and amber are card backgrounds with their specified dark inks. Controls use visible focus and accessible text contrast.
 
-DM Serif Display regular, locally embedded, carries titles and chapter headings. Use the system sans-serif stack for answers, labels and tables. Never synthesise a bold display face or use italics. The licensed font and its unmodified OFL are in `fonts/`.
+DM Serif Display regular, locally embedded, carries only the cover title and chapter headings. Use the system sans-serif stack for diagrams, cards, answers, labels, tables, controls and PDF footers. Never synthesise a bold display face or use italics. The licensed font and its unmodified OFL are in `fonts/`.
 
 ## Layout and hierarchy
 

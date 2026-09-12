@@ -64,7 +64,7 @@ Confirmation validates and retains group approval, then attempts its PDF. A rend
 
 ## Presentation and delivery boundaries
 
-Inline snapshots inherit host colours and typography. The book preview and PDF use the shared Terracotta contract. Open workbook shows the cumulative document. Only show_workbook, show_shortlist, confirm_workshop_phase and export_workbook advertise visual resources. Routine starts, questions and saves do not open more cards. The host determines where each snapshot appears and whether an existing card receives updates.
+Inline snapshots inherit host colours and typography. The inline views, saved reader and PDF share one component system: neutral for current or person-led work, teal for AI activity and amber for a human check or decision. Open workbook shows the cumulative document. Only show_workbook, show_shortlist, confirm_workshop_phase and export_workbook advertise visual resources. Routine starts, questions and saves do not open more cards. The host determines where each snapshot appears and whether an existing card receives updates.
 
 Routine results remain explicitly non-visual, so a host that reuses a previous visual resource does not show an empty workbook. Normal content carries the short reference and relevant step context; _meta.workbook carries the canonical visual record. Large visuals can fall back to the stable reading link. Manual checkpoint downloads remain available. Changed tool definitions require persistent installation refresh or reinstall; both hosts retained old definitions during the 11 September checks. A transient tool-list update is not proof of installation repair.
 
