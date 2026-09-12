@@ -241,6 +241,7 @@ test('six phases complete using only ordinary text outputs with distinct recentC
       assert.equal(data.phase.id,phase);
       // Use only field names advertised by the model-visible phase schema.
       for(const field of Object.keys(data.phase.answerSchema.properties)) {
+        if(!Object.hasOwn(answers[phase-1],field)&&!data.phase.answerSchema.required?.includes(field))continue;
         assert(Object.hasOwn(answers[phase-1],field),`Fictional answer available for ${field}.`);
         const previous=structuredClone(data.record),value=answers[phase-1][field];
         data=payload(await s.call('save_workshop_phase',{record:data.record,phase,answers:{[field]:value},mode:'text'}));

@@ -8,11 +8,13 @@ export type Candidate = {id: string; title: string; taskIds: string[]; aiWork: s
 };
 export type Priority = 'First' | 'Later' | 'Do not pursue';
 export type Choice = {candidateId: string; decision: Priority; reason: string; evidenceGap: string};
+export type WorkflowComparison = {candidateId:string;stages:{taskIds:string[];proposedStepIndices:number[]}[]};
 export type Answers = {
   outcome?: string; kpi?: string; baseline?: string; guardrail?: string; hypothesis?: string;
   blockers?: Blocker[]; firstGap?: string; workflows?: string[]; chosenWorkflow?: string; recentCase?: string; tasks?: Task[]; zeroSecond?: string; redesign?: string; underlyingProblem?:string;
   candidates?: Candidate[]; choices?: Choice[]; challenge?: string; costs?: string;
   decision?: 'Test a use case' | 'Do not pilot yet'; candidateId?: string | null; owner?: string; evidence?: string; peopleChange?: string; test?: string; stopRule?: string; recommendation?: string;
+  workflowComparisons?:WorkflowComparison[];
 };
 export type Phase = {id: PhaseId; status: 'draft' | 'confirmed' | 'needs_review'; answers: Answers};
 export type WorkshopRecord = {

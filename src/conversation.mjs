@@ -27,6 +27,7 @@ export const fieldQuestions = {
   stopRule: ['What result would make you stop or change course?', 'Choose an observable condition, including unacceptable risks.'],
   peopleChange: ['What would change for the people doing this work?', 'Name responsibilities, checking, training and approvals.'],
   recommendation: ['What should the workbook say about your group’s recommendation?', 'Draft this from the agreed priorities, named AI use cases and what remains uncertain. Ask only for missing decisions. No extra pilot question and no offer to build anything.'],
+  workflowComparisons: ['Does the comparison show the work correctly?', 'Repair the comparison from the saved task and proposed-workflow sequences. Keep identifiers and step indices internal. Do not ask the group to repair tool data; if the correspondence is uncertain, save an empty comparison list and retain the separate recorded sequences.'],
 };
 const groundingQuestions={
   inputs:['What information would AI use for this?', 'Name where the information currently comes from; do not assume it can be accessed.'],
@@ -64,7 +65,7 @@ export function nextConversationQuestion(record) {
   });
   const readiness = phaseReadiness(record,id);
   if (!field && !readiness.complete) field=readiness.issues.find(issue => fieldQuestions[issue.field])?.field ?? readiness.missingFields[0];
-  if (!field) return {kind:'approval',field:null,question:`Does your group approve the saved Step ${id} summary?`,hint:'Show the complete summary first. An answer or option selection is not approval.',choices:[{label:'Approve this step',value:'Approve'},{label:'We want to correct something',value:'Correct'}]};
+  if (!field) return {kind:'approval',field:null,question:`Does your group approve the saved Step ${id} summary?`,hint:`Show the complete summary first. An answer or option selection is not approval.${id===6?' Before this existing approval, prepare the visual comparison using saved work. For each use case whose correspondence is clear, save optional workflowComparisons with candidateId and stages of taskIds plus zero-based proposedStepIndices. Cover every linked current task and proposed step exactly once in their recorded order. Either side may be empty for an added or omitted activity, never both. Do not align by array position or merge different use cases. If uncertain, omit that mapping and keep the separate sequences. Show the comparison for correction as part of the recap, without another questionnaire.':''}`,choices:[{label:'Approve this step',value:'Approve'},{label:'We want to correct something',value:'Correct'}]};
   let [question,hint]=fieldQuestions[field];
   let choices=[];
   const grounding=readiness.issues.find(issue=>issue.field==='candidates'&&issue.detail);

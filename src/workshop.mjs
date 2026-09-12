@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { comparisonIssues, readableWorkflowComparisons } from './workflow-comparison.mjs';
 
 const text = z.string().trim().min(1).max(1200);
 const short = z.string().trim().min(1).max(120);
@@ -40,6 +41,9 @@ export const candidateSchema = obj({id,title:short,taskIds:z.array(id).max(6),ai
   format:text.optional(),access:text.optional(),implementation:implementationSchema.optional(),
   workflow:z.array(obj({actor:z.enum(['Person','AI','System']),action:text})).min(2).max(8).optional(),
 });
+export const workflowComparisonSchema = obj({candidateId:id,stages:z.array(obj({
+  taskIds:z.array(id).max(6), proposedStepIndices:z.array(z.number().int().min(0).max(7)).max(8),
+})).min(1).max(14)});
 export const answerSchemas = [
   obj({ outcome: text, kpi: text, baseline: text, guardrail: text, hypothesis: text }),
   obj({ blockers: z.array(obj({ information: text, holder: text, barrier: text, unlock: text })).min(1).max(5), firstGap: text }),
@@ -48,7 +52,8 @@ export const answerSchemas = [
   obj({ candidates: z.array(candidateSchema).min(1).max(5) }),
   obj({ choices: z.array(obj({ candidateId: id, decision: z.enum(['First', 'Later', 'Do not pursue']), reason: text, evidenceGap: text })).min(1).max(5), challenge: text, costs: text }),
   obj({ decision: z.enum(['Test a use case', 'Do not pilot yet']), candidateId: id.nullable(), owner: text,
-    evidence: text, peopleChange: text, test: text, stopRule: text, recommendation: text }),
+    evidence: text, peopleChange: text, test: text, stopRule: text, recommendation: text,
+    workflowComparisons:z.array(workflowComparisonSchema).max(5).optional() }),
 ];
 export function phaseAnswerSchema(record, phaseId) {
   const schema=answerSchemas[phaseId-1];
@@ -191,6 +196,12 @@ export function savePhase(input, phaseId, patch, groupPatch) {
     const next = answerSchemas[phaseId-1].partial().parse({...record.phases[phaseId-1].answers, ...patch});
     if (!sameValue(previousAnswers, next)) {
       record.phases[phaseId-1].answers = next;
+      // These derived indices cannot survive a reordered or edited source. The
+      // previous persistent revision retains the old mapping and all its text.
+      if ((phaseId === 3 && !sameValue(previousAnswers.tasks,next.tasks))
+        || (phaseId === 4 && !sameValue(previousAnswers.candidates,next.candidates))) {
+        delete record.phases[5].answers.workflowComparisons;
+      }
       markChanged(record, phaseId);
       reconcileInteraction(record, phaseId, patch, previousAnswers);
     } else if (phaseId === 5 && Object.hasOwn(patch,'choices') && Object.keys(record.interaction?.priorities ?? {}).length) {
@@ -234,7 +245,7 @@ export function phaseReadiness(record, phaseId = currentPhase(record) ?? 6) {
   try { validateReferences(record, phaseId); }
   catch (error) {
     const field = phaseId === 3 ? (/chosen workflow/i.test(error.message) ? 'chosenWorkflow' : 'tasks')
-      : phaseId === 4 ? 'candidates' : phaseId === 5 ? 'choices' : 'candidateId';
+      : phaseId === 4 ? 'candidates' : phaseId === 5 ? 'choices' : /workflow comparison/i.test(error.message) ? 'workflowComparisons' : 'candidateId';
     issues.push({field,message:error.message});
   }
   if (phaseId === 4 && Object.values(record.interaction?.candidateDispositions ?? {}).includes('Reconsider')) issues.push({field:'candidates',message:'Resolve candidates marked Reconsider before approval.'});
@@ -270,6 +281,8 @@ function validateReferences(record, phaseId) {
     if (a[4].choices.filter(c=>c.decision==='First').length > 1) throw new Error('Choose at most one candidate first.');
   }
   if (phaseId === 6) {
+    const mappingIssues = comparisonIssues(record);
+    if (mappingIssues.length) throw new Error(mappingIssues.join(' '));
     if (a[5].decision === 'Test a use case' && !a[4].choices?.some(c=>c.candidateId===a[5].candidateId && c.decision==='First')) throw new Error('The proposed test must refer to the candidate chosen First.');
     if (a[5].decision === 'Do not pilot yet' && a[5].candidateId !== null) throw new Error('A no-pilot recommendation must not name a pilot candidate ID.');
   }
@@ -315,6 +328,7 @@ export function readableSummary(record, phaseId = currentPhase(record) ?? 6) {
   const label = key => ({aiWork:'What AI would do',taskIds:'Workflow tasks',humanCheck:'What a person checks',nonAiAlternative:'Without AI',evidenceGap:'What still needs checking',candidateId:'Use case',firstGap:'What to address first',zeroSecond:'If the task took no time',peopleChange:'Changes for people',stopRule:'When to reconsider',underlyingProblem:'The problem we identified',implementation:'Proposed technical approach',kpi:'Success measure / KPI',candidates:'AI use cases'}[key] ?? key.replace(/([A-Z])/g,' $1').replace(/^./,c=>c.toUpperCase()));
   const name=(key,value)=>key==='candidateId' ? record.phases[3].answers.candidates?.find(c=>c.id===value)?.title??value : key==='taskIds' ? record.phases[2].answers.tasks?.find(t=>t.id===value)?.work??value : value;
   const display = (object, indent='') => Object.entries(object).forEach(([key,value])=>{
+    if (key === 'workflowComparisons') return;
     if (Array.isArray(value)) {
       lines.push(`${indent}${label(key)}:`);
       value.forEach((item,i)=>{ if (typeof item==='object'&&item!==null) {lines.push(`${indent}${i+1}.`);display(item,indent+'  ');} else lines.push(`${indent}- ${name(key,item)}`); });
@@ -322,6 +336,7 @@ export function readableSummary(record, phaseId = currentPhase(record) ?? 6) {
     else if(key!=='id') lines.push(`${indent}${label(key)}: ${name(key,value) ?? 'None'}`);
   });
   display(p.answers);
+  if(phaseId===6&&p.answers.workflowComparisons?.length)lines.push(readableWorkflowComparisons(record));
   if (!Object.keys(p.answers).length) lines.push('No answers recorded for this phase yet.');
   const interaction = record.interaction;
   if (interaction) {

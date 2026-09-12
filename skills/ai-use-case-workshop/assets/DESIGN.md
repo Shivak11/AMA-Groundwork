@@ -16,6 +16,12 @@ No routine storage notice, JSON backup, private reference, side book illustratio
 
 ## Direction
 
+The final workflow comparison uses Shiva's approved [Flat Solid-Color Interface](https://styleref.io/share/bvqq4w81-ced8380b5368) by @styleref. Use neutral fills for related current work, teal for AI activity and amber for the retained human check. Actor labels make the meaning independent of colour. Host background and typography remain authoritative; the surrounding PDF keeps its Terracotta cover and chapter treatment. No gradient, shadow, decorative icon or extra questionnaire is added.
+
+Compare each named use case independently. Only an explicit saved reference mapping establishes aligned stages; different-length arrays must never be paired by position. Show added and omitted activities plainly. When mapping is absent or invalid, show separately labelled sequences. The component list belongs to the use case because the current record does not bind components to individual AI steps. Preserve proposed and needs-confirmation states and do not add a connector or retrieval component to complete a layout.
+
+Aligned comparisons use a current/proposed matrix with shared stage boundaries, complete text wrapping and consistent 16px card insets. Role, action and supporting text share the left edge. Use content-driven height and consistent gaps; do not vertically centre small notes independently. Narrow views stack each related pair. Print uses two readable columns with equivalent insets and allows long content to continue over pages. Retain title and column context on continuation instead of shrinking the entire comparison onto one sheet.
+
 Keep the Terracotta direction selected by Shiva: warm paper, brown serif headings and a functional clay accent. Use the cover's title as the strongest visual element. Interior structure follows the work: a sequence for the difficult case, cards for distinct candidates and a table for their comparison. Do not turn every answer into the same card.
 
 `Our AI Use-Case Portfolio` is the strongest cover text. Preserve the group's full problem as readable body text underneath, with the group name and members identifying the document. Context and date are secondary. Show the six steps and their actual approval state without scoring the group. A later revision must not appear to be an agreed final answer.
