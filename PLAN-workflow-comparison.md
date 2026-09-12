@@ -33,6 +33,15 @@ Source baseline: d6868f9, containing locally verified 0.7.0. Live remains 0.6.1.
 - Add a structured after-reply instruction to each question turn. Answer turns name `save_workshop_phase`, the current phase and current field; approval turns name `confirm_workshop_phase`. The host checks the returned receipt before advancing.
 - Verify tool count and annotations are unchanged, repeated description text is absent, individual definitions remain within a conservative discovery budget, and the first activated turn explicitly names its next tool. A new actual Claude chat is still required; source checks cannot prove Claude's deferred tool search.
 
+## Unified workbook visual system, 12 September 2026
+
+- Replace the legacy terracotta variables with one semantic palette across the cover, overview, all six narrative chapters, workflow comparisons, continuation context and print. Use ink `#173033`, muted text `#5D6D6F`, rule `#A7B8BA`, current-work neutral `#F2F5F5`, AI teal `#1AA7B8`, human-decision amber `#F5B335` and confirmed/success green `#236B53` with a pale success surface `#E6F2ED`.
+- Retain DM Serif Display for the cover, chapter and named-case headings. Use Avenir Next and its existing fallbacks for body text, component headings, labels, references and statuses. Small labels share one `9.5pt` print size, line height and baseline treatment.
+- Use one component grammar: `1px` structural borders, `1.5mm` corner radius and `4.25mm` ordinary inset. Larger recommendation panels may use `5mm`. A semantic edge may identify AI, human decision or success, but it must use the same radius as the component it belongs to. No shadows or gradients.
+- Current tasks and ordinary recorded information use the neutral surface. AI actions use teal. Human checks and decisions use amber. Confirmed phase and selected-priority states use success green. Text labels remain present so colour is never the only distinction.
+- The embedded connector keeps host-derived ink, muted, line and neutral values through its existing `--cw-*` fallbacks. The PDF uses the canonical palette above. Host adaptation does not restore the retired terracotta colours.
+- Verify the mapped record after the pagination and visual changes. Inspect the cover, overview, one representative page from each phase, all comparison continuation pages and the final page at A4 size. Confirm readable contrast, consistent padding and labels, complete wrapping, no clipping or overlap, selectable text and the existing profile link. Do not deploy or change remote records.
+
 ## Ownership
 
 Root: PLAN, src/workshop.mjs, src/conversation.mjs, src/workflow-comparison.mjs, src/inline-types.ts, package manifests/version references, host guidance, shared design contract, integration tests and release evidence.
