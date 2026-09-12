@@ -34,6 +34,17 @@ test('persistent MCP saves, approves and resumes comparisons without new questio
     assert.deepEqual(guide.structuredContent.phase.answerSchema.required,['recommendation']);
     const saved=await call('save_workshop_phase',{phase:6,answers:{recommendation:deferredAnswers[5].recommendation,workflowComparisons:mappings}});
     assert.equal(saved.structuredContent.nextQuestion.kind,'approval');
+    const revisedMapping=structuredClone(mappings);
+    revisedMapping[0].stages=[{taskIds:['t1','t3'],proposedStepIndices:[0]},{taskIds:['t4'],proposedStepIndices:[1,2,3,4]}];
+    const remapped=await call('save_workshop_phase',{phase:6,answers:{workflowComparisons:revisedMapping}});
+    assert.deepEqual(remapped._meta.workbook.phases[5].answers.workflowComparisons,revisedMapping);
+    const broken=structuredClone(revisedMapping);broken[0].stages[1].proposedStepIndices=[1,1,2,3,4];
+    const invalid=await call('save_workshop_phase',{phase:6,answers:{workflowComparisons:broken}});
+    assert.equal(invalid.structuredContent.completeness.complete,false);
+    const cleared=await call('save_workshop_phase',{phase:6,answers:{workflowComparisons:[]}});
+    assert.equal(cleared.structuredContent.completeness.complete,true);
+    assert.deepEqual(cleared._meta.workbook.phases.slice(0,5),saved._meta.workbook.phases.slice(0,5));
+    await call('save_workshop_phase',{phase:6,answers:{workflowComparisons:mappings}});
     const done=await call('confirm_workshop_phase',{phase:6,approved:true,confirmation:approval,requestId:'comparison-final'});
     assert.equal(done.structuredContent.nextQuestion.kind,'complete');
     assert.equal(done.structuredContent.export.status,'ready');
@@ -42,6 +53,10 @@ test('persistent MCP saves, approves and resumes comparisons without new questio
     const oldRef={...ref};
     const resumed=await call('resume_workshop');
     assert.deepEqual(resumed._meta.workbook.phases[5].answers.workflowComparisons,mappings);
+    const changedAlignment=await call('save_workshop_phase',{phase:6,answers:{workflowComparisons:revisedMapping}});
+    assert.equal(changedAlignment._meta.workbook.phases[5].status,'draft');
+    assert.equal(changedAlignment.structuredContent.nextQuestion.kind,'approval');
+    await call('confirm_workshop_phase',{phase:6,approved:true,confirmation:approval,requestId:'comparison-reapproved'});
     const candidates=structuredClone(resumed._meta.workbook.phases[3].answers.candidates);
     candidates[0].workflow.reverse();
     const changed=await call('save_workshop_phase',{phase:4,answers:{candidates}});

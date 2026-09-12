@@ -29,6 +29,10 @@ function patchArrays(record,phase,answers,edits=[]) {
   const patch=structuredClone(answers);
   const replaced=new Set(edits.filter(e=>e.op==='replace').map(e=>e.field));
   for(const [field,value] of Object.entries(patch)) {
+    // Reference-only diagram mappings are derived, not participant answers.
+    // They must be replaceable or clearable without deleting any saved case.
+    // savePhase still validates their schema and reopens final approval.
+    if(phase===6&&field==='workflowComparisons')continue;
     if(!Array.isArray(value)||!Array.isArray(prior[field])||replaced.has(field))continue;
     const key=field==='choices'?'candidateId':['tasks','candidates'].includes(field)?'id':null;
     const retained=key?prior[field].every(item=>value.some(next=>next[key]===item[key]))
