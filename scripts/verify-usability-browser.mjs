@@ -114,12 +114,21 @@ async function visibleWorkflows(record) {
   for(const candidate of record.phases[3].answers.candidates??[]) {
     const section=frame.locator(`.cv-candidate[data-candidate-id="${candidate.id}"]`).filter({visible:true});
     const flow=section.locator('.cw-use-case-flow');
-    assert.equal(await flow.count(),1,`The visible ${candidate.title} section needs a workflow diagram.`);
-    assert.equal(await flow.isVisible(),true);
-    assert.equal(await flow.locator('li[data-actor]').count(),candidate.workflow.length);
-    assert.equal(await flow.locator('svg.cw-flow-arrow').count(),candidate.workflow.length-1);
-    const text=normal(await flow.innerText());
-    for(const step of candidate.workflow)assert(text.includes(normal(step.action)),`The workflow omitted ${step.action}.`);
+    const comparison=section.locator(`.wfc-comparison[data-comparison-candidate="${candidate.id}"]`);
+    assert.equal((await flow.count())+(await comparison.count()),1,`The visible ${candidate.title} section needs one workflow diagram.`);
+    if(await comparison.count()) {
+      assert.equal(await comparison.isVisible(),true);
+      const text=normal(await comparison.innerText());
+      for(const step of candidate.workflow)assert(text.includes(normal(step.action)),`The comparison omitted ${step.action}.`);
+      assert(text.includes(normal(candidate.humanCheck)),`The comparison omitted the human check for ${candidate.title}.`);
+      assert.equal(await comparison.locator('.wfc-activity[data-actor]').count()>0,true);
+    } else {
+      assert.equal(await flow.isVisible(),true);
+      assert.equal(await flow.locator('li[data-actor]').count(),candidate.workflow.length);
+      assert.equal(await flow.locator('svg.cw-flow-arrow').count(),candidate.workflow.length-1);
+      const text=normal(await flow.innerText());
+      for(const step of candidate.workflow)assert(text.includes(normal(step.action)),`The workflow omitted ${step.action}.`);
+    }
   }
 }
 async function completed(result,{download=false}={}) {
