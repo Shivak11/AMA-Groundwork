@@ -18,6 +18,13 @@ Source baseline: d6868f9, containing locally verified 0.7.0. Live remains 0.6.1.
 - Wide surfaces show paired current/proposed activities in shared positions. Narrow screens and portrait print use a two-column current/proposed matrix, stacking a pair on the smallest screens. Each cell wraps fully, uses consistent 16px inset (print equivalent), with aligned role/action spacing. Do not force fixed card heights, tiny fonts or horizontal scrolling to preserve desktop geometry.
 - Components attach to their named use case rather than inventing per-step component links. MCP/connector or RAG appears only when recorded, with its proposed/needs-confirmation state. Existing full implementation prose remains in the detailed chapter.
 
+## Bounded PDF pagination correction, 12 September 2026
+
+- Every comparison continuation must repeat the use-case name and reference. Aligned continuations state the stage number and total number of stages. The concluding unit states that it contains the human check, output and proposed components.
+- Keep each use case's human check, output and proposed components together as one print unit when their recorded wording is of ordinary length. This prevents a final component, such as Connector, from occupying an otherwise empty page. Long recorded wording may split across pages so that the renderer never clips or truncates it.
+- Preserve the two-column current/proposed comparison, full wrapping, flexible activity height and existing semantic colours. Do not reduce the type size or remove participant wording to fit a page.
+- Add focused source and CSS checks for continuation context, summary grouping and the long-content escape. Re-render the current mapped workbook locally, rasterise the comparison pages and confirm that no component-only remainder page, clipping or overlap remains. This local render is not evidence of a deployed runtime.
+
 ## Ownership
 
 Root: PLAN, src/workshop.mjs, src/conversation.mjs, src/workflow-comparison.mjs, src/inline-types.ts, package manifests/version references, host guidance, shared design contract, integration tests and release evidence.
