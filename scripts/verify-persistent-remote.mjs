@@ -73,6 +73,13 @@ try {
   assert.equal(result._meta.workbook.phases[3].answers.candidates.length,answers[3].candidates.length);
   assert.equal(result._meta.workbook.phases[4].status,'needs_review');
   for(const phase of [4,5,6])result=await call('confirm_workshop_phase',{record:result.structuredContent.record,phase,approved:true,confirmation:approval,requestId:`live-reapproved-${phase}`});
+  if(result.structuredContent.export.status!=='ready'){
+    // The recovery sequence confirms three chapters faster than a classroom
+    // group would. Wait for one new browser slot, then test the documented
+    // export retry without repeating any approval.
+    await new Promise(resolve=>setTimeout(resolve,21_000));
+    result=await call('export_workbook',{record:result.structuredContent.record,mode:'text'});
+  }
   await saveFiles(result,'corrected-final');
   const shared=await fetch(new URL('/api/workbook',endpoint),{headers:{Authorization:`Bearer ${readKey}`}});
   assert.equal(shared.status,200);assert.equal((await shared.json()).revision,result.structuredContent.record.revision);
