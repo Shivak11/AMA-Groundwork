@@ -65,7 +65,7 @@ export async function createPersistentWorkshopServer({sessionStore:store,pdfRend
   if(!store||typeof pdfRenderer!=='function'||typeof file!=='function')throw new Error('Persistent workshop adapters are required.');
   const origin=new URL(baseUrl);
   if(origin.protocol!=='https:'||origin.username||origin.password||origin.search||origin.hash||origin.pathname!=='/')throw new Error('A fixed HTTPS workshop origin is required.');
-  const server=new McpServer({name:'ai-use-case-workshop',version:'0.8.1'},{instructions:`${PARTICIPANT_LANGUAGE_POLICY} ${COMPLETION_POLICY} ${hostGuide} Internal access policy, explain only when relevant or requested: ${retention}`});
+  const server=new McpServer({name:'ama-groundwork',version:'0.9.0'},{instructions:`${PARTICIPANT_LANGUAGE_POLICY} ${COMPLETION_POLICY} ${hostGuide} Internal access policy, explain only when relevant or requested: ${retention}`});
   const teaching=await file('skills/ai-use-case-workshop/references/phases.md');
   const capability=()=>getUiCapability(capabilitiesOverride??server.server.getClientCapabilities())?.mimeTypes?.includes(RESOURCE_MIME_TYPE);
   const ensureWrite=()=>{if(!writesEnabled)throw Object.assign(new Error('Saving is temporarily paused.'),{safeMessage:'Saving is temporarily paused. Your saved workbook, history and downloads remain available.'});};
@@ -131,7 +131,7 @@ export async function createPersistentWorkshopServer({sessionStore:store,pdfRend
       if(!snapshot.record.phases.some(p=>p.status!=='draft'))throw new Error('Approve the first step before generating a PDF. The saved draft is still available.');
       const bytes=await renderPdf(snapshot.record);
       const pdf=await store.createFileTicket(loaded.reference.key,revision,'pdf');
-      result.structuredContent.export={...urls,status:'ready',pdfUrl:`${origin.origin}/files/${pdf.ticket}`,name:`our-ai-use-case-portfolio-r${revision}.pdf`,bytes:bytes.length};
+      result.structuredContent.export={...urls,status:'ready',pdfUrl:`${origin.origin}/files/${pdf.ticket}`,name:`ama-groundwork-r${revision}.pdf`,bytes:bytes.length};
       result.content[0].text+=`\n\n[Download PDF](${result.structuredContent.export.pdfUrl}) · [Open workbook](${result.structuredContent.workspace.url})`;
     }catch {
       result.structuredContent.export={...urls,status:'failed',message:'The PDF or temporary file links could not be prepared. Saved answers and approvals are retained.',retryTool:'export_workbook'};
@@ -261,8 +261,9 @@ export async function createPersistentWorkshopServer({sessionStore:store,pdfRend
     try {
       const {record}=await store.load(args.record.key,args.record.revision);
       if(!record.phases.some(p=>p.status!=='draft'))throw new Error('Approve the first step before exporting a PDF.');
-      const pdf=await renderPdf(record),name=`our-ai-use-case-portfolio-r${record.revision}.pdf`;
-      const result={content:[{type:'text',text:'Deliver the attached compressed PDF through the host file controls.'},{type:'resource',resource:{uri:`workbook://exports/${name}.gz`,mimeType:'application/gzip',blob:gzipSync(pdf,{level:9}).toString('base64')}}],structuredContent:{export:{status:'ready',revision:record.revision,name,mimeType:'application/pdf',encoding:'gzip',bytes:pdf.length,sha256:createHash('sha256').update(pdf).digest('hex')}}};
+      const pdf=await renderPdf(record),name=`ama-groundwork-r${record.revision}.pdf`;
+      const resourceName=`our-ai-use-case-portfolio-r${record.revision}.pdf`;
+      const result={content:[{type:'text',text:'Deliver the attached compressed PDF through the host file controls.'},{type:'resource',resource:{uri:`workbook://exports/${resourceName}.gz`,mimeType:'application/gzip',blob:gzipSync(pdf,{level:9}).toString('base64')}}],structuredContent:{export:{status:'ready',revision:record.revision,name,mimeType:'application/pdf',encoding:'gzip',bytes:pdf.length,sha256:createHash('sha256').update(pdf).digest('hex')}}};
       if(JSON.stringify(result).length>140000)throw new Error('Use normal HTTPS file links for this workbook.');return finish(result);
     }catch{return {isError:true,content:[{type:'text',text:'The file was not delivered. Use export_workbook for a fresh HTTPS PDF link; the saved workbook is unchanged.'}]};}
   });

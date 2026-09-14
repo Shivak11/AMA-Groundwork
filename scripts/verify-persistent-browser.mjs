@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {gunzipSync} from 'node:zlib';
 import {mkdir,readFile,writeFile} from 'node:fs/promises';
+import {fileURLToPath} from 'node:url';
 import {chromium} from 'playwright';
 import {Client} from '@modelcontextprotocol/sdk/client/index.js';
 import {InMemoryTransport} from '@modelcontextprotocol/sdk/inMemory.js';
@@ -145,7 +146,7 @@ async function mount(initial,{theme='light',os='light'}={}) {
   await waitRecord(initial);await flush();
   const actual=await frame.locator('body').evaluate(()=>({secure:isSecureContext,crypto:Boolean(crypto?.subtle),hostDark:document.documentElement.classList.contains('dark'),osDark:matchMedia('(prefers-color-scheme:dark)').matches,ink:getComputedStyle(document.querySelector('.inline-workbook')).color,background:getComputedStyle(document.querySelector('.inline-workbook')).backgroundColor}));
   assert.equal(actual.secure,true);assert.equal(actual.crypto,true);assert.equal(actual.hostDark,theme==='dark');assert.equal(actual.osDark,os==='dark');themes.push({surface:'widget',theme,os,...actual});
-  assert.equal(actual.ink,theme==='dark'?'rgb(238, 234, 226)':'rgb(48, 51, 46)');
+  assert.equal(actual.ink,theme==='dark'?'rgb(242, 245, 245)':'rgb(23, 48, 51)');
   assert.equal(actual.background,'rgba(0, 0, 0, 0)');
 }
 async function emit(result) {
@@ -181,7 +182,7 @@ async function measureCard(phase,theme) {
 async function screen(name,target=page) {
   const file=new URL(`${name}.png`,screens);
   const mask=target===page?[frame.locator('.cw-access-link,[aria-label="Private continuation reference"]').filter({visible:true})]:[];
-  await target.screenshot({path:file.pathname,fullPage:true,mask});screenshots.push(`screens/${name}.png`);
+  await target.screenshot({path:fileURLToPath(file),fullPage:true,mask});screenshots.push(`screens/${name}.png`);
 }
 async function idle(){await frame.locator('.inline-workbook[aria-busy="false"]').waitFor();await flush();}
 const visibleButton=name=>frame.getByRole('button',{name,exact:true}).filter({visible:true}).first();
@@ -189,7 +190,7 @@ async function openBook() {
   await visibleButton('View workbook').click();await frame.locator('#workshop-book-dialog').waitFor({state:'visible'});
   const book=frame.locator('#workshop-book-dialog');
   assert.equal(await book.locator('input,textarea,select,[contenteditable]').count(),0);
-  assert.equal(await frame.locator('[data-compact="true"]').filter({visible:true}).count(),0);
+  assert.equal(await frame.locator('.cw-card [data-compact="true"]').filter({visible:true}).count(),0);
   return book;
 }
 async function closeBook(){await visibleButton('Close workbook').click();await frame.locator('#workshop-book-dialog').waitFor({state:'hidden'});await flush();assert.equal(await visibleButton('View workbook').evaluate(node=>node===document.activeElement),true);}
@@ -201,7 +202,11 @@ async function revealFiles() {
 const strings=value=>typeof value==='string'?[value]:Array.isArray(value)?value.flatMap(strings):value&&typeof value==='object'?Object.values(value).flatMap(strings):[];
 async function completeWording(book,record) {
   const text=await book.evaluate(node=>{const copy=node.cloneNode(true);copy.querySelectorAll('pre').forEach(item=>item.remove());return copy.textContent;});
-  for(const phase of record.phases)for(const value of strings(phase.answers))assert(text.includes(value),`Step ${phase.id} lost saved wording: ${value.slice(0,60)}`);
+  for(const phase of record.phases)for(const value of strings(phase.answers)){
+    if(value==='Test a use case'){assert(text.includes('A bounded implementation test is proposed.'));continue;}
+    if(value==='Do not pilot yet'){assert(text.includes('Do not begin an implementation test yet.'));continue;}
+    assert(text.includes(value),`Step ${phase.id} lost saved wording: ${value.slice(0,60)}`);
+  }
   assert(text.includes(record.group.problem));
   assert(text.includes(record.group.name));
 }
@@ -216,7 +221,7 @@ try {
   result=await call('save_workshop_phase',{record:result.structuredContent.record,phase:1,answers:{outcome:longOutcome}});
   const longView=await call('show_workbook',{record:result.structuredContent.record,phase:1});
   await emit(longView);await waitRecord(longView);await compactCard();
-  assert(!(await frame.locator('.inline-workbook').innerText()).includes(longOutcome),'The compact card repeats the complete long paragraph.');
+  assert((await frame.locator('.inline-workbook').innerText()).includes(longOutcome),'The card shortened or omitted the recorded paragraph.');
   const longBook=await openBook();await completeWording(longBook,longView._meta.workbook);await screen('long-draft-workbook');await closeBook();
   const draftExport=await call('export_workbook',{record:longView.structuredContent.record});
   assert.equal(draftExport.structuredContent.export.status,'failed');
@@ -226,7 +231,7 @@ try {
   assert.equal(await frame.getByRole('alert').innerText(),'The file request did not complete. Your answers are saved.');
   await openBook();assert.match(await frame.getByRole('alert').innerText(),/^Your answers are saved, but the PDF was not generated\./);assert(!/approved/i.test(await frame.getByRole('alert').innerText()));await closeBook();
   await emit(longView);await waitRecord(longView);await compactCard();
-  checks.push('The empty and long-answer draft cards show one View workbook action. Full draft wording is available after expansion, without answer inputs or routine PDF/storage notices.');
+  checks.push('The empty and long-answer draft cards show one View workbook action. The full draft wording remains visible without truncation, answer inputs or routine PDF/storage notices.');
   const snapshots=[];
   for(let phase=1;phase<=6;phase++) {
     result=await call('save_workshop_phase',{record:result.structuredContent.record,phase,answers:answers[phase-1]});
@@ -238,12 +243,14 @@ try {
     assert.equal(result._meta.workbook.phases[phase-1].status,'confirmed');assert.equal(result.structuredContent.export.status,'ready');
     await emit(result);await waitRecord(result);
     assert.equal(await frame.locator('.cw-progress [data-state="approved"]').count(),phase);
-    await compactCard();
-    const book=await openBook();await completeWording(book,result._meta.workbook);const text=await book.textContent();
+    if(phase<6)await compactCard();
+    const book=phase===6?frame.locator('#workshop-book-dialog'):await openBook();
+    if(phase===6)await book.waitFor({state:'visible'});
+    await completeWording(book,result._meta.workbook);const text=await book.textContent();
     for(const marker of chapterMarkers.slice(0,phase))assert(text.includes(marker));
     await closeBook();await measureCard(phase,'light');await screen(`step-${phase}-approved`);snapshots.push(result);
   }
-  checks.push('Six real SQLite-backed phases render six distinct compact read-only visuals, one closed action and a labelled progress track. Short model references and full _meta.workbook snapshots stay aligned; each expanded workbook retains every saved answer including drafts.');
+  checks.push('Six real SQLite-backed phases render six distinct read-only visuals and a labelled progress track. The completed workbook opens automatically. Short model references and full _meta.workbook snapshots stay aligned; each workbook retains every saved answer including drafts.');
   const complete=snapshots[5];
   await openBook();await screen('complete-book');await closeBook();
   const rename=await call('save_workshop_phase',{record:complete.structuredContent.record,phase:6,group:renamedGroup});
@@ -284,12 +291,14 @@ try {
   await page.setViewportSize({width:600,height:900});
   for(let phase=1;phase<=6;phase++) {
     await mount(snapshots[phase-1],{theme:'light',os:'dark'});
+    if(phase===6)await closeBook();
     await compactCard();await noOverflow();await measureCard(phase,'light');await screen(`host-600-step-${phase}`);
   }
   for(const theme of ['light','dark']) {
     await page.setViewportSize({width:320,height:900});
     for(let phase=1;phase<=6;phase++) {
       await mount(snapshots[phase-1],{theme,os:theme==='light'?'dark':'light'});
+      if(phase===6)await closeBook();
       await compactCard();await noOverflow();await measureCard(phase,theme);await screen(`mobile-${theme}-step-${phase}`);
       const book=await openBook();await completeWording(book,snapshots[phase-1]._meta.workbook);await noOverflow();await closeBook();
     }
@@ -348,7 +357,7 @@ try {
     await workspacePage.setViewportSize({width:320,height:900});await workspacePage.emulateMedia({colorScheme:theme});
     await noOverflow(workspacePage.locator('body'));
     const colour=await workspacePage.locator('body').evaluate(node=>getComputedStyle(node).backgroundColor);
-    assert.equal(colour,theme==='dark'?'rgb(33, 33, 31)':'rgb(250, 249, 246)');themes.push({surface:'workspace',theme,background:colour});
+    assert.equal(colour,theme==='dark'?'rgb(25, 28, 29)':'rgb(255, 255, 255)');themes.push({surface:'workspace',theme,background:colour});
     await screen(`workspace-mobile-${theme}`,workspacePage);
   }
   checks.push('The actual private workspace route renders real composed HTML, latest and historical versions, a sandboxed book and 320 px light/dark layouts. Read keys travel only in same-origin authorisation headers, never URL paths or queries.');
@@ -357,11 +366,11 @@ try {
   const beforeBudget=db.sqlite.prepare('SELECT used_bytes FROM workshop_storage_budget').get().used_bytes;
   const beforeTickets=db.sqlite.prepare('SELECT count(*) AS n FROM workshop_file_tickets').get().n;
   for(const kind of ['pdf','json']) {
-    await workspacePage.getByRole('button',{name:kind==='pdf'?'Prepare PDF':'Prepare saved record',exact:true}).click();
+    await workspacePage.locator(kind==='pdf'?'button#pdf':'button#json').click();
     const link=workspacePage.getByRole('link',{name:kind==='pdf'?'Download PDF':'Download saved record',exact:true});await link.waitFor();
     const [download]=await Promise.all([workspacePage.waitForEvent('download'),link.click()]);
-    const expectedName=`our-ai-use-case-portfolio-r${renamed._meta.workbook.revision}.${kind}`;assert.equal(download.suggestedFilename(),expectedName);
-    const destination=new URL(`controlled-${expectedName}`,out);await download.saveAs(destination.pathname);
+    const expectedName=kind==='pdf'?`ama-groundwork-r${renamed._meta.workbook.revision}.pdf`:`ama-groundwork-revision-${renamed._meta.workbook.revision}.json`;assert.equal(download.suggestedFilename(),expectedName);
+    const destination=new URL(`controlled-${expectedName}`,out);await download.saveAs(fileURLToPath(destination));
     const bytes=await readFile(destination);assert.equal(await download.failure(),null);
     if(kind==='pdf')assert.deepEqual(bytes,pdfStub);else assert.deepEqual(JSON.parse(bytes),renamed._meta.workbook);
     downloadReceipts.push({surface:'controlled Chromium download',kind,revision:renamed._meta.workbook.revision,bytes:bytes.length,sha256:createHash('sha256').update(bytes).digest('hex'),file:`controlled-${expectedName}`,stub:kind==='pdf'});

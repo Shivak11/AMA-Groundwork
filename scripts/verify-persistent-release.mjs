@@ -1,16 +1,17 @@
 import {execFileSync,spawnSync} from 'node:child_process';
 import {mkdir,writeFile,readFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
+import {fileURLToPath} from 'node:url';
 
-const root=new URL('../',import.meta.url).pathname;
-const output=new URL('../output/persistent-release-v061/',import.meta.url);
+const root=fileURLToPath(new URL('../',import.meta.url));
+const output=new URL('../output/persistent-release-v090/',import.meta.url);
 await mkdir(output,{recursive:true});
 const git=(...args)=>execFileSync('git',args,{cwd:root,encoding:'utf8'}).trim();
 const sourceHead=git('rev-parse','HEAD');
 if(git('status','--porcelain'))throw new Error('Release verification requires a clean committed worktree.');
 const checks=[];
 for(const [name,command,args] of [['tests',process.execPath,['--test','--test-reporter=spec',...git('ls-files','tests/*.test.mjs').split('\n')]],['typecheck','npm',['run','typecheck']],['build','npm',['run','build:remote']],['browser',process.execPath,['scripts/verify-persistent-browser.mjs']]]) {
-  const result=spawnSync(command,args,{cwd:root,encoding:'utf8',maxBuffer:4_000_000,env:{...process.env,WRANGLER_SEND_METRICS:'false',WRANGLER_LOG_PATH:new URL('wrangler-build.log',output).pathname}});
+  const result=spawnSync(command,args,{cwd:root,encoding:'utf8',maxBuffer:4_000_000,env:{...process.env,WRANGLER_SEND_METRICS:'false',WRANGLER_LOG_PATH:fileURLToPath(new URL('wrangler-build.log',output))}});
   await writeFile(new URL(`${name}.log`,output),`Source HEAD: ${sourceHead}\nCommand: ${command} ${args.join(' ')}\nExit: ${result.status}\n${result.stdout??''}\n${result.stderr??''}`);
   checks.push({name,exitCode:result.status,log:`${name}.log`});
   if(result.status!==0)break;

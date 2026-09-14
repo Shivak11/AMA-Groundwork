@@ -27,6 +27,9 @@ function fixture() {
 test('overview follows cover and distinguishes original problem, agreed diagnosis and named use cases', () => {
   const record = fixture();
   const html = renderWorkbookHtml(record);
+  assert.match(html,/<title>AMA-Groundwork: AI Use-Case Portfolio — Fictional 1A<\/title>/);
+  assert.match(html,/<h1 id="book-title">AMA-Groundwork: AI Use-Case Portfolio<\/h1>/);
+  assert(!html.includes('Our AI Use-Case Portfolio'));
   assert(html.indexOf('id="book-title"') < html.indexOf('id="workbook-overview"'));
   assert(html.indexOf('id="workbook-overview"') < html.indexOf('id="phase-1"'));
   const overview = renderBookOverview(record);

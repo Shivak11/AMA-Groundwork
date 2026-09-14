@@ -8,6 +8,9 @@ function completed(n=6){let r=createRecord(group);for(let i=1;i<=n;i++)r=confirm
 const strings=(value,key='')=>typeof value==='string'?(['id','candidateId','taskIds'].includes(key)?[]:[value]):Array.isArray(value)?value.flatMap(item=>strings(item,key)):value&&typeof value==='object'?Object.entries(value).flatMap(([k,v])=>strings(v,k)):[];
 test('every confirmed answer is retained in the semantic book, with six distinct visual structures',()=>{
   const html=renderWorkbookHtml(completed());
+  assert(html.includes('<title>AMA-Groundwork: AI Use-Case Portfolio — '));
+  assert(html.includes('<h1 id="book-title">AMA-Groundwork: AI Use-Case Portfolio</h1>'));
+  assert(!html.includes('Our AI Use-Case Portfolio'));
   for(const word of strings(answers))assert(html.includes(escapeBookText(word)),`Missing group wording: ${word}`);
   for(const kind of ['goal','gap-map','task-journey','candidate-work-map','priority-comparison','test-plan'])assert(html.includes(`data-book-visual="${kind}"`));
   for(let i=1;i<=6;i++)assert(html.includes(`Step ${i}.`));

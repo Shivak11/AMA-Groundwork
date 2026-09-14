@@ -8,7 +8,7 @@ import workbookCss from '../skills/ai-use-case-workshop/assets/workbook.css';
 import workbookFont from '../skills/ai-use-case-workshop/assets/fonts/DMSerifDisplay-Regular.ttf';
 import { decodePdfFile } from './pdf-file.mjs';
 
-const app = new App({name:'AI Use-Case Workshop',version:'0.8.1'}, {availableDisplayModes:['inline','fullscreen']}, {autoResize:true});
+const app = new App({name:'AMA-Groundwork',version:'0.9.0'}, {availableDisplayModes:['inline','fullscreen']}, {autoResize:true});
 const root = createRoot(document.getElementById('workshop-root'));
 let current=null, metadata={}, capabilities={}, host={}, bookHtml;
 let connected=false, pending=false, generation=0;
@@ -67,13 +67,14 @@ async function download(kind) {
   if(isPdf && (!supports('serverTools') || typeof DecompressionStream==='undefined'))return requestFiles();
   const token=generation;pending=true;render();
   try {
-    let file={name:`workshop-revision-${current.record.revision}.json`,text:JSON.stringify(current.record,null,2)};
+    let file={name:`ama-groundwork-revision-${current.record.revision}.json`,text:JSON.stringify(current.record,null,2)};
     if(isPdf) {
       showNotice('Preparing your workbook PDF.');
       const result=await app.callServerTool({name:'download_workbook_file',arguments:{record:current.reference??current.record}},{timeout:60000});
       if(token!==generation)return;
       if(result.isError)throw new Error(errorText(result)||'The PDF could not be prepared.');
-      file=await decodePdfFile(result,current.record.revision);
+      const decoded=await decodePdfFile(result,current.record.revision);
+      file={...decoded,name:`ama-groundwork-r${current.record.revision}.pdf`};
       if(token!==generation)return;
     }
     const name=String(file.name).replace(/[^A-Za-z0-9._-]/g,'-').slice(0,160);

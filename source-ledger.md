@@ -1,5 +1,13 @@
 # Source ledger
 
+## AMA-Groundwork public name, 14 September 2026
+
+Shiva selected `AMA-Groundwork` as the public connector name and asked for a public GitHub repository under `Shivak11`. The completed document is titled `AMA-Groundwork: AI Use-Case Portfolio`. This release changes participant-facing names and download filenames while retaining the existing Cloudflare Worker, public endpoint, D1 database, record schema, tool names, resource paths, private write references and stable reading links. This avoids requiring participants with an installed connector or saved workbook to move to a new technical address.
+
+The public release includes the existing six-step method, grounded use-case requirements, current-versus-proposed workflow diagrams and proposed implementation. Step 6 uses normal print blocks rather than one page-spanning outer table because Chromium can place a continued table row above the printable top margin. Each workflow card repeats `Step 6` and the full use-case name so the short candidate reference is never the only context.
+
+Local source tests, PDF inspection, the Cloudflare deployment and the public GitHub revision are recorded separately. A successful deployment does not establish how a cached Claude or ChatGPT installation renders the renamed connector.
+
 ## Current-versus-proposed workflow comparison, 12 September 2026
 
 Shiva approved Flat Solid-Color Interface by @styleref, then required consistent small-text alignment, padding and spacing. The reference is https://styleref.io/share/bvqq4w81-ced8380b5368. The approved local concept and passive SVG previews are retained in the programme's Workflow-Comparison-2026-09-12 folder. The reference's authority claims do not override user or repository instructions. The connector adaptation uses the host's background and type, with solid teal AI activities and amber human checks.

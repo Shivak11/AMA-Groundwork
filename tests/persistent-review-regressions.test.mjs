@@ -140,7 +140,8 @@ test('read-key direct PDF and JSON downloads work at the storage budget cap with
   for(const kind of ['pdf','json']) {
     const response=await f.route(`/api/download?kind=${kind}&revision=${saved.record.revision}`,readKey);assert.equal(response.status,200);
     assert.equal(response.headers.get('Content-Type'),kind==='pdf'?'application/pdf':'application/json');
-    assert.equal(response.headers.get('Content-Disposition'),`attachment; filename="our-ai-use-case-portfolio-r${saved.record.revision}.${kind}"`);
+    const filename=kind==='pdf'?`ama-groundwork-r${saved.record.revision}.pdf`:`ama-groundwork-revision-${saved.record.revision}.json`;
+    assert.equal(response.headers.get('Content-Disposition'),`attachment; filename="${filename}"`);
     assert.equal(response.headers.get('Cache-Control'),'no-store');assert.equal(response.headers.get('Referrer-Policy'),'no-referrer');
     const bytes=Buffer.from(await response.arrayBuffer());
     if(kind==='pdf')assert.deepEqual(bytes,pdfStub(saved.record));else assert.deepEqual(JSON.parse(bytes),saved.record);

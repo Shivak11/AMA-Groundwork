@@ -1,4 +1,8 @@
-# AI Use-Case Workshop
+# AMA-Groundwork
+
+AMA-Groundwork guides a group from one work problem to a set of grounded, prioritised AI use cases. Its completed workbook is titled `AMA-Groundwork: AI Use-Case Portfolio`.
+
+Version 0.9.0 introduces the AMA-Groundwork name across the connector and workbook. The existing Cloudflare Worker, endpoint, tool names, saved records, access references and retention rules remain unchanged so existing Claude and ChatGPT connector installations continue to work. See AMA-GROUNDWORK-RENAME-PLAN.md and RELEASE-0.9.0.md for the rename scope and verification boundary.
 
 Version 0.8.1 uses one visual system across the connector, saved reader and PDF. It adds grounded use-case requirements and a proposed implementation, full wrapping text, named decision choices and automatic date capture. The completed workbook opens with Download PDF prominent and retains all identified cases even when implementation is deferred. It includes the original and agreed underlying problem, current and proposed workflow diagrams, and the technical proposal. See USABILITY-REVISION-PLAN.md and RELEASE-0.8.1.md for scope and proof.
 
@@ -72,6 +76,6 @@ The full-record server remains available only for explicit local compatibility. 
 
 All steps, corrections, approvals and PDF requests have text equivalents in the same conversation. A separate browser app is not required. The optional stable reader supports later delivery and exports. Cross-client resumption requires the group's private reference; it is not account/name-based recovery. No claim of pinned hot reload or live card replacement is made.
 
-The canonical public endpoint is https://ai-use-case-workshop.shiva-research11.workers.dev/mcp. Shiva authorised this interface replacement at the existing endpoint. Historical live/ChatGPT reports in remote/ describe older versions. Confirm the server version and widget hash against the latest release record; a source archive or local test alone is not proof of live deployment or Claude/ChatGPT rendering.
+AMA-Groundwork retains the canonical public endpoint at https://ai-use-case-workshop.shiva-research11.workers.dev/mcp. The existing Worker and URL keep their earlier technical identity so installed connectors do not need to change. Historical live and ChatGPT reports in remote/ describe older versions under their original release names. Confirm the server version and widget hash against the latest release record; a source archive or local test alone is not proof of live deployment or Claude/ChatGPT rendering.
 
 Prepared by Dr. Shiva Kakkar. [Click here to access the author's profile](https://www.shivakakkar.com/).

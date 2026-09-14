@@ -1,13 +1,13 @@
 {
-  "name": "ai-use-case-workshop",
-  "version": "0.8.1",
-  "description": "Guide groups through conversation and visual choices to create their AI use-case portfolio.",
+  "name": "ama-groundwork",
+  "version": "0.9.0",
+  "description": "Help groups identify grounded AI use cases through conversation and visual choices.",
   "author": { "name": "Dr. Shiva Kakkar", "url": "https://www.shivakakkar.com/" },
   "keywords": ["workshop", "ai-adoption", "use-cases", "mcp", "education"],
   "skills": "./skills/",
   "interface": {
-    "displayName": "AI Use-Case Workshop",
-    "shortDescription": "Visual group decisions and a growing workbook",
+    "displayName": "AMA-Groundwork",
+    "shortDescription": "Identify AI use cases and build a visual workbook",
     "longDescription": "Work through six phases in conversation. The connector shows concise visual summaries, and each approved chapter enters a cumulative workbook and PDF. The final workbook records the problem, identified AI use cases, current and proposed workflows, human decisions and proposed implementation.",
     "developerName": "Dr. Shiva Kakkar",
     "category": "Productivity",

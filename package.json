@@ -1,7 +1,7 @@
 {
-  "name": "ai-use-case-workshop",
-  "version": "0.8.1",
-  "description": "A conversational group workshop with cumulative use-case PDFs and optional MCP Apps views.",
+  "name": "ama-groundwork",
+  "version": "0.9.0",
+  "description": "A conversational AI use-case identification workshop with cumulative visual workbooks and MCP Apps views.",
   "type": "module",
   "private": true,
   "engines": {

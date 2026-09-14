@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {gunzipSync} from 'node:zlib';
 import {mkdir,readFile,writeFile} from 'node:fs/promises';
+import {fileURLToPath} from 'node:url';
 import {chromium} from 'playwright';
 import {Client} from '@modelcontextprotocol/sdk/client/index.js';
 import {InMemoryTransport} from '@modelcontextprotocol/sdk/inMemory.js';
@@ -99,7 +100,7 @@ async function noOverflow(target=frame.locator('body')) {
   const box=await target.evaluate(()=>({width:innerWidth,html:document.documentElement.scrollWidth,body:document.body.scrollWidth}));
   assert(box.html<=box.width+1&&box.body<=box.width+1,`Horizontal overflow: ${JSON.stringify(box)}`);
 }
-async function screen(name){const file=new URL(`${name}.png`,screens);await page.screenshot({path:file.pathname,fullPage:true});screenshots.push(`screens/${name}.png`);}
+async function screen(name){const file=new URL(`${name}.png`,screens);await page.screenshot({path:fileURLToPath(file),fullPage:true});screenshots.push(`screens/${name}.png`);}
 async function closed(){await readOnly();assert.equal(await frame.locator('#workshop-book-dialog').isVisible(),false);assert.equal(await visibleButton('View workbook').isVisible(),true);}
 async function closeBook(){await visibleButton('Close workbook').click();await closed();assert.equal(await visibleButton('View workbook').evaluate(node=>node===document.activeElement),true);}
 async function fullText(values){
@@ -139,8 +140,8 @@ async function completed(result,{download=false}={}) {
   const inHost=await book.innerText();
   assert.doesNotMatch(inHost,/Cloudflare|ws1_|wr1_|revision \d+|paste (?:this|the).*reference|Would you like me to build/i);
   let text=inHost;
-  const composed=book.locator('iframe[title="Composed workshop workbook"]');
-  if(await composed.isVisible())text+=' '+await frame.frameLocator('iframe[title="Composed workshop workbook"]').locator('body').innerText();
+  const composed=book.locator('iframe[title="AMA-Groundwork: AI Use-Case Portfolio"]');
+  if(await composed.isVisible())text+=' '+await frame.frameLocator('iframe[title="AMA-Groundwork: AI Use-Case Portfolio"]').locator('body').innerText();
   for(const candidate of result._meta.workbook.phases[3].answers.candidates)assert(normal(text).includes(normal(candidate.title)),`Completed workbook omitted ${candidate.title}.`);
   assert(normal(text).includes(normal(result._meta.workbook.phases[2].answers.underlyingProblem)),'The agreed underlying problem is not visible in the completed reading experience.');
   assert(normal(text).includes(normal(result._meta.workbook.group.problem)),'The original problem is not visible in the completed reading experience.');

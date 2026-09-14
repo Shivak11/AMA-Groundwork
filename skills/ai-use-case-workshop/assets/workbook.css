@@ -70,6 +70,10 @@ em, i { font-style: normal; }
 .chapter-layout > thead > .chapter-title-row > td { text-align: left; }
 .chapter-layout > tbody > .chapter-block > td > .book-field { margin-top: 6mm; }
 .chapter-layout > tbody > .chapter-block:first-child > td > .book-field { margin-top: 0; }
+.chapter-stack { display: block; }
+.chapter-stack > .chapter-title-row { display: block; }
+.chapter-stack > .chapter-block { display: block; margin: 0; }
+.chapter-continuation-label { margin: 0 0 3mm; color: var(--muted); font-size: var(--small-label-size); line-height: 1.35; font-weight: 600; }
 .review-note { border: var(--component-border); border-left: 1.5mm solid var(--human); border-radius: var(--component-radius); padding: var(--component-pad); background: var(--human-soft); color: var(--human-ink); margin-bottom: 6mm; }
 .main-answer { margin: 0 0 8mm; padding: var(--component-pad); background: var(--success-soft); border: var(--component-border); border-left: 1.5mm solid var(--success); border-radius: var(--component-radius); }
 .main-answer h3 { margin-bottom: 3mm; }
@@ -325,9 +329,10 @@ h4 { margin: 0 0 2mm; font-size: var(--small-label-size); font-weight: 600; line
   .chapter-layout > thead > tr { break-inside: avoid; }
   .chapter-layout > tbody > .chapter-block { break-inside: avoid; }
   .long-content .chapter-layout > tbody > .chapter-block { break-inside: auto; }
-  /* Each comparison stage is its own chapter row. A long stage may split;
-     adjacent use cases are never kept together as one page-sized unit. */
-  #phase-6 .chapter-block:has(.book-workflow-comparison) { break-inside: auto; }
+  /* Step 6 uses ordinary blocks because a page-spanning outer table can place
+     continuation content above Chromium's printable top margin. */
+  #phase-6 .chapter-stack > .chapter-block { break-inside: avoid; }
+  #phase-6 .chapter-stack > .chapter-block:has(.book-comparison-long) { break-inside: auto; }
   .book-comparison-start { break-inside: avoid; }
   .book-comparison-start:has(.book-comparison-long) { break-inside: auto; }
   .book-comparison-pair, .book-comparison-sequence, .book-comparison-summary { break-inside: avoid; }
@@ -337,7 +342,7 @@ h4 { margin: 0 0 2mm; font-size: var(--small-label-size); font-weight: 600; line
   .book-comparison-summary-table > tbody > tr { break-inside: avoid; }
   .book-comparison-summary.book-comparison-long .book-comparison-summary-table > tbody > tr { break-inside: auto; }
   .book-workflow-comparison { --comparison-ink: var(--ink); --comparison-muted: var(--muted); --comparison-line: var(--rule); --comparison-neutral: var(--current); font-size: 10.5pt; }
-  .chapter .chapter-header { padding: 0 0 4mm; margin-bottom: 5mm; }
+  .chapter .chapter-header { padding: 3mm 0 4mm; margin-bottom: 5mm; }
   #phase-3 .workflow-selection li { font-size: 10.5pt; padding: var(--component-pad); }
   #phase-3 .case-replay { margin: 4mm 0; padding: 3mm 0; }
   #phase-3 .task-journey > h3 { margin-bottom: 3mm; }

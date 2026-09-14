@@ -6,7 +6,7 @@ import { renderBookCover, escapeBookText } from '../src/book-visuals.mjs';
 import { renderWorkbookHtml } from '../src/render-workbook.mjs';
 import { answers } from '../examples/hiring.mjs';
 
-const title = 'Our AI Use-Case Portfolio';
+const title = 'AMA-Groundwork: AI Use-Case Portfolio';
 // Synthetic boundary wording, not a transcript or a claim about employees.
 const longProblem = 'Fictional remote-team update and review problem. '.repeat(9).slice(0, 400);
 const group = { name: 'Group 1A', members: ['Shiva', 'Chirag'], problem: longProblem, context: 'Fictional cover-layout regression.', date: '2026-09-11' };
@@ -17,6 +17,7 @@ test('the longest allowed problem never becomes the cover title', () => {
   for (const problem of [longProblem, 'Make routine status updates easier to review.', 'X'.repeat(400)]) {
     const cover = renderBookCover(createRecord({ ...group, problem }));
     assert.equal(heading(cover), title);
+    assert.ok(!cover.includes('Our AI Use-Case Portfolio'));
     assert.ok(cover.includes(`<p class="answer">${escapeBookText(problem)}</p>`));
     assert.ok(cover.includes('class="cover-problem"'));
     assert.ok(!cover.includes('cover-long-title'));
@@ -50,6 +51,7 @@ test('local book composition uses the same short cover title and full problem', 
   const html = renderWorkbookHtml(createRecord(group));
   assert.equal(heading(html), title);
   assert.ok(html.includes(`<title>${title} — Group 1A</title>`));
+  assert.ok(!html.includes('Our AI Use-Case Portfolio'));
   assert.ok(html.includes(escapeBookText(longProblem)));
 });
 

@@ -42,7 +42,7 @@ export function renderBookCover(record) {
   const outcome = first && first.status !== 'draft' ? first.answers.outcome : null;
   const status = phase => phase.status === 'confirmed' ? 'Confirmed' : phase.status === 'needs_review' ? 'Needs review' : 'Not yet confirmed';
   return `<section class="cover visual-cover" aria-labelledby="book-title">
-    <h1 id="book-title">Our AI Use-Case Portfolio</h1>
+    <h1 id="book-title">AMA-Groundwork: AI Use-Case Portfolio</h1>
     <section class="cover-problem" aria-labelledby="cover-problem-title"><h2 id="cover-problem-title">The problem we are examining</h2>${answer(group.problem)}</section>
     <div class="cover-group"><h2 class="group-name answer">${escapeBookText(group.name)}</h2><p class="members answer">${escapeBookText(group.members.join(', '))}</p></div>
     ${outcome ? `<section class="cover-outcome"><h2>The outcome we want</h2>${answer(outcome)}${first.status === 'needs_review' ? '<p class="cover-review">This outcome needs review because an earlier answer changed.</p>' : ''}</section>` : '<p class="cover-start">The group has not confirmed an outcome yet.</p>'}
@@ -182,7 +182,7 @@ function comparisonActivities(activities, side, continueAfter = false) {
 }
 
 function comparisonContext(comparison, detail, colspan = 1) {
-  return `<tr class="book-comparison-context-row"><th${colspan > 1 ? ` colspan="${colspan}"` : ' scope="col"'}>Use case: ${escapeBookText(comparison.title)} <span class="case-reference">(${escapeBookText(comparison.candidateId)})</span>. ${escapeBookText(detail)}</th></tr>`;
+  return `<tr class="book-comparison-context-row"><th${colspan > 1 ? ` colspan="${colspan}"` : ' scope="col"'}>Step 6 · AI use case: ${escapeBookText(comparison.title)} <span class="case-reference">(${escapeBookText(comparison.candidateId)})</span>. ${escapeBookText(detail)}</th></tr>`;
 }
 
 function comparisonPair(stage, comparison, index, nextStages) {

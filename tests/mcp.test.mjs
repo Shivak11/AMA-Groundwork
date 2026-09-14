@@ -53,7 +53,7 @@ test('text-only MCP journey generates six cumulative PDFs and receives byte-iden
       assert.deepEqual(Object.keys(file.structuredContent),['export']);
       const manifest=file.structuredContent.export;
       assert.equal(manifest.status,'ready');assert.equal(manifest.revision,record.revision);
-      assert.equal(manifest.name,`our-ai-use-case-portfolio-r${record.revision}.pdf`);
+      assert.equal(manifest.name,`ama-groundwork-r${record.revision}.pdf`);
       assert.equal(manifest.mimeType,'application/pdf');assert.equal(manifest.encoding,'gzip');
       assert.equal(manifest.bytes,(await stub()).length);
       assert.equal(manifest.sha256,createHash('sha256').update(await stub()).digest('hex'));

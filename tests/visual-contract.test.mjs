@@ -48,6 +48,8 @@ test('the read-only workbook resource does not require Prefab or another connect
     }
     const resources=await c.client.listResources();assert(!resources.resources.some(r=>r.uri.includes('prefab')));
     const view=await c.client.readResource({uri:'ui://workshop/checkpoint.html'});
+    assert(view.contents[0].text.includes('<title>AMA-Groundwork</title>'));
+    assert(!view.contents[0].text.includes('<title>Our AI Use-Case Portfolio</title>'));
     assert.equal(view.contents[0]._meta.ui.prefersBorder,false);
     assert.deepEqual(view.contents[0]._meta.ui.csp.connectDomains,[]);
   } finally {await c.close();}

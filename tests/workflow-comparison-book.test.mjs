@@ -54,10 +54,10 @@ test('print units repeat use-case and step context and keep the ordinary conclus
   const record=fixture(),parts=renderBookWorkflowComparisons(record);
   const pairs=parts.filter(part=>part.includes('class="book-comparison-pair'));
   assert.equal(pairs.length,4);
-  pairs.forEach((part,index)=>assert.match(part,new RegExp(`Use case: Clarify an agreed update[\\s\\S]*This is comparison stage ${index+1} of 4\\.`)));
+  pairs.forEach((part,index)=>assert.match(part,new RegExp(`Step 6 · AI use case: Clarify an agreed update[\\s\\S]*This is comparison stage ${index+1} of 4\\.`)));
   const summaries=parts.filter(part=>part.includes('book-comparison-summary'));
   assert.equal(summaries.length,1);
-  assert.match(summaries[0],/Use case: Clarify an agreed update[\s\S]*This comparison concludes with the human check, the recorded output and the proposed components\./);
+  assert.match(summaries[0],/Step 6 · AI use case: Clarify an agreed update[\s\S]*This comparison concludes with the human check, the recorded output and the proposed components\./);
   assert.match(summaries[0],/What a person must check or decide[\s\S]*What someone receives[\s\S]*Proposed components for Clarify an agreed update[\s\S]*Skill[\s\S]*Connector/);
   assert.equal((summaries[0].match(/class="book-comparison-component"/g)||[]).length,2);
   assert(!summaries[0].includes('book-comparison-long'));
@@ -68,7 +68,7 @@ test('print units repeat use-case and step context and keep the ordinary conclus
 
   delete record.phases[5].answers.workflowComparisons;
   const separate=renderBookWorkflowComparisons(record).filter(part=>part.includes('data-sequence='));
-  assert(separate.every(part=>/Use case: Clarify an agreed update/.test(part)));
+  assert(separate.every(part=>/Step 6 · AI use case: Clarify an agreed update/.test(part)));
   assert.match(separate[1],/This is step 2 of 3 in the current work sequence\./);
 });
 
@@ -214,13 +214,14 @@ test('comparison CSS retains full wrapping, flat semantic colours and per-stage 
   assert.match(comparisonCss,/\.book-comparison-arrow \{[^}]*width: 24px; height: 28px; line-height: 0; margin: 2mm auto/);
   assert.match(comparisonCss,/--comparison-ai: var\(--ai\)/);
   assert.match(comparisonCss,/--comparison-check: var\(--human\)/);
-  assert.match(css,/#phase-6 \.chapter-block:has\(\.book-workflow-comparison\) \{ break-inside: auto; \}/);
+  assert.match(css,/#phase-6 \.chapter-stack > \.chapter-block \{ break-inside: avoid; \}/);
   assert.match(css,/\.book-comparison-start \{ break-inside: avoid; \}/);
   assert.match(css,/\.book-comparison-start:has\(\.book-comparison-long\) \{ break-inside: auto; \}/);
   assert.match(css,/\.book-comparison-pair > thead, \.book-comparison-sequence > thead, \.book-comparison-summary-table > thead \{ display: table-header-group; \}/);
   assert.match(css,/\.book-comparison-pair, \.book-comparison-sequence, \.book-comparison-summary \{ break-inside: avoid; \}/);
   assert.match(css,/\.book-comparison-summary\.book-comparison-long \.book-comparison-summary-table > tbody > tr \{ break-inside: auto; \}/);
   assert.match(comparisonCss,/\.book-comparison-context-row th \{[^}]*font-size: var\(--small-label-size\)/);
+  assert.match(renderBookWorkflowComparisons(fixture()).join(''),/Step 6 · AI use case:/);
   assert.match(css,/@media screen and \(max-width: 380px\)/);
   assert.match(css,/content: attr\(data-label\)/);
 });

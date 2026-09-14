@@ -7,7 +7,7 @@ import {decodePdfFile} from '../src/pdf-file.mjs';
 const stub=Buffer.from('%PDF-explicit-decoder-test-stub-not-a-rendered-document\nSource-linked wording remains unchanged.');
 function fileResult(bytes=stub,revision=12) {
   return {
-    structuredContent:{export:{status:'ready',revision,name:`our-ai-use-case-portfolio-r${revision}.pdf`,mimeType:'application/pdf',encoding:'gzip',bytes:bytes.length,sha256:createHash('sha256').update(bytes).digest('hex')}},
+    structuredContent:{export:{status:'ready',revision,name:`ama-groundwork-r${revision}.pdf`,mimeType:'application/pdf',encoding:'gzip',bytes:bytes.length,sha256:createHash('sha256').update(bytes).digest('hex')}},
     content:[{type:'text',text:'Compressed PDF for this saved revision.'},{type:'resource',resource:{uri:`workbook://exports/our-ai-use-case-portfolio-r${revision}.pdf.gz`,mimeType:'application/gzip',blob:gzipSync(bytes).toString('base64')}}],
   };
 }
@@ -15,7 +15,7 @@ function fileResult(bytes=stub,revision=12) {
 test('PDF decoder restores the exact bytes and filename without changing the file result',async()=>{
   const result=fileResult(),before=structuredClone(result);
   const file=await decodePdfFile(result,12);
-  assert.equal(file.name,'our-ai-use-case-portfolio-r12.pdf');
+  assert.equal(file.name,'ama-groundwork-r12.pdf');
   assert.deepEqual(Buffer.from(file.blob,'base64'),stub);assert.deepEqual(result,before);
 });
 

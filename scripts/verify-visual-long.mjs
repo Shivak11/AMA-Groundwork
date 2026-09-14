@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { renderWorkbookHtml, renderWorkbookPdf } from '../src/render-workbook.mjs';
 import { savePhase, confirmPhase } from '../src/workshop.mjs';
@@ -19,7 +20,7 @@ assert(html.includes('&lt;script&gt;'));
 assert(record.phases.slice(1).every(phase => phase.status === 'needs_review'));
 await writeFile(new URL('book.html', folder), html);
 await writeFile(new URL('book.pdf', folder), await renderWorkbookPdf(record));
-const text = execFileSync('pdftotext', ['-layout', new URL('book.pdf', folder).pathname, '-'], { encoding: 'utf8' });
+const text = execFileSync('pdftotext', ['-layout', fileURLToPath(new URL('book.pdf', folder)), '-'], { encoding: 'utf8' });
 assert(text.replace(/\s+/g, ' ').includes(outcome.replace(/\s+/g, ' ')), 'Long hostile answer remains selectable and complete');
 assert(text.includes('Needs review'), 'Dependent chapters disclose required review');
 const browser = await chromium.launch({ headless: true, ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH } : {}) });

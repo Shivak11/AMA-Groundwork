@@ -222,7 +222,7 @@ def build(record):
         Text("Prepared by Dr. Shiva Kakkar", css_class="workshop-credit")
     css = (ROOT / "prefab" / "shortlist.css").read_text(encoding="utf-8")
     theme = Theme(mode="light", gradient=False, css=css)
-    return PrefabApp(title="Our AI Use-Case Portfolio", view=view, state=state, theme=theme, css_class="workshop-shortlist").to_json()
+    return PrefabApp(title="AMA-Groundwork: AI Use-Case Portfolio", view=view, state=state, theme=theme, css_class="workshop-shortlist").to_json()
 
 
 def renderer():

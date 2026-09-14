@@ -1,11 +1,13 @@
 ---
 name: ai-use-case-workshop
-description: Guide a classroom group through conversation and varied visual decisions to identify grounded AI use cases and build a personalised visual workbook. Use for facilitated business workshops across industries, with equivalent text participation and a cumulative PDF after each confirmed phase.
+description: Run AMA-Groundwork with a classroom group through conversation and varied visual decisions to identify grounded AI use cases and build a personalised visual workbook. Use for facilitated business workshops across industries, with equivalent text participation and a cumulative PDF after each confirmed phase.
 ---
 
-# AI Use-Case Workshop
+# AMA-Groundwork
 
-Help a group create `Our AI Use-Case Portfolio` from its own work. The group should leave with a confirmed understanding of its problem, grounded use cases and a reasoned recommendation. Identifying a useful case does not establish implementation readiness. A decision not to pilot AI yet is valid, and every assessed candidate remains in the completed workbook.
+Help a group create `AMA-Groundwork: AI Use-Case Portfolio` from its own work. The group should leave with a confirmed understanding of its problem, grounded use cases and a reasoned recommendation. Identifying a useful case does not establish implementation readiness. A decision not to pilot AI yet is valid, and every assessed candidate remains in the completed workbook.
+
+The skill keeps the internal name `ai-use-case-workshop` and its existing folder path for compatibility. Do not rename connector tools, saved fields, access references or resource paths when using the AMA-Groundwork identity.
 
 ## One question owner
 

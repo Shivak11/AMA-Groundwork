@@ -194,7 +194,7 @@ async function openBook() {
   const opener=frame.getByRole('button',{name:'Open workbook',exact:true}).filter({visible:true}).first();
   await opener.click();
   await frame.locator('#workshop-book-dialog').waitFor({state:'visible'});
-  const book=frame.frameLocator('iframe[title="Composed workshop workbook"]');
+  const book=frame.frameLocator('iframe[title="AMA-Groundwork: AI Use-Case Portfolio"]');
   await book.locator('body').waitFor();
   await book.getByText('Prepared by Dr. Shiva Kakkar',{exact:false}).first().waitFor();
   assert((await book.locator('body').textContent()).includes('Prepared by Dr. Shiva Kakkar'));

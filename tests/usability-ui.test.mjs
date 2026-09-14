@@ -2,13 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
+import {fileURLToPath} from 'node:url';
 import {buildSync} from 'esbuild';
 import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {createRecord,savePhase,confirmPhase} from '../src/workshop.mjs';
 import {group,answers} from '../examples/remote-team.mjs';
 
-const compiled=buildSync({entryPoints:[new URL('../src/inline-view.tsx',import.meta.url).pathname],bundle:true,platform:'node',format:'cjs',jsx:'automatic',write:false,external:['react','react/jsx-runtime'],loader:{'.css':'empty'}}).outputFiles[0].text;
+const compiled=buildSync({entryPoints:[fileURLToPath(new URL('../src/inline-view.tsx',import.meta.url))],bundle:true,platform:'node',format:'cjs',jsx:'automatic',write:false,external:['react','react/jsx-runtime'],loader:{'.css':'empty'}}).outputFiles[0].text;
 const module={exports:{}};
 new Function('require','module','exports',compiled)(createRequire(import.meta.url),module,module.exports);
 const {InlineWorkshop,shouldOpenCompletedWorkbook}=module.exports;
@@ -32,7 +33,8 @@ test('a complete current workbook opens on initial load with an immediate PDF co
   assert(!sectionTag(html).includes('hidden'));
   assert.match(html,/<div class="cw-card" hidden=""/);
   assert.match(html,/<button[^>]*class="cw-download-primary"[^>]*>Download PDF<\/button>/);
-  assert.match(html,/<h2 id="book-dialog-title">Your AI use cases<\/h2>/);
+  assert.match(html,/<h2 id="book-dialog-title">AMA-Groundwork: AI Use-Case Portfolio<\/h2>/);
+  assert(!html.includes('Our AI Use-Case Portfolio'));
   const overview=finalOverview(html);
   assert(overview.includes(record.group.problem));
   assert(overview.includes(record.phases[2].answers.underlyingProblem));
@@ -84,6 +86,10 @@ test('full wording is escaped and private metadata stays inside closed disclosur
 
 test('file fallback does not put a private continuation reference into participant chat',()=>{
   const widget=readFileSync(new URL('../src/widget.mjs',import.meta.url),'utf8');
+  assert(widget.includes("name:'AMA-Groundwork'"));
+  assert(widget.includes('ama-groundwork-revision-${current.record.revision}.json'));
+  assert(widget.includes('ama-groundwork-r${current.record.revision}.pdf'));
+  assert(!widget.includes("name:'AI Use-Case Workshop'"));
   const request=widget.slice(widget.indexOf('async function requestFiles()'),widget.indexOf('async function download('));
   assert(!request.includes('JSON.stringify'));assert(!request.includes('current.reference'));
   assert(request.includes('our existing workbook PDF'));

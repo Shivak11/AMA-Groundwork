@@ -33,7 +33,7 @@ export async function createWorkshopServer(options={}) {
   if(options.sessionStore)return createPersistentWorkshopServer(options);
   const {pdfRenderer,bookRenderer,assetLoader:file,capabilitiesOverride}=options;
   if (typeof pdfRenderer !== 'function' || typeof file !== 'function') throw new Error('Workshop runtime adapters are required.');
-  const server = new McpServer({name:'ai-use-case-workshop',version:'0.8.1'}, {instructions: `${PARTICIPANT_LANGUAGE_POLICY} ${COMPLETION_POLICY} ${SERVER_QUESTION_POLICY} ${recordCopyGuide}`});
+  const server = new McpServer({name:'ama-groundwork',version:'0.9.0'}, {instructions: `${PARTICIPANT_LANGUAGE_POLICY} ${COMPLETION_POLICY} ${SERVER_QUESTION_POLICY} ${recordCopyGuide}`});
   const method = await file('skills/ai-use-case-workshop/SKILL.md');
   const hostContract = await file('skills/ai-use-case-workshop/references/host-contract.md');
   const teaching = await file('skills/ai-use-case-workshop/references/phases.md');
@@ -63,7 +63,7 @@ export async function createWorkshopServer(options={}) {
   const withPdf = async (record, requested, preferred, message, purpose='conversation') => {
     const pdf = await renderPdf(record);
     const result = buildResult(record,requested,preferred,message,purpose);
-    const name = `our-ai-use-case-portfolio-r${record.revision}.pdf`;
+    const name = `ama-groundwork-r${record.revision}.pdf`;
     result.structuredContent.export={status:'ready',revision:record.revision,name,bytes:pdf.length,downloadTool:'download_workbook_file'};
     result.content[0].text+='\nYour workbook is ready to read and download.';
     result.structuredContent.export.instruction='For chat delivery call download_workbook_file with the complete record, unpack its gzip resource and attach the PDF using host file tools. Never invent a URL or claim the participant downloaded it.';
@@ -154,8 +154,9 @@ export async function createWorkshopServer(options={}) {
     try {
       record=validateRecord(record);
       if(!record.phases.some(phase=>phase.status!=='draft')) throw new Error('Approve the first step before downloading a PDF. The draft record is unchanged.');
-      const pdf=await renderPdf(record),name=`our-ai-use-case-portfolio-r${record.revision}.pdf`;
-      const result={content:[{type:'text',text:'Unpack the application/gzip resource into the named PDF and deliver it through the host file controls. This file-only response does not change the workshop record or ask a question.'},{type:'resource',resource:{uri:`workbook://exports/${name}.gz`,mimeType:'application/gzip',blob:gzipSync(pdf,{level:9}).toString('base64')}}],structuredContent:{export:{status:'ready',revision:record.revision,name,mimeType:'application/pdf',encoding:'gzip',bytes:pdf.length,sha256:createHash('sha256').update(pdf).digest('hex')}}};
+      const pdf=await renderPdf(record),name=`ama-groundwork-r${record.revision}.pdf`;
+      const resourceName=`our-ai-use-case-portfolio-r${record.revision}.pdf`;
+      const result={content:[{type:'text',text:'Unpack the application/gzip resource into the named PDF and deliver it through the host file controls. This file-only response does not change the workshop record or ask a question.'},{type:'resource',resource:{uri:`workbook://exports/${resourceName}.gz`,mimeType:'application/gzip',blob:gzipSync(pdf,{level:9}).toString('base64')}}],structuredContent:{export:{status:'ready',revision:record.revision,name,mimeType:'application/pdf',encoding:'gzip',bytes:pdf.length,sha256:createHash('sha256').update(pdf).digest('hex')}}};
       finalise(result);
       if(JSON.stringify(result).length>140_000) throw new Error('This PDF is too large for safe delivery through this chat app. Your complete record is unchanged. Keep the JSON backup and ask the facilitator for a local export; do not shorten or delete agreed wording automatically.');
       return result;

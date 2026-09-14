@@ -126,7 +126,8 @@ test('PDF and JSON tickets return exact saved bytes, safe filenames and private-
     ticketOf(data.url);assertNoSecret(JSON.stringify(data),saved.reference.key,saved.readKey,saved.record.group.name);
     const response=await f.route(data.url);assert.equal(response.status,200);protection(response);
     assert.equal(response.headers.get('Content-Type'),kind==='pdf'?'application/pdf':'application/json');
-    assert.equal(response.headers.get('Content-Disposition'),`attachment; filename="our-ai-use-case-portfolio-r${saved.record.revision}.${kind}"`);
+    const filename=kind==='pdf'?`ama-groundwork-r${saved.record.revision}.pdf`:`ama-groundwork-revision-${saved.record.revision}.json`;
+    assert.equal(response.headers.get('Content-Disposition'),`attachment; filename="${filename}"`);
     assert.equal(response.headers.get('Content-Security-Policy'),"default-src 'none'; sandbox");
     const bytes=Buffer.from(await response.arrayBuffer());
     if(kind==='pdf') {assert.deepEqual(bytes,pdfStub(saved.record));assert.deepEqual(rendered.at(-1),saved.record);}

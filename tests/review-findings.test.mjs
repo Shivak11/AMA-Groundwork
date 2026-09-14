@@ -36,7 +36,7 @@ test('file-only ordinary text includes the exact filename and integrity manifest
     const result=await client.callTool({name:'download_workbook_file',arguments:{record:completed(1)}});
     assert(!result.isError);
     const json=result.content.filter(item=>item.type==='text' && item.text.startsWith('{')).map(item=>JSON.parse(item.text));
-    assert.deepEqual(json,[result.structuredContent]);assert.equal(json[0].export.name,'our-ai-use-case-portfolio-r2.pdf');
+    assert.deepEqual(json,[result.structuredContent]);assert.equal(json[0].export.name,'ama-groundwork-r2.pdf');
     assert.equal(result.content.filter(item=>item.type==='resource').length,1);
   } finally {await client.close();await server.close();}
 });

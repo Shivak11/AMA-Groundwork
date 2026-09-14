@@ -1,6 +1,8 @@
 # Cloudflare connector
 
-Version 0.8.1 retains private D1 storage, immutable history and persistent recovery. New workbooks capture their date automatically, confirm a grounded use case, show the current and proposed workflows and proposed implementation, and open the finished workbook with Download PDF prominent. The connector, saved reader and PDF use the same visual system. Existing workbooks remain readable. No schema migration or retention change is needed. See RELEASE-0.8.1.md in the repository root for verification.
+Version 0.9.0 presents the connector as AMA-Groundwork and titles the completed document `AMA-Groundwork: AI Use-Case Portfolio`. It retains the existing Worker name, public endpoint, D1 database, tool names, resource paths and saved-record format. Existing workbooks and installed connector URLs therefore remain compatible. No schema migration or retention change is needed. See RELEASE-0.9.0.md in the repository root for the release boundary.
+
+The connector retains private D1 storage, immutable history and persistent recovery. New workbooks capture their date automatically, confirm grounded use cases, show current and proposed workflows and include a proposed implementation. A completed exercise opens the workbook with Download PDF prominent. The connector, saved reader and PDF use the same visual system.
 
 The authorised endpoint remains https://ai-use-case-workshop.shiva-research11.workers.dev/mcp. The dedicated database is ai-use-case-workshop-sessions, bound as WORKSHOP_DB. The committed configuration starts disabled and unconfigured; deployment and actual-host proof belong in the release record. Other Workers and databases are outside this change.
 

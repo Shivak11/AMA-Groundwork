@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
+import {fileURLToPath} from 'node:url';
 import {buildSync, transformSync} from 'esbuild';
 import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
@@ -10,7 +11,7 @@ import {group, answers} from '../examples/hiring.mjs';
 
 // Exercise the actual TSX as a React render without a browser, host or network.
 const compiled = buildSync({
-  entryPoints:[new URL('../src/inline-view.tsx', import.meta.url).pathname],
+  entryPoints:[fileURLToPath(new URL('../src/inline-view.tsx', import.meta.url))],
   bundle:true, platform:'node', format:'cjs', jsx:'automatic', write:false,
   external:['react', 'react/jsx-runtime'], loader:{'.css':'empty'},
 }).outputFiles[0].text;

@@ -1,6 +1,6 @@
-# Our AI Use-Case Portfolio
+# AMA-Groundwork: AI Use-Case Portfolio
 
-The portfolio belongs to the group. Its visual hierarchy makes the group's problem, evidence, disagreements and proposed decisions easy to find. The inline activity and composed book use the same semantic record but different visual treatments.
+The AMA-Groundwork portfolio belongs to the group. Its visual hierarchy makes the group's problem, evidence, disagreements and proposed decisions easy to find. The inline activity and composed book use the same semantic record but different visual treatments.
 
 Inline workbook snapshots inherit host typography, light/dark colours and a transparent outer surface. The inline views, saved reader and PDF use one semantic component system: neutral for current or person-led work, teal for AI activity and amber for a human check or decision. During the exercise, a card contains one phase-specific visual and one View workbook action. Essential saved wording is readable in full; cards may grow to accommodate it. Private access and technical recovery remain in disclosure. On completed Step 6, the workbook opens inline automatically with Download PDF at the top. The host conversation owns questions and approval. Never imitate host attribution or permission controls.
 
@@ -24,7 +24,7 @@ Aligned comparisons use a current/proposed matrix with shared stage boundaries, 
 
 Use white pages, cool neutral supporting surfaces and a dark teal functional accent across the cover, overview and chapters. Use the cover's title as the strongest visual element. Interior structure follows the work: a sequence for the difficult case, cards for distinct candidates and a table for their comparison. Do not turn every answer into the same card.
 
-`Our AI Use-Case Portfolio` is the strongest cover text. Preserve the group's full problem as readable body text underneath, with the group name and members identifying the document. Context and date are secondary. Show the six steps and their actual approval state without scoring the group. A later revision must not appear to be an agreed final answer.
+`AMA-Groundwork: AI Use-Case Portfolio` is the required cover title. Preserve the group's full problem as readable body text underneath, with the group name and members identifying the document. Context and date are secondary. Show the six steps and their actual approval state without scoring the group. A later revision must not appear to be an agreed final answer.
 
 The first page after the cover connects the original problem, the group's confirmed underlying problem and the named use cases with what AI could do. For Phase 3 marked needs_review, retain the diagnosis with its review status; do not call it confirmed. Do not infer a missing legacy diagnosis from the goal. Label it “Not recorded in this workbook.” The same overview appears in the inline reader and PDF.
 

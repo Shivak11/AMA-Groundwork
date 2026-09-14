@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
+import {fileURLToPath} from 'node:url';
 import {buildSync,transformSync} from 'esbuild';
 import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
@@ -10,7 +11,7 @@ import {buildWorkflowComparisons} from '../src/workflow-comparison.mjs';
 import {group,answers} from '../examples/remote-team.mjs';
 
 function load(path) {
-  const compiled=buildSync({entryPoints:[new URL(path,import.meta.url).pathname],bundle:true,platform:'node',format:'cjs',jsx:'automatic',write:false,external:['react','react/jsx-runtime'],loader:{'.css':'empty'}}).outputFiles[0].text;
+  const compiled=buildSync({entryPoints:[fileURLToPath(new URL(path,import.meta.url))],bundle:true,platform:'node',format:'cjs',jsx:'automatic',write:false,external:['react','react/jsx-runtime'],loader:{'.css':'empty'}}).outputFiles[0].text;
   const module={exports:{}};
   new Function('require','module','exports',compiled)(createRequire(import.meta.url),module,module.exports);
   return module.exports;

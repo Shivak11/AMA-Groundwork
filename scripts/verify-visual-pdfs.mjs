@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
+import {fileURLToPath} from 'node:url';
 import {createRecord,savePhase,confirmPhase} from '../src/workshop.mjs';
 import {renderWorkbookHtml,renderWorkbookPdf} from '../src/render-workbook.mjs';
 import {group,answers} from '../examples/hiring.mjs';
@@ -11,8 +12,9 @@ for(let phase=1;phase<=limit;phase++) {
   const pdf=await renderWorkbookPdf(record);
   assert(pdf.subarray(0,5).toString()==='%PDF-');
   const base=new URL(`../output/visual-review/checkpoints/phase-${phase}`,import.meta.url);
-  await writeFile(`${base.pathname}.html`,renderWorkbookHtml(record));
-  await writeFile(`${base.pathname}.pdf`,pdf);
-  await writeFile(`${base.pathname}.json`,JSON.stringify(record,null,2));
+  const basePath=fileURLToPath(base);
+  await writeFile(`${basePath}.html`,renderWorkbookHtml(record));
+  await writeFile(`${basePath}.pdf`,pdf);
+  await writeFile(`${basePath}.json`,JSON.stringify(record,null,2));
   console.log(`Step ${phase}: ${pdf.length} PDF bytes, revision ${record.revision}`);
 }

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {existsSync,readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
+import {fileURLToPath} from 'node:url';
 import {buildSync,transformSync} from 'esbuild';
 import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
@@ -18,7 +19,7 @@ const plugin=JSON.parse(readFileSync(new URL('../.codex-plugin/plugin.json',impo
 const packageManifest=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8'));
 
 function load(path) {
-  const compiled=buildSync({entryPoints:[new URL(path,import.meta.url).pathname],bundle:true,platform:'node',format:'cjs',jsx:'automatic',write:false,external:['react','react/jsx-runtime'],loader:{'.css':'empty'}}).outputFiles[0].text;
+  const compiled=buildSync({entryPoints:[fileURLToPath(new URL(path,import.meta.url))],bundle:true,platform:'node',format:'cjs',jsx:'automatic',write:false,external:['react','react/jsx-runtime'],loader:{'.css':'empty'}}).outputFiles[0].text;
   const module={exports:{}};
   new Function('require','module','exports',compiled)(createRequire(import.meta.url),module,module.exports);
   return module.exports;
@@ -96,4 +97,11 @@ test('the connector, saved workspace, PDF and plugin expose one visual system',(
   assert.equal(plugin.interface.brandColor,'#173033');
   assert.equal(plugin.version,packageManifest.version);
   assert.equal(existsSync(new URL('../src/widget.css',import.meta.url)),false,'The retired widget stylesheet must not remain available to a later build.');
+});
+
+test('ordinary Step 6 workflow rows stay intact and repeated chapter headings have top padding',()=>{
+  assert(workbookCss.includes('#phase-6 .chapter-stack > .chapter-block { break-inside: avoid; }'));
+  assert(workbookCss.includes('#phase-6 .chapter-stack > .chapter-block:has(.book-comparison-long) { break-inside: auto; }'));
+  assert(workbookCss.includes('.chapter .chapter-header { padding: 3mm 0 4mm; margin-bottom: 5mm; }'));
+  assert(workbookCss.includes('.chapter-continuation-label'));
 });

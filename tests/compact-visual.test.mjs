@@ -1,13 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
+import {fileURLToPath} from 'node:url';
 import {buildSync} from 'esbuild';
 import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {createRecord,savePhase,confirmPhase} from '../src/workshop.mjs';
 import {group,answers} from '../examples/remote-team.mjs';
 
-const compiled=buildSync({entryPoints:[new URL('../src/compact-visual.tsx',import.meta.url).pathname],bundle:true,platform:'node',format:'cjs',jsx:'automatic',write:false,external:['react','react/jsx-runtime'],loader:{'.css':'empty'}}).outputFiles[0].text;
+const compiled=buildSync({entryPoints:[fileURLToPath(new URL('../src/compact-visual.tsx',import.meta.url))],bundle:true,platform:'node',format:'cjs',jsx:'automatic',write:false,external:['react','react/jsx-runtime'],loader:{'.css':'empty'}}).outputFiles[0].text;
 const module={exports:{}};
 new Function('require','module','exports',compiled)(createRequire(import.meta.url),module,module.exports);
 const {CompactVisual}=module.exports;

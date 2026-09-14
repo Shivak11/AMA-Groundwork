@@ -24,7 +24,8 @@ export async function persistentRoute(request,{store,bookRenderer,pdfRenderer,ba
       const {record,kind,revision}=await store.resolveFileTicket(ticket);
       const body=kind==='json'?JSON.stringify(record,null,2):await pdfRenderer(record);
       if(kind==='pdf'&&(!Buffer.isBuffer(body)||body.subarray(0,5).toString()!=='%PDF-'||body.length>5_000_000))throw new Error('Invalid PDF.');
-      return protectedResponse(body,{headers:{'Content-Type':kind==='pdf'?'application/pdf':'application/json','Content-Disposition':`attachment; filename="our-ai-use-case-portfolio-r${revision}.${kind}"`,'X-Robots-Tag':'noindex, nofollow','Content-Security-Policy':"default-src 'none'; sandbox"}});
+      const filename=kind==='pdf'?`ama-groundwork-r${revision}.pdf`:`ama-groundwork-revision-${revision}.json`;
+      return protectedResponse(body,{headers:{'Content-Type':kind==='pdf'?'application/pdf':'application/json','Content-Disposition':`attachment; filename="${filename}"`,'X-Robots-Tag':'noindex, nofollow','Content-Security-Policy':"default-src 'none'; sandbox"}});
     }
     const key=(request.headers.get('authorization')??'').replace(/^Bearer /,'');
     if(!READ_KEY.test(key))return protectedResponse('Private reading access is required.',{status:404});
@@ -40,7 +41,10 @@ export async function persistentRoute(request,{store,bookRenderer,pdfRenderer,ba
       pdf=await pdfRenderer(loaded.record);
       if(!Buffer.isBuffer(pdf)||pdf.subarray(0,5).toString()!=='%PDF-'||pdf.length>5_000_000)throw new Error('Invalid PDF.');
     }
-    if(url.pathname==='/api/download')return protectedResponse(kind==='json'?JSON.stringify(loaded.record,null,2):pdf,{headers:{'Content-Type':kind==='pdf'?'application/pdf':'application/json','Content-Disposition':`attachment; filename="our-ai-use-case-portfolio-r${loaded.record.revision}.${kind}"`,'Content-Security-Policy':"default-src 'none'; sandbox"}});
+    if(url.pathname==='/api/download'){
+      const filename=kind==='pdf'?`ama-groundwork-r${loaded.record.revision}.pdf`:`ama-groundwork-revision-${loaded.record.revision}.json`;
+      return protectedResponse(kind==='json'?JSON.stringify(loaded.record,null,2):pdf,{headers:{'Content-Type':kind==='pdf'?'application/pdf':'application/json','Content-Disposition':`attachment; filename="${filename}"`,'Content-Security-Policy':"default-src 'none'; sandbox"}});
+    }
     const file=await store.createFileTicket(key,loaded.record.revision,kind);
     return json({url:`${baseUrl}/files/${file.ticket}`,expiresAt:file.expiresAt,revision:loaded.record.revision});
   }catch(error) {

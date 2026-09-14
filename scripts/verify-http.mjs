@@ -18,7 +18,7 @@ for (const visual of [false,true]) {
     assert.match(transport.sessionId,new RegExp(`^workshop-ui${visual?1:0}-`));
     const tools=await client.listTools();assert.equal(tools.tools.length,7);
     const resources=await client.listResources();assert.equal(resources.resources.length,7);
-    const method=await client.readResource({uri:'workshop://method'});assert.match(method.contents[0].text,/AI Use-Case Workshop/);
+    const method=await client.readResource({uri:'workshop://method'});assert.match(method.contents[0].text,/AMA-Groundwork/);
     const start=await client.callTool({name:'start_workshop',arguments:{group}});
     assert.equal(start.structuredContent.mode,visual?'ui-available':'text');
     const shortlist=await client.callTool({name:'show_shortlist',arguments:{record}});
