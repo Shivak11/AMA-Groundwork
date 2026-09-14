@@ -39,7 +39,13 @@ The 14 September 2026 candidate passed 262 source tests and the TypeScript check
 
 The completed fictional hiring exercise generated six cumulative PDF checkpoints. Its final AMA-Groundwork PDF is a 27-page A4 document with selectable text, tagged structure and the author-profile link on every page. The cover, problem overview, dense workflow comparison pages and final page were rendered and inspected. A separate long-answer check preserved the full text, escaped hostile markup, made no external requests and produced no horizontal overflow at widths of 320, 390, 768 and 1,280 pixels.
 
-The clean-commit release check, public Cloudflare deployment, live six-step protocol check and public GitHub revision remain separate release gates until they are observed.
+## Observed release evidence
+
+The clean-commit release harness passed against implementation revision `27e457974f896ebc2b8f3d922281c43385fe3724`. It repeated the 262 source tests, TypeScript check, Worker build and controlled browser journey. The generated connector view was 933,825 bytes with SHA-256 `8a8a2430e73c27e6d33e6a58613830c0ac9b35812be4a03fd10fcb55cdb37862`.
+
+The existing Cloudflare endpoint was deployed in public mode with writes enabled. Its health response reported `ama-groundwork` version `0.9.0`, persistent D1 storage and retention until explicit deletion. The live protocol check passed all six approvals and PDF checkpoints, recovery in a fresh client, a saved correction, dependent reapproval, the documented PDF retry, read-only access, direct JSON download and explicit deletion of the fictional test record.
+
+The source is public at [Shivak11/AMA-Groundwork](https://github.com/Shivak11/AMA-Groundwork), with `main` as the default branch. These checks establish the source, controlled browser, public endpoint and downloaded PDF bytes. They do not establish how an existing cached Claude or ChatGPT installation displays the new name until that client refreshes its connector definition.
 
 ## Historical continuity
 

@@ -6,7 +6,7 @@ Shiva selected `AMA-Groundwork` as the public connector name and asked for a pub
 
 The public release includes the existing six-step method, grounded use-case requirements, current-versus-proposed workflow diagrams and proposed implementation. Step 6 uses normal print blocks rather than one page-spanning outer table because Chromium can place a continued table row above the printable top margin. Each workflow card repeats `Step 6` and the full use-case name so the short candidate reference is never the only context.
 
-Local source tests, PDF inspection, the Cloudflare deployment and the public GitHub revision are recorded separately. A successful deployment does not establish how a cached Claude or ChatGPT installation renders the renamed connector.
+The local release harness passed all source, type, bundle and controlled-browser checks. The public endpoint reported AMA-Groundwork 0.9.0 and completed a fictional six-step journey with PDF downloads, recovery, correction, reapproval and explicit cleanup. The source was published at [Shivak11/AMA-Groundwork](https://github.com/Shivak11/AMA-Groundwork) with `main` as its default branch. These results do not establish how a cached Claude or ChatGPT installation renders the renamed connector until that client refreshes its connector definition.
 
 ## Current-versus-proposed workflow comparison, 12 September 2026
 
