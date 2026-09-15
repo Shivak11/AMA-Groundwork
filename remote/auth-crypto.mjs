@@ -1,3 +1,6 @@
+import {pbkdf2Async} from '@noble/hashes/pbkdf2.js';
+import {sha256 as passwordDigest} from '@noble/hashes/sha2.js';
+
 const encoder=new TextEncoder();
 
 export const PASSWORD_ITERATIONS=600_000;
@@ -51,9 +54,10 @@ export function validDisplayName(value) {
 }
 
 async function derivePassword(password,salt,iterations) {
-  const material=await crypto.subtle.importKey('raw',encoder.encode(password),'PBKDF2',false,['deriveBits']);
-  const bits=await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt,iterations},material,256);
-  return new Uint8Array(bits);
+  // Workers' native PBKDF2 has a lower iteration cap than the configured
+  // password work factor. The portable implementation preserves the exact
+  // PBKDF2-SHA256 output and existing password records.
+  return pbkdf2Async(passwordDigest,encoder.encode(password),salt,{c:iterations,dkLen:32});
 }
 
 function decodeBase64url(value) {

@@ -139,6 +139,7 @@ export async function authRoute(request,{store,baseUrl}) {
     }catch(error){const safe=safeError(error);return htmlResponse(renderAuthPage({error:safe.message}),{status:safe.status??400});}
   }
   if(url.pathname==='/authorize'&&request.method==='POST') {
+    if(request.headers.get('origin')!==baseUrl)return htmlResponse(renderAuthPage({error:'Return to the connector and try signing in again.'}),{status:403});
     const requestToken=cookieValue(request,REQUEST_COOKIE);
     let flow,client,action='signin';
     try{

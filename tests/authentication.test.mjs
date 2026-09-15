@@ -1,13 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {pbkdf2Sync} from 'node:crypto';
 import {Client} from '@modelcontextprotocol/sdk/client/index.js';
 import {InMemoryTransport} from '@modelcontextprotocol/sdk/inMemory.js';
 import {createSqliteD1} from './support/d1-sqlite.mjs';
 import {createD1AuthStore} from '../remote/d1-auth-store.mjs';
 import {authRoute,authorizationServerMetadata,canonicalBaseUrl,oauthChallenge,protectedResourceMetadata} from '../remote/auth-routes.mjs';
 import {renderAuthPage} from '../remote/auth-page.mjs';
-import {createPasswordRecord,pkceChallenge,verifyPassword} from '../remote/auth-crypto.mjs';
+import {createPasswordRecord,pkceChallenge,verifyPassword,PASSWORD_ITERATIONS} from '../remote/auth-crypto.mjs';
 import {createD1SessionStore} from '../remote/d1-session-store.mjs';
 import {createWorkshopServer} from '../src/server-core.mjs';
 import {readKeyFor} from '../src/session-store.mjs';
@@ -32,6 +33,14 @@ test('password records use a random salt and reject a different password',async(
   assert.notEqual(first.hash,second.hash);
   assert.equal(await verifyPassword('correct horse battery',first),true);
   assert.equal(await verifyPassword('incorrect password',first),false);
+});
+
+test('the portable password implementation matches native PBKDF2 at the full production work factor',async()=>{
+  const password='Synthetic compatibility check',salt=new Uint8Array(16).fill(7);
+  const record=await createPasswordRecord(password,{randomBytes:()=>salt});
+  assert.equal(record.iterations,600_000);
+  assert.equal(record.hash,pbkdf2Sync(password,salt,PASSWORD_ITERATIONS,32,'sha256').toString('base64url'));
+  assert.equal(await verifyPassword(password,record),true);
 });
 
 test('the public connector address is HTTPS while local development may use loopback HTTP',()=>{
@@ -70,7 +79,7 @@ test('OAuth metadata, registration, browser sign-in, PKCE exchange, refresh rota
   const page=await authRoute(new Request(authorize),{store,baseUrl});
   assert.equal(page.status,200);assert.match(await page.text(),/Sign in to AMA-Groundwork/);
   const requestCookie=cookiePair(page);assert.match(requestCookie,/__Host-ama_auth_request=ar1_/);
-  const completed=await authRoute(new Request(`${baseUrl}/authorize`,{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded',cookie:requestCookie},body:form({action:'register',display_name:'Shiva',email:'shiva@example.com',password:'a secure password'})}),{store,baseUrl});
+  const completed=await authRoute(new Request(`${baseUrl}/authorize`,{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded',origin:baseUrl,cookie:requestCookie},body:form({action:'register',display_name:'Shiva',email:'shiva@example.com',password:'a secure password'})}),{store,baseUrl});
   assert.equal(completed.status,302);const callback=new URL(completed.headers.get('location'));
   assert.equal(callback.origin,'https://claude.ai');assert.equal(callback.searchParams.get('state'),state);assert.match(callback.searchParams.get('code'),/^ac1_/);
   const codeExchange=()=>authRoute(new Request(`${baseUrl}/oauth/token`,{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:form({grant_type:'authorization_code',client_id:client.client_id,redirect_uri:client.redirect_uris[0],code:callback.searchParams.get('code'),code_verifier:verifier,resource})}),{store,baseUrl});
@@ -99,6 +108,31 @@ test('dynamic client registration rejects unsupported flows and unsafe redirects
     {client_name:'Password',redirect_uris:['https://client.example/callback'],grant_types:['password']},
   ])assert.equal((await register(input)).status,400);
   assert.equal((await register({client_name:'Loopback',redirect_uris:['http://localhost:3210/callback'],response_types:['code'],grant_types:['authorization_code','refresh_token']})).status,201);
+});
+
+test('sign-in rejects cross-origin and missing-origin form submissions before account access',async()=>{
+  let touched=false;
+  const store={authorizationRequest(){touched=true;throw new Error('Must not be called');}};
+  for(const origin of ['https://other.example','null',null]) {
+    const headers={'content-type':'application/x-www-form-urlencoded',...(origin?{origin}:{})};
+    const response=await authRoute(new Request(`${baseUrl}/authorize`,{method:'POST',headers,body:form({action:'continue'})}),{store,baseUrl});
+    assert.equal(response.status,403);
+  }
+  assert.equal(touched,false);
+});
+
+test('expired authorisation requests and browser sessions cannot be reused',async t=>{
+  const db=createSqliteD1();t.after(()=>db.close());
+  let now=new Date('2026-09-15T00:00:00Z');const store=authStore(db,{now:()=>now});
+  const client=await store.registerClient({clientName:'Expiry test',redirectUris:['https://client.example/callback']});
+  const user=await store.registerUser({displayName:'Expiry test',email:'expiry@example.com',password:'synthetic expiry password'});
+  const browserSession=await store.createBrowserSession(user.userId);
+  const request=await store.createAuthorizationRequest({clientId:client.clientId,redirectUri:client.redirectUris[0],state:'expiry-test',codeChallenge:await pkceChallenge('v'.repeat(64)),resource,scope:'workbooks'});
+  now=new Date('2026-09-15T00:11:00Z');
+  await assert.rejects(store.authorizationRequest(request),error=>error.code==='invalid_request');
+  assert.equal((await store.browserUser(browserSession.token)).userId,user.userId);
+  now=new Date('2026-10-16T00:00:00Z');
+  assert.equal(await store.browserUser(browserSession.token),null);
 });
 
 test('account workbooks are recoverable by their owner and unavailable to another account',async t=>{

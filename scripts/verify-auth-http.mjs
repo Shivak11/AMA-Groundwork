@@ -38,7 +38,7 @@ assert.match(await authorizePage.text(),/Sign in to AMA-Groundwork/);
 const requestCookie=cookie(authorizePage,'__Host-ama_auth_request');
 
 const unique=Date.now();
-const approval=await fetch(`${baseUrl}/authorize`,{method:'POST',redirect:'manual',headers:{'content-type':'application/x-www-form-urlencoded',cookie:requestCookie},body:form({action:'register',display_name:'Local verification',email:`local-${unique}@example.com`,password:'local verification password'})});
+const approval=await fetch(`${baseUrl}/authorize`,{method:'POST',redirect:'manual',headers:{'content-type':'application/x-www-form-urlencoded',origin:baseUrl,cookie:requestCookie},body:form({action:'register',display_name:'Local verification',email:`local-${unique}@example.com`,password:'local verification password'})});
 assert.equal(approval.status,302);
 const callback=new URL(approval.headers.get('location'));
 assert.equal(callback.origin,'http://localhost:3210');
