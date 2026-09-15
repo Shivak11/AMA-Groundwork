@@ -1,6 +1,6 @@
 # AMA-Groundwork account authentication plan
 
-Status: Active implementation specification
+Status: Isolated live preview deployed and verified; wider activation pending review
 
 ## Outcome
 
@@ -96,3 +96,5 @@ Local implementation, tests, commits, and GitHub branch work may proceed without
 The user has approved the isolated authentication preview. This covers the `ama-groundwork-auth-preview` Worker, its separate D1 database, its Worker secret, migrations, and live authentication and workbook verification. It does not approve replacing the existing public connector or migrating its participant database.
 
 Use `wrangler.preview.jsonc` for every preview command. Deploy a clean commit that matches the pushed GitHub branch. The preview database ID is `5d171b2f-de1d-4a4c-8b05-e1a4132b60bf`; the existing participant database is not a valid target for these commands. Stop preview access if authentication or account isolation fails; retain its database for investigation. Record live proof separately from the prior local checks.
+
+The deployed identity, live verification and remaining native-client limits are recorded in `AUTH-PREVIEW-RELEASE.md`.
