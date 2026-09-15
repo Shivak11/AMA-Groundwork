@@ -1,0 +1,27 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ama-groundwork-auth-preview",
+  "account_id": "22744e58d83f933700484b130caec4fb",
+  "main": "remote/worker.mjs",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "browser": {"binding": "BROWSER"},
+  "d1_databases": [{"binding":"WORKSHOP_DB","database_name":"ama-groundwork-auth-preview","database_id":"5d171b2f-de1d-4a4c-8b05-e1a4132b60bf","migrations_dir":"migrations"}],
+  "vars": {"WORKSHOP_ENABLED":"true","ACCOUNT_AUTH_ENABLED":"true","PUBLIC_BASE_URL":"https://ama-groundwork-auth-preview.shiva-research11.workers.dev","WORKSHOP_WRITES_ENABLED":"true"},
+  "observability": {"enabled": false},
+  "limits": {"cpu_ms": 30000},
+  "rules": [
+    {"type":"Text","globs":["**/*.md","**/*.css","**/*.html"],"fallthrough":true},
+    {"type":"Data","globs":["**/*.ttf"],"fallthrough":true}
+  ],
+  "ratelimits": [
+    {"name":"REQUEST_LIMIT","namespace_id":"6181101","simple":{"limit":240,"period":60}},
+    {"name":"PDF_LIMIT","namespace_id":"6181102","simple":{"limit":60,"period":60}},
+    {"name":"PDF_REGIONAL_LIMIT","namespace_id":"6181103","simple":{"limit":180,"period":60}},
+    {"name":"CREATION_LIMIT","namespace_id":"6181104","simple":{"limit":60,"period":60}},
+    {"name":"WRITE_LIMIT","namespace_id":"6181105","simple":{"limit":240,"period":60}},
+    {"name":"AUTH_LIMIT","namespace_id":"6181106","simple":{"limit":30,"period":60}}
+  ]
+}

@@ -61,11 +61,10 @@ export function renderAuthPage({clientName='Your MCP client',view='signin',user=
     <p class="intro"><strong>${escapeHtml(clientName)}</strong> wants to use AMA-Groundwork. Your account keeps your workbooks available when you return.</p>
     <form method="post" action="/authorize">
       ${form}
-      <button class="quiet" type="submit" name="action" value="cancel">Cancel</button>
+      <button class="quiet" type="submit" name="action" value="cancel" formnovalidate>Cancel</button>
     </form>
     <footer>AMA-Groundwork stores your account and workbooks so you can reopen them. You can delete a workbook from the connector.</footer>
   </main>
 </body>
 </html>`;
 }
-

@@ -50,6 +50,14 @@ test('the account page uses plain participant language and escapes client detail
   for(const term of ['OAuth','PKCE','Cloudflare','D1','access token','private key'])assert(!html.includes(term),term);
 });
 
+test('cancelling sign-in or registration does not require completed account fields',()=>{
+  for(const view of ['signin','create']) {
+    const html=renderAuthPage({view});
+    assert.match(html,/<button\b[^>]*value="cancel"[^>]*\bformnovalidate[^>]*>Cancel<\/button>/);
+    assert.doesNotMatch(html,/<button\b[^>]*class="primary"[^>]*\bformnovalidate/);
+  }
+});
+
 test('OAuth metadata, registration, browser sign-in, PKCE exchange, refresh rotation and revocation form one complete flow',async t=>{
   const db=createSqliteD1();t.after(()=>db.close());const store=authStore(db);
   assert.deepEqual(protectedResourceMetadata(baseUrl).authorization_servers,[baseUrl]);
