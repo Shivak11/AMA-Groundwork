@@ -1,5 +1,9 @@
 # Cloudflare connector
 
+Version 0.10.0 is the account-authentication candidate. All MCP tools require a signed-in AMA-Groundwork account. The Worker publishes OAuth protected-resource and authorisation-server metadata, accepts dynamic client registration, requires PKCE with S256 and issues resource-bound access tokens. New workbooks belong to the signed-in account and can be listed in a later conversation.
+
+This candidate has not replaced the current public 0.9.0 connector. Deploy it to separate preview infrastructure first. Do not apply its migration to the production D1 database or change the current connector until the preview has been reviewed in ChatGPT and Claude.
+
 Version 0.9.0 presents the connector as AMA-Groundwork and titles the completed document `AMA-Groundwork: AI Use-Case Portfolio`. It retains the existing Worker name, public endpoint, D1 database, tool names, resource paths and saved-record format. Existing workbooks and installed connector URLs therefore remain compatible. No schema migration or retention change is needed. See RELEASE-0.9.0.md in the repository root for the release boundary.
 
 The connector retains private D1 storage, immutable history and persistent recovery. New workbooks capture their date automatically, confirm grounded use cases, show current and proposed workflows and include a proposed implementation. A completed exercise opens the workbook with Download PDF prominent. The connector, saved reader and PDF use the same visual system.
@@ -10,13 +14,15 @@ The authorised endpoint remains https://ai-use-case-workshop.shiva-research11.wo
 
 Install the locked Node dependencies described in the main README. Run `npm test`, `npm run build:remote`, and `node scripts/verify-stdio.mjs`. The remote build is a dry run, not deployment. Local PDF tests require Chromium; an existing executable can be provided through `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`.
 
-For a loopback-only persistent protocol check:
+For a loopback-only persistent protocol check, put a random value of at least 32 characters in the ignored `.dev.vars` file as `ACCOUNT_LINK_SECRET`. Then run:
 
 ```sh
 npx wrangler d1 migrations apply ai-use-case-workshop-sessions --local
-npx wrangler dev --local --ip 127.0.0.1 --port 8876 --var WORKSHOP_ENABLED:true --var ACCESS_MODE:public
-node scripts/verify-persistent-remote.mjs http://127.0.0.1:8876/mcp --skip-pdf
+npx wrangler dev --local --ip 127.0.0.1 --port 8876 --var WORKSHOP_ENABLED:true --var ACCOUNT_AUTH_ENABLED:true --var PUBLIC_BASE_URL:http://127.0.0.1:8876
+npm run verify:auth-http -- http://127.0.0.1:8876
 ```
+
+The authentication verifier creates a disposable local account and workbook, connects to MCP with the issued access token, lists and reopens the workbook, revokes the token and confirms that the next MCP request receives the discovery challenge. It records no password or token in its evidence file.
 
 Run `node scripts/verify-persistent-remote.mjs` after deploying the exact reviewed build. It creates a fictional group, verifies six real PDF checkpoints and recovery/correction, then explicitly deletes only that run's session. Its report excludes credentials and file-ticket URLs. Private deployments require connector authentication in addition to per-workbook keys; never put a connector token in a URL or command argument.
 
@@ -36,9 +42,9 @@ Record actual host tests separately from SDK checks: discovery, starting a ficti
 
 ## Access and privacy
 
-`WORKSHOP_ENABLED=false` stops the service. `WORKSHOP_WRITES_ENABLED=false` pauses workshop mutations while retaining saved reads and exports. `ACCESS_MODE=public` opens MCP discovery and preparation, not access to other groups' data. `ACCESS_MODE=private` adds a connector bearer credential; this is not OAuth. Every workbook read/write still requires its own private key. The separate reading page accepts only read keys and cannot mutate a workbook.
+`WORKSHOP_ENABLED=false` stops the service. `ACCOUNT_AUTH_ENABLED=false` prevents account sign-in and MCP access. `WORKSHOP_WRITES_ENABLED=false` pauses workshop mutations while retaining saved reads and exports. Every MCP request requires a valid resource-bound account access token. The separate reading page accepts only read keys and cannot mutate a workbook.
 
-Group summaries, aliases, approvals and snapshots stay in D1 until explicit deletion. No application request-body logging is enabled. Write/read credentials and temporary file tickets are stored only as hashes. The stable reading credential stays in a URL fragment and is sent only to same-origin APIs in an authorisation header. No external page assets, analytics or fonts are requested. Chat providers and Cloudflare retain their own platform policies; application deletion does not erase downloaded copies or provider backups.
+Names, email addresses, password records, OAuth records, group summaries, aliases, approvals and snapshots stay in D1 until explicit deletion. Passwords use PBKDF2-HMAC-SHA256 with a unique salt and 600,000 iterations. Browser sessions, authorisation codes, access tokens, refresh tokens, legacy workbook credentials and temporary file tickets are stored only as hashes. The account-link secret remains a Cloudflare Worker secret and is not stored in D1. The stable reading credential stays in a URL fragment and is sent only to same-origin APIs in an authorisation header. No external page assets, analytics or fonts are requested. Chat providers and Cloudflare retain their own platform policies; application deletion does not erase downloaded copies or provider backups.
 
 The `Mcp-Session-Id` header carries only the client's declared rendering capability. It never grants access, identifies a group owner or refers to stored answers. Every private request still needs the access credential. Clients may edit this rendering preference without changing authorisation.
 
@@ -46,7 +52,7 @@ The request parser permits at most 350,000 bytes; the canonical record remains l
 
 ## Migration and rollback
 
-Apply the additive migration locally and run protocol/SQLite checks before remote migration. Apply the remote migration only to ai-use-case-workshop-sessions, then deploy the reviewed source. A missing binding fails closed. Never delete the database during rollback. Prefer write-disabled containment so participants retain reading and downloads. Returning directly to the old stateless Worker would strand short references; retain the persistent reader or export affected records before such a rollback. Old v0.1–v0.5 verification files are historical evidence, not this release's runtime proof.
+Apply the additive migration locally and run protocol/SQLite checks before any remote migration. Use a separate preview D1 database for the first live authentication test. A missing binding or account-link secret fails closed. Never delete the production database during rollback. Existing read-only links remain compatible after a legacy workbook is claimed. The production migration and connector replacement require their own approved activation and recovery record.
 
 ## Dependencies and release boundary
 

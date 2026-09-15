@@ -7,6 +7,10 @@ export function accessConfigured(env) {
   return env.ACCESS_MODE === 'public' || (env.ACCESS_MODE === 'private' && typeof env.WORKSHOP_ACCESS_TOKEN === 'string' && env.WORKSHOP_ACCESS_TOKEN.length >= 32);
 }
 
+export function accountAuthConfigured(env) {
+  return env.ACCOUNT_AUTH_ENABLED==='true'&&typeof env.ACCOUNT_LINK_SECRET==='string'&&env.ACCOUNT_LINK_SECRET.length>=32;
+}
+
 export async function authorised(request, env) {
   if (!accessConfigured(env)) return false;
   if (env.ACCESS_MODE === 'public') return true;

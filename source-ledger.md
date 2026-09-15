@@ -1,5 +1,15 @@
 # Source ledger
 
+## Account authentication candidate, 15 September 2026
+
+Shiva asked for open sign-in and for account and workbook details to be stored in the database. The candidate uses first-party email-and-password accounts, MCP OAuth 2.1 with PKCE and account-owned Cloudflare D1 workbooks. It adds `list_my_workbooks` so a later ChatGPT or Claude conversation can find the signed-in user's workbooks without asking them to retain or paste a private key.
+
+The OAuth and MCP decisions use the MCP Authorization specification dated 25 November 2025 and the MCP Apps authorisation guidance. Password storage uses PBKDF2-HMAC-SHA256 at 600,000 iterations because Cloudflare Workers Web Crypto supports PBKDF2 and the OWASP Password Storage Cheat Sheet specifies that work factor for PBKDF2-HMAC-SHA256. Secure identifiers use Web Crypto random values. These sources establish protocol and storage controls; they do not establish live client compatibility.
+
+Anthropic's installed `mcp-builder` skill and its Node and evaluation references were reviewed before implementation. It led to explicit OAuth discovery, strict tool inputs, structured tool output, read-only annotations for account listing, actionable errors and separate local, deployment and client evidence. The repository's established tool names and workshop flow remain the compatibility contract.
+
+The current production endpoint remains on public version 0.9.0. The account candidate is confined to a separate worktree and requires a separate Cloudflare preview before any production migration or replacement.
+
 ## AMA-Groundwork public name, 14 September 2026
 
 Shiva selected `AMA-Groundwork` as the public connector name and asked for a public GitHub repository under `Shivak11`. The completed document is titled `AMA-Groundwork: AI Use-Case Portfolio`. This release changes participant-facing names and download filenames while retaining the existing Cloudflare Worker, public endpoint, D1 database, record schema, tool names, resource paths, private write references and stable reading links. This avoids requiring participants with an installed connector or saved workbook to move to a new technical address.

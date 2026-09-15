@@ -1,10 +1,12 @@
 import {z} from 'zod';
 
 export const WRITE_KEY = /^ws1_[A-Za-z0-9_-]{43}$/;
+export const ACCOUNT_KEY = /^wa1_[A-Za-z0-9_-]{43}$/;
 export const READ_KEY = /^wr1_[A-Za-z0-9_-]{43}$/;
+export const ACCOUNT_READ_KEY = /^wr2_[A-Za-z0-9_-]{43}$/;
 export const FILE_TICKET = /^wf1_[A-Za-z0-9_-]{43}$/;
 export const referenceSchema = z.object({
-  key:z.string().regex(/^(?:ws1_|wr1_)[A-Za-z0-9_-]{43}$/),
+  key:z.string().regex(/^(?:ws1_|wa1_|wr1_|wr2_)[A-Za-z0-9_-]{43}$/),
   revision:z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
 }).strict();
 
@@ -44,4 +46,11 @@ export function base64url(bytes) { return btoa(String.fromCharCode(...bytes)).re
 export async function readKeyFor(writeKey) {
   if (!WRITE_KEY.test(writeKey)) throw new SessionError('NOT_FOUND');
   return `wr1_${base64url(await digest(`ai-use-case-workshop/read/v1\0${writeKey}`))}`;
+}
+
+export async function accountReadKeyFor(accountKey,secret) {
+  if(!ACCOUNT_KEY.test(accountKey)||typeof secret!=='string'||secret.length<32)throw new SessionError('UNAVAILABLE');
+  const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+  const signature=await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(`ama-groundwork/read/v2\0${accountKey}`));
+  return `wr2_${base64url(new Uint8Array(signature))}`;
 }

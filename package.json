@@ -1,6 +1,6 @@
 {
   "name": "ama-groundwork",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "A conversational AI use-case identification workshop with cumulative visual workbooks and MCP Apps views.",
   "type": "module",
   "private": true,
@@ -12,6 +12,8 @@
     "build": "node scripts/build-widget.mjs",
     "build:remote": "npm run build && wrangler deploy --dry-run --outdir dist/worker",
     "verify:http": "node scripts/verify-http.mjs",
+    "verify:auth-ui": "node scripts/verify-auth-ui.mjs",
+    "verify:auth-http": "node scripts/verify-auth-http.mjs",
     "test": "node --test tests/*.test.mjs",
     "examples": "node scripts/build-examples.mjs",
     "typecheck": "tsc --noEmit"

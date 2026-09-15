@@ -24,7 +24,7 @@ test('persistent MCP saves, approves and resumes comparisons without new questio
   };
   try {
     assert.equal(client.getServerVersion().name,'ama-groundwork');
-    assert.equal(client.getServerVersion().version,'0.9.0');
+    assert.equal(client.getServerVersion().version,'0.10.0');
     await call('start_workshop');await call('start_workshop',{group});
     for(let phase=1;phase<=5;phase++) {
       await call('save_workshop_phase',{phase,answers:deferredAnswers[phase-1]});

@@ -1,5 +1,5 @@
 import { protectedResponse } from './access.mjs';
-import { READ_KEY, FILE_TICKET } from '../src/session-store.mjs';
+import { READ_KEY, ACCOUNT_READ_KEY, FILE_TICKET } from '../src/session-store.mjs';
 import { workspacePage, workspaceCsp } from './workspace.mjs';
 
 const json=value=>protectedResponse(JSON.stringify(value),{headers:{'Content-Type':'application/json','X-Robots-Tag':'noindex, nofollow'}});
@@ -28,7 +28,7 @@ export async function persistentRoute(request,{store,bookRenderer,pdfRenderer,ba
       return protectedResponse(body,{headers:{'Content-Type':kind==='pdf'?'application/pdf':'application/json','Content-Disposition':`attachment; filename="${filename}"`,'X-Robots-Tag':'noindex, nofollow','Content-Security-Policy':"default-src 'none'; sandbox"}});
     }
     const key=(request.headers.get('authorization')??'').replace(/^Bearer /,'');
-    if(!READ_KEY.test(key))return protectedResponse('Private reading access is required.',{status:404});
+    if(!READ_KEY.test(key)&&!ACCOUNT_READ_KEY.test(key))return protectedResponse('Private reading access is required.',{status:404});
     const revision=revisionFrom(url),loaded=await store.loadShared(key,revision);
     if(url.pathname==='/api/workbook')return json({revision:loaded.record.revision,currentRevision:loaded.currentRevision,groupName:loaded.record.group.name,approved:loaded.record.phases.filter(p=>p.status==='confirmed').length,html:await bookRenderer(loaded.record)});
     const kind=url.searchParams.get('kind');

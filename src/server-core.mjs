@@ -33,7 +33,7 @@ export async function createWorkshopServer(options={}) {
   if(options.sessionStore)return createPersistentWorkshopServer(options);
   const {pdfRenderer,bookRenderer,assetLoader:file,capabilitiesOverride}=options;
   if (typeof pdfRenderer !== 'function' || typeof file !== 'function') throw new Error('Workshop runtime adapters are required.');
-  const server = new McpServer({name:'ama-groundwork',version:'0.9.0'}, {instructions: `${PARTICIPANT_LANGUAGE_POLICY} ${COMPLETION_POLICY} ${SERVER_QUESTION_POLICY} ${recordCopyGuide}`});
+  const server = new McpServer({name:'ama-groundwork',version:'0.10.0'}, {instructions: `${PARTICIPANT_LANGUAGE_POLICY} ${COMPLETION_POLICY} ${SERVER_QUESTION_POLICY} ${recordCopyGuide}`});
   const method = await file('skills/ai-use-case-workshop/SKILL.md');
   const hostContract = await file('skills/ai-use-case-workshop/references/host-contract.md');
   const teaching = await file('skills/ai-use-case-workshop/references/phases.md');

@@ -9,7 +9,7 @@
   "preview_urls": false,
   "browser": {"binding": "BROWSER"},
   "d1_databases": [{"binding":"WORKSHOP_DB","database_name":"ai-use-case-workshop-sessions","database_id":"990fd5e5-d307-4b7a-a0ba-8fb1562be6f3","migrations_dir":"migrations"}],
-  "vars": {"WORKSHOP_ENABLED": "false", "ACCESS_MODE": "unconfigured", "WORKSHOP_WRITES_ENABLED":"true"},
+  "vars": {"WORKSHOP_ENABLED": "false", "ACCOUNT_AUTH_ENABLED": "false", "PUBLIC_BASE_URL": "https://ai-use-case-workshop.shiva-research11.workers.dev", "WORKSHOP_WRITES_ENABLED":"true"},
   "observability": {"enabled": false},
   "limits": {"cpu_ms": 30000},
   "rules": [
@@ -21,6 +21,7 @@
     {"name": "PDF_LIMIT", "namespace_id": "6181002", "simple": {"limit": 60, "period": 60}},
     {"name": "PDF_REGIONAL_LIMIT", "namespace_id": "6181003", "simple": {"limit": 180, "period": 60}},
     {"name": "CREATION_LIMIT", "namespace_id": "6181004", "simple": {"limit": 60, "period": 60}},
-    {"name": "WRITE_LIMIT", "namespace_id": "6181005", "simple": {"limit": 240, "period": 60}}
+    {"name": "WRITE_LIMIT", "namespace_id": "6181005", "simple": {"limit": 240, "period": 60}},
+    {"name": "AUTH_LIMIT", "namespace_id": "6181006", "simple": {"limit": 30, "period": 60}}
   ]
 }

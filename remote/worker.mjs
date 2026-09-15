@@ -2,28 +2,34 @@ import { createMcpHandler } from '@modelcontextprotocol/server';
 import { createWorkshopServer } from '../src/server-core.mjs';
 import { renderWorkbookPdf } from './render-pdf.mjs';
 import { assetLoader, workbookAssets } from './assets.mjs';
-import { accessConfigured, authorised, originAllowed, boundedJson, applyLimit, protectedResponse } from './access.mjs';
+import { accountAuthConfigured, originAllowed, boundedJson, applyLimit, protectedResponse } from './access.mjs';
 import { renderWorkbookHtml } from '../src/workbook-html.mjs';
 import { createD1SessionStore } from './d1-session-store.mjs';
+import { createD1AuthStore } from './d1-auth-store.mjs';
+import { authRoute, bearerToken, canonicalBaseUrl, oauthChallenge } from './auth-routes.mjs';
 import { persistentRoute } from './persistent-routes.mjs';
 const uiCapabilities = {extensions:{'io.modelcontextprotocol/ui':{mimeTypes:['text/html;profile=mcp-app']}}};
 
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (url.pathname === '/healthz') return protectedResponse(JSON.stringify({service:'ama-groundwork',version:'0.9.0', enabled:env.WORKSHOP_ENABLED === 'true', configured:accessConfigured(env), storage:env.WORKSHOP_DB?'persistent-d1':'unconfigured',writesEnabled:env.WORKSHOP_WRITES_ENABLED!=='false',retention:'until-explicit-deletion'}), {headers:{'Content-Type':'application/json'}});
+    let baseUrl;
+    try{baseUrl=canonicalBaseUrl(env.PUBLIC_BASE_URL??url.origin);}catch{return protectedResponse('The connector address is not configured.',{status:503});}
+    if (url.pathname === '/healthz') return protectedResponse(JSON.stringify({service:'ama-groundwork',version:'0.10.0', enabled:env.WORKSHOP_ENABLED === 'true',configured:accountAuthConfigured(env),authentication:'oauth-account',storage:env.WORKSHOP_DB?'persistent-d1':'unconfigured',writesEnabled:env.WORKSHOP_WRITES_ENABLED!=='false',retention:'until-explicit-deletion'}), {headers:{'Content-Type':'application/json'}});
     if (env.WORKSHOP_ENABLED !== 'true') return protectedResponse('The workshop connector is not active.', {status:503});
-    if (!originAllowed(request)) return protectedResponse('Origin is not allowed.', {status:403});
-    if (request.method === 'OPTIONS') return protectedResponse(null, {status:204, headers:{'Access-Control-Allow-Origin':request.headers.get('origin') ?? url.origin, 'Access-Control-Allow-Methods':'GET, POST, OPTIONS', 'Access-Control-Allow-Headers':'Content-Type, Authorization, MCP-Protocol-Version, MCP-Session-Id'}});
-    if (!accessConfigured(env)) return protectedResponse('The workshop connector has not been configured.', {status:503});
+    if (!accountAuthConfigured(env)) return protectedResponse('Account sign-in has not been configured.', {status:503});
     if (!env.WORKSHOP_DB) return protectedResponse('Saved workbook storage is unavailable. Please retry later.',{status:503});
-    if (url.pathname === '/mcp' && !await authorised(request, env)) return protectedResponse('Workshop access is required.', {status:401, headers:{'WWW-Authenticate':'Bearer realm="ai-use-case-workshop"'}});
-    if (!['POST','GET','DELETE'].includes(request.method)) return protectedResponse('Method is not allowed.', {status:405});
     try {
       const caller = request.headers.get('cf-connecting-ip') ?? 'unknown';
+      const authStore=createD1AuthStore(env.WORKSHOP_DB);
+      if(['/authorize','/oauth/register','/oauth/token','/oauth/revoke'].includes(url.pathname))await applyLimit(env.AUTH_LIMIT,caller);
+      const oauth=await authRoute(request,{store:authStore,baseUrl});
+      if(oauth)return oauth;
+      if (!originAllowed(request)) return protectedResponse('Origin is not allowed.', {status:403});
+      if (request.method === 'OPTIONS') return protectedResponse(null, {status:204, headers:{'Access-Control-Allow-Origin':request.headers.get('origin') ?? url.origin, 'Access-Control-Allow-Methods':'GET, POST, OPTIONS', 'Access-Control-Allow-Headers':'Content-Type, Authorization, MCP-Protocol-Version, MCP-Session-Id'}});
+      if (!['POST','GET','DELETE'].includes(request.method)) return protectedResponse('Method is not allowed.', {status:405});
       await applyLimit(env.REQUEST_LIMIT, caller);
-      const sessionStore=createD1SessionStore(env.WORKSHOP_DB);
-      const baseUrl='https://ai-use-case-workshop.shiva-research11.workers.dev';
+      const sharedStore=createD1SessionStore(env.WORKSHOP_DB);
       const pdfRenderer=async record=>{
         await applyLimit(env.PDF_LIMIT,caller);
         await applyLimit(env.PDF_REGIONAL_LIMIT,'workshop');
@@ -31,9 +37,12 @@ export default {
         catch{throw new Error('The PDF service could not complete this export. Your saved workbook is retained.');}
       };
       if(url.pathname!=='/mcp') {
-        const route=await persistentRoute(request,{store:sessionStore,bookRenderer:record=>renderWorkbookHtml(record,workbookAssets),pdfRenderer,baseUrl});
+        const route=await persistentRoute(request,{store:sharedStore,bookRenderer:record=>renderWorkbookHtml(record,workbookAssets),pdfRenderer,baseUrl});
         return route??protectedResponse('AMA-Groundwork\nConnect a compatible MCP client to /mcp.\nPrepared by Dr. Shiva Kakkar.\n',{status:url.pathname==='/'?200:404});
       }
+      const account=await authStore.verifyAccessToken(bearerToken(request),`${baseUrl}/mcp`);
+      if(!account)return protectedResponse('Sign in to use AMA-Groundwork.',{status:401,headers:{'WWW-Authenticate':oauthChallenge(baseUrl)}});
+      const sessionStore=createD1SessionStore(env.WORKSHOP_DB,{ownerUserId:account.userId,accountLinkSecret:env.ACCOUNT_LINK_SECRET});
       let message;
       if (request.method === 'POST') {
         const parsed = await boundedJson(request);
@@ -49,7 +58,7 @@ export default {
       const uiMarker = /^workshop-ui([01])-[a-f0-9-]{36}$/.exec(request.headers.get('mcp-session-id') ?? '');
       const handler = createMcpHandler(() => createWorkshopServer({
         assetLoader,
-        sessionStore,baseUrl,writesEnabled:env.WORKSHOP_WRITES_ENABLED!=='false',
+        sessionStore,baseUrl,writesEnabled:env.WORKSHOP_WRITES_ENABLED!=='false',accountContext:account,
         bookRenderer:record=>renderWorkbookHtml(record,workbookAssets),
         ...(uiMarker ? {capabilitiesOverride:uiMarker[1] === '1' ? uiCapabilities : {}} : {}),
         pdfRenderer,

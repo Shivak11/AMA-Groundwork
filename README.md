@@ -2,6 +2,10 @@
 
 AMA-Groundwork guides a group from one work problem to a set of grounded, prioritised AI use cases. Its completed workbook is titled `AMA-Groundwork: AI Use-Case Portfolio`.
 
+Version 0.10.0 is the account-authentication candidate. It adds open email-and-password registration, MCP OAuth 2.1 with PKCE, account-owned workbooks and `list_my_workbooks` for recovery in a later chat. Passwords, browser sessions, authorisation codes and OAuth tokens are stored only as salted or one-way hashes in D1. Existing private workbooks can be claimed by a signed-in user who has the old private reference, and their old read-only links continue to work. See AUTHENTICATION-PLAN.md and RELEASE-0.10.0.md.
+
+The current public endpoint still runs the verified 0.9.0 release without account authentication. The 0.10.0 source must pass its local checks and a separate Cloudflare preview before it can replace the current connector.
+
 Version 0.9.0 introduces the AMA-Groundwork name across the connector and workbook. The existing Cloudflare Worker, endpoint, tool names, saved records, access references and retention rules remain unchanged so existing Claude and ChatGPT connector installations continue to work. See AMA-GROUNDWORK-RENAME-PLAN.md and RELEASE-0.9.0.md for the rename scope and verification boundary.
 
 Version 0.8.1 uses one visual system across the connector, saved reader and PDF. It adds grounded use-case requirements and a proposed implementation, full wrapping text, named decision choices and automatic date capture. The completed workbook opens with Download PDF prominent and retains all identified cases even when implementation is deferred. It includes the original and agreed underlying problem, current and proposed workflow diagrams, and the technical proposal. See USABILITY-REVISION-PLAN.md and RELEASE-0.8.1.md for scope and proof.
@@ -54,9 +58,11 @@ The journey harness runs the actual in-memory MCP server and returned widget. It
 
 ## State and recovery
 
-The deployed connector carries a short private record reference; D1 owns the complete validated record. A two-call creation handshake prepares access before storing participant data. Revision checks and operation receipts protect against stale overwrites and lost-response retries. The app never saves answers, writes model context or restores an old record. workshop_action remains a compatibility route for specific conversational choices.
+In the account-authentication candidate, an OAuth access token identifies the signed-in user before any MCP tool runs. New workbooks are attached to that account. `list_my_workbooks` returns concise group names, problems, progress and private account references so the user can select a workbook and reopen it with `resume_workshop`. A second account cannot read or change those references.
 
-Workbooks, approvals and immutable snapshots remain until explicit deletion, including after three months. A write reference grants editing and deletion; a separate read-only link grants reading and exports. Credentials are stored only as hashes. No group listing or name search exists. Old widgets remain read-only. JSON import is explicit and creates a new workbook; it never overwrites a current one. Temporary file tickets expire after 15 minutes, independently of workbook retention. The stable reading page can generate new PDF/JSON links.
+The server carries a short record reference; D1 owns the complete validated record. A two-call creation handshake prepares access before storing participant data. Revision checks and operation receipts protect against stale overwrites and lost-response retries. The app never saves answers, writes model context or restores an old record. workshop_action remains a compatibility route for specific conversational choices.
+
+Workbooks, approvals and immutable snapshots remain until explicit deletion, including after three months. Signed-in users can list only their own workbooks. A private account reference grants editing inside that account; a separate read-only link grants reading and exports to anyone who has the link. Old widgets remain read-only. JSON import is explicit and creates a new workbook; it never overwrites a current one. Temporary file tickets expire after 15 minutes, independently of workbook retention. The stable reading page can generate new PDF/JSON links.
 
 A selected priority is separate from its previous reasoning. The group must reconcile it before confirmation. Reconsider also requires resolution. Earlier corrections retain downstream answers and mark dependent chapters for review. One eligible visual action can be undone; later saves or approvals invalidate that undo.
 
@@ -74,7 +80,7 @@ Routine results remain explicitly non-visual, so a host that reuses a previous v
 
 The full-record server remains available only for explicit local compatibility. It is never an automatic fallback when persistent storage fails. The live Worker fails closed without its D1 binding. WORKSHOP_WRITES_ENABLED=false pauses mutations while retaining reads and exports; WORKSHOP_ENABLED=false stops the service. Version 0.6.1 cannot validate new experience-version-2 fields: after new workbooks exist, retain the compatible 0.7 reader during containment and apply a forward correction. Do not roll back to an incompatible or stateless-only Worker.
 
-All steps, corrections, approvals and PDF requests have text equivalents in the same conversation. A separate browser app is not required. The optional stable reader supports later delivery and exports. Cross-client resumption requires the group's private reference; it is not account/name-based recovery. No claim of pinned hot reload or live card replacement is made.
+All steps, corrections, approvals and PDF requests have text equivalents in the same conversation. A separate browser app is not required. The optional stable reader supports later delivery and exports. Version 0.10.0 adds account-based cross-client recovery; the user selects a workbook by group name and problem, while the model uses its private account reference internally. No claim of pinned hot reload or live card replacement is made.
 
 AMA-Groundwork retains the canonical public endpoint at https://ai-use-case-workshop.shiva-research11.workers.dev/mcp. The existing Worker and URL keep their earlier technical identity so installed connectors do not need to change. Historical live and ChatGPT reports in remote/ describe older versions under their original release names. Confirm the server version and widget hash against the latest release record; a source archive or local test alone is not proof of live deployment or Claude/ChatGPT rendering.
 

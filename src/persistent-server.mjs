@@ -8,7 +8,7 @@ import { actionSchema, applyWorkshopAction } from './actions.mjs';
 import { presentationSchema, validatePresentation } from './presentation.mjs';
 import { SERVER_QUESTION_POLICY, PARTICIPANT_LANGUAGE_POLICY, COMPLETION_POLICY, questionTurn } from './question-routing.mjs';
 import { nextConversationQuestion } from './conversation.mjs';
-import { referenceSchema, readKeyFor, canonicalJson, hashValue, SessionError } from './session-store.mjs';
+import { referenceSchema, canonicalJson, hashValue, SessionError } from './session-store.mjs';
 
 const phaseNumber=z.number().int().min(1).max(6);
 const modeSchema=z.enum(['auto','text']).optional();
@@ -16,11 +16,11 @@ const requestId=z.string().regex(/^[A-Za-z0-9_.:-]{1,160}$/).optional();
 const answerPatch=z.object(Object.assign({},...answerSchemas.map(s=>s.shape))).partial().catchall(z.unknown());
 const anyObject=z.record(z.string(),z.unknown());
 const groupPatch=z.object({...groupSchema.shape,context:z.string().trim().max(400)}).partial().strict();
-const reference=referenceSchema.refine(value=>value.key.startsWith('ws1_'),'Use the private continuation reference, not the read-only link.');
+const reference=referenceSchema.refine(value=>/^(?:ws1_|wa1_)/.test(value.key),'Use the private workbook reference, not the read-only link.');
 const arrayEdit=z.object({field:z.enum(['blockers','workflows','tasks','candidates','choices']),op:z.enum(['update','add','remove','replace']),id:z.string().max(40).optional(),index:z.number().int().min(0).max(5).optional(),value:z.unknown().optional()}).strict();
 const uiUri='ui://workshop/checkpoint.html';
 const uiMeta={ui:{resourceUri:uiUri},'ui/resourceUri':uiUri};
-const retention='The workbook and revision history are stored privately on Cloudflare without automatic expiry, until your group explicitly deletes them. Keep the private continuation reference for editing in another chat. The separate reading link can be shared with reviewers; anyone with it can read and download the workbook. Use first names or aliases and concise summaries, not confidential transcripts.';
+const legacyRetention='The workbook and revision history remain available until your group explicitly deletes them. Keep the private continuation reference for editing in another chat. The separate reading link can be shared with reviewers; anyone with it can read and download the workbook. Use first names or aliases and concise summaries, not confidential transcripts.';
 const hostGuide=`${SERVER_QUESTION_POLICY} Keep the latest short record reference; never reconstruct the full workbook or approval history. The server owns saved answers. On a stale write, read the returned context and retry only the intended change. Use workshop_next with phase for an earlier correction. Reuse the group's wording and label Unknown honestly. Suggestions are not evidence or approval. For arrays prefer arrayEdits to change one item; do not remove siblings unless the group asks. Technical schemas are private facilitation context; never ask participants for JSON. Keep questions brief. Do not infer employee motives, contact employees, browse or operate other systems without a separate request. When the participant prefers ordinary chat, call set_workshop_preference with mode:text once. The read-only visual never asks a question or saves an answer. Never claim a file was downloaded merely because a link was generated.`;
 const phaseSchemaFor=(record,id)=>z.toJSONSchema(phaseAnswerSchema(record,id));
 
@@ -61,11 +61,14 @@ function patchArrays(record,phase,answers,edits=[]) {
   return patch;
 }
 
-export async function createPersistentWorkshopServer({sessionStore:store,pdfRenderer,assetLoader:file,capabilitiesOverride,baseUrl,writesEnabled=true}={}) {
+export async function createPersistentWorkshopServer({sessionStore:store,pdfRenderer,assetLoader:file,capabilitiesOverride,baseUrl,writesEnabled=true,accountContext=null}={}) {
   if(!store||typeof pdfRenderer!=='function'||typeof file!=='function')throw new Error('Persistent workshop adapters are required.');
   const origin=new URL(baseUrl);
-  if(origin.protocol!=='https:'||origin.username||origin.password||origin.search||origin.hash||origin.pathname!=='/')throw new Error('A fixed HTTPS workshop origin is required.');
-  const server=new McpServer({name:'ama-groundwork',version:'0.9.0'},{instructions:`${PARTICIPANT_LANGUAGE_POLICY} ${COMPLETION_POLICY} ${hostGuide} Internal access policy, explain only when relevant or requested: ${retention}`});
+  const local=['localhost','127.0.0.1','[::1]'].includes(origin.hostname);
+  if((origin.protocol!=='https:'&&!(origin.protocol==='http:'&&local))||origin.username||origin.password||origin.search||origin.hash||origin.pathname!=='/')throw new Error('A fixed HTTPS or local loopback workshop origin is required.');
+  const accountRetention=accountContext?'This account keeps its workbooks until the user explicitly deletes them. Use list_my_workbooks when the user wants to reopen earlier work.':'The private reference keeps a workbook available until the group explicitly deletes it.';
+  const retention=accountContext?'Your workbooks are saved in your AMA-Groundwork account until you delete them.':legacyRetention;
+  const server=new McpServer({name:'ama-groundwork',version:'0.10.0'},{instructions:`${PARTICIPANT_LANGUAGE_POLICY} ${COMPLETION_POLICY} ${hostGuide} Internal access policy, explain only when relevant or requested: ${accountRetention}`});
   const teaching=await file('skills/ai-use-case-workshop/references/phases.md');
   const capability=()=>getUiCapability(capabilitiesOverride??server.server.getClientCapabilities())?.mimeTypes?.includes(RESOURCE_MIME_TYPE);
   const ensureWrite=()=>{if(!writesEnabled)throw Object.assign(new Error('Saving is temporarily paused.'),{safeMessage:'Saving is temporarily paused. Your saved workbook, history and downloads remain available.'});};
@@ -105,7 +108,7 @@ export async function createPersistentWorkshopServer({sessionStore:store,pdfRend
     const summary=`Step ${phaseId} of 6: ${guide.title}`;
     const complete=currentPhase(record)===null;
     const closing=complete?`Your workbook documents ${(record.phases[3].answers.candidates??[]).map(c=>c.title).join('; ')}. ${record.phases[5].answers.recommendation} You can keep it for reflection and return when you decide to implement.`:'';
-    const readingKey=await readKeyFor(ref.key);
+    const readingKey=await store.readKey(ref.key);
     const workspaceUrl=`${origin.origin}/workbook#${readingKey}`;
     const next=purpose==='files'?turn.instruction:[turn.instruction,nextQuestion.hint,nextQuestion.question].filter(Boolean).join('\n');
     return {content:[{type:'text',text:[message,complete?closing:summary].filter(Boolean).join('\n\n')}],structuredContent:{
@@ -185,6 +188,10 @@ export async function createPersistentWorkshopServer({sessionStore:store,pdfRend
     const result=await build(loaded,undefined,loaded.replayed?undefined:args.mode);
     result.structuredContent.pending=false;return result;
   },{write:true,idempotent:false});
+  if(accountContext&&typeof store.listOwner==='function')register('list_my_workbooks','List this signed-in user’s saved workbooks so they can choose one to reopen. Return the stored workbook reference, group name, problem, approved step count and last update time. Use the selected reference with resume_workshop. Do not ask the user to find or paste a private key.',z.object({limit:z.number().int().min(1).max(50).default(20),offset:z.number().int().min(0).default(0)}),async args=>{
+    const workbooks=await store.listOwner(args);
+    return {content:[{type:'text',text:workbooks.length?`You have ${workbooks.length} saved workbook${workbooks.length===1?'':'s'} in this result. Ask which one to reopen using its group name and problem.`:'You do not have any saved workbooks yet.'}],structuredContent:{account:{displayName:accountContext.displayName},workbooks,next:workbooks.length?'Ask the user which workbook they want to reopen. Refer to each one by group name and problem, then call resume_workshop with its record.':'Offer to start a new workshop.'}};
+  });
   register('workshop_next','Read the latest saved workbook using only its private reference. Optional phase loads wording for an earlier correction. For a long step, field and itemIndex read one saved field or array item; read every listed item before presenting a complete approval summary. Do not reconstruct the full record.',z.object({...input,phase:phaseNumber.optional(),field:z.string().max(40).optional(),itemIndex:z.number().int().min(0).max(5).optional()}),async args=>{
     const loaded=await load(args.record),result=await build(loaded,args.phase,args.mode);
     if(args.field!==undefined){

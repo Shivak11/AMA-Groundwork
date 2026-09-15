@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {accessConfigured, authorised, originAllowed, boundedJson, applyLimit, protectedResponse} from '../remote/access.mjs';
+import {accessConfigured, accountAuthConfigured, authorised, originAllowed, boundedJson, applyLimit, protectedResponse} from '../remote/access.mjs';
 import {createRecord, savePhase, confirmPhase, validateRecord} from '../src/workshop.mjs';
 import {applyWorkshopAction} from '../src/actions.mjs';
 import {group, answers} from '../examples/hiring.mjs';
@@ -12,6 +12,13 @@ test('remote access fails closed until a policy is configured', async () => {
     assert.equal(await authorised(request,env), false);
   }
   assert.equal(await authorised(request,{ACCESS_MODE:'public'}), true);
+});
+
+test('account authentication requires both activation and a server-side link secret',()=>{
+  assert.equal(accountAuthConfigured({}),false);
+  assert.equal(accountAuthConfigured({ACCOUNT_AUTH_ENABLED:'true'}),false);
+  assert.equal(accountAuthConfigured({ACCOUNT_AUTH_ENABLED:'true',ACCOUNT_LINK_SECRET:'short'}),false);
+  assert.equal(accountAuthConfigured({ACCOUNT_AUTH_ENABLED:'true',ACCOUNT_LINK_SECRET:'x'.repeat(32)}),true);
 });
 
 test('private access validates credentials independently of the UI capability marker', async () => {

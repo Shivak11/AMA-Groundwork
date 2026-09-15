@@ -1,6 +1,6 @@
 {
   "name": "ama-groundwork",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "Help groups identify grounded AI use cases through conversation and visual choices.",
   "author": { "name": "Dr. Shiva Kakkar", "url": "https://www.shivakakkar.com/" },
   "keywords": ["workshop", "ai-adoption", "use-cases", "mcp", "education"],
