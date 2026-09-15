@@ -78,9 +78,12 @@ test('OAuth metadata, registration, browser sign-in, PKCE exchange, refresh rota
   for(const [key,value] of Object.entries({response_type:'code',client_id:client.client_id,redirect_uri:client.redirect_uris[0],code_challenge:challenge,code_challenge_method:'S256',resource,scope:'workbooks',state}))authorize.searchParams.set(key,value);
   const page=await authRoute(new Request(authorize),{store,baseUrl});
   assert.equal(page.status,200);assert.match(await page.text(),/Sign in to AMA-Groundwork/);
+  assert.equal(page.headers.get('referrer-policy'),'same-origin','Same-origin forms must keep a usable Origin header.');
+  assert.match(page.headers.get('content-security-policy'),/form-action 'self' https:\/\/claude\.ai;/,'The registered OAuth callback must remain reachable after form submission.');
   const requestCookie=cookiePair(page);assert.match(requestCookie,/__Host-ama_auth_request=ar1_/);
   const completed=await authRoute(new Request(`${baseUrl}/authorize`,{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded',origin:baseUrl,cookie:requestCookie},body:form({action:'register',display_name:'Shiva',email:'shiva@example.com',password:'a secure password'})}),{store,baseUrl});
   assert.equal(completed.status,302);const callback=new URL(completed.headers.get('location'));
+  assert.equal(completed.headers.get('referrer-policy'),'no-referrer','The redirect must not disclose the authorisation page URL.');
   assert.equal(callback.origin,'https://claude.ai');assert.equal(callback.searchParams.get('state'),state);assert.match(callback.searchParams.get('code'),/^ac1_/);
   const codeExchange=()=>authRoute(new Request(`${baseUrl}/oauth/token`,{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:form({grant_type:'authorization_code',client_id:client.client_id,redirect_uri:client.redirect_uris[0],code:callback.searchParams.get('code'),code_verifier:verifier,resource})}),{store,baseUrl});
   const codeResults=await Promise.all([codeExchange(),codeExchange()]);assert.deepEqual(codeResults.map(result=>result.status).sort(),[200,400]);

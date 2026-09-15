@@ -9,7 +9,7 @@ const SUPPORTED_SCOPE='workbooks';
 const MAX_FORM_BYTES=16_000;
 
 const jsonResponse=(body,{status=200,headers={}}={})=>protectedResponse(JSON.stringify(body),{status,headers:{'Content-Type':'application/json; charset=utf-8','Access-Control-Allow-Origin':'*',...headers}});
-const htmlResponse=(body,{status=200,headers={}}={})=>protectedResponse(body,{status,headers:{'Content-Type':'text/html; charset=utf-8','Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",...headers}});
+const htmlResponse=(body,{status=200,headers={},redirectUri}={})=>protectedResponse(body,{status,headers:{'Content-Type':'text/html; charset=utf-8','Referrer-Policy':'same-origin','Content-Security-Policy':`default-src 'none'; style-src 'unsafe-inline'; form-action 'self'${redirectUri?` ${new URL(redirectUri).origin}`:''}; base-uri 'none'; frame-ancestors 'none'`,...headers}});
 const safeError=error=>error instanceof AuthError?error:new AuthError('server_error','Account sign-in is temporarily unavailable.',503);
 const authError=(error,status=400)=>{const safe=safeError(error);return jsonResponse({error:safe.code,error_description:safe.message},{status:safe.status??status});};
 const cookie=(name,value,maxAge)=>`${name}=${value}; Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age=${maxAge}`;
@@ -135,7 +135,7 @@ export async function authRoute(request,{store,baseUrl}) {
       if(!client)throw new AuthError('invalid_request','The requesting client is unavailable.');
       const user=await store.browserUser(cookieValue(request,SESSION_COOKIE));
       const view=url.searchParams.get('view')==='create'?'create':'signin';
-      return htmlResponse(renderAuthPage({clientName:client.clientName,view,user}),{headers:{'Set-Cookie':cookie(REQUEST_COOKIE,requestToken,10*60)}});
+      return htmlResponse(renderAuthPage({clientName:client.clientName,view,user}),{redirectUri:flow.redirect_uri??flow.redirectUri,headers:{'Set-Cookie':cookie(REQUEST_COOKIE,requestToken,10*60)}});
     }catch(error){const safe=safeError(error);return htmlResponse(renderAuthPage({error:safe.message}),{status:safe.status??400});}
   }
   if(url.pathname==='/authorize'&&request.method==='POST') {
@@ -150,7 +150,7 @@ export async function authRoute(request,{store,baseUrl}) {
       if(action==='cancel')return redirectWith(flow.redirect_uri,{error:'access_denied',error_description:'The request was cancelled.',state:flow.state});
       if(action==='signout') {
         await store.deleteBrowserSession(cookieValue(request,SESSION_COOKIE));
-        return htmlResponse(renderAuthPage({clientName:client.clientName}),{headers:{'Set-Cookie':clearCookie(SESSION_COOKIE)}});
+        return htmlResponse(renderAuthPage({clientName:client.clientName}),{redirectUri:flow.redirect_uri,headers:{'Set-Cookie':clearCookie(SESSION_COOKIE)}});
       }
       let user=await store.browserUser(cookieValue(request,SESSION_COOKIE)),sessionCookie='';
       if(action==='register')user=await store.registerUser({email:form.get('email'),password:form.get('password'),displayName:form.get('display_name')});
@@ -169,7 +169,7 @@ export async function authRoute(request,{store,baseUrl}) {
     }catch(error){
       const safe=safeError(error);
       const view=action==='register'?'create':'signin';
-      return htmlResponse(renderAuthPage({clientName:client?.clientName,view,error:safe.message}),{status:safe.status===401?401:safe.status??400,headers:{'Set-Cookie':requestToken?cookie(REQUEST_COOKIE,requestToken,10*60):clearCookie(REQUEST_COOKIE)}});
+      return htmlResponse(renderAuthPage({clientName:client?.clientName,view,error:safe.message}),{redirectUri:flow?.redirect_uri,status:safe.status===401?401:safe.status??400,headers:{'Set-Cookie':requestToken?cookie(REQUEST_COOKIE,requestToken,10*60):clearCookie(REQUEST_COOKIE)}});
     }
   }
   if(url.pathname==='/oauth/token') {
